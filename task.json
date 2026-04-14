@@ -138,7 +138,7 @@
         "创建 tests/test_notify.py，测试消息格式化和通知发送（mock HTTP 请求）",
         "确保所有测试可以通过 pytest 或 unittest 运行"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 10,

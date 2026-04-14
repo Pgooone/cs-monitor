@@ -145,3 +145,21 @@
 ### Notes:
 - 主程序运行后会一直阻塞在 while True 循环中，直到收到中断信号
 - 首次启动时会立即调用 collect_prices() 进行一轮采集
+
+## 2026-04-15 - Task 9: 单元测试
+
+### What was done:
+- tests/test_api.py：6 个测试覆盖 SteamDTClient 批量查询、7天均价、基础信息、重试失败
+- tests/test_analyzer.py：5 个测试覆盖波动检测、阈值判断、告警冷却、基准价回退
+- tests/test_notify.py：8 个测试覆盖企微/TG/Server酱发送、消息格式化、渠道路由
+- tests/test_monitor.py：4 个测试覆盖价格采集、空清单、API失败
+- tests/test_extreme_tracker.py：7 个测试覆盖快照、价格/数量变动、合并告警、429降频、冷却、免打扰
+- tests/test_storage.py：6 个测试覆盖数据库表、CRUD操作
+
+### Testing:
+- python -m pytest tests/ -v 全部 36 个测试通过
+- 所有核心模块均有测试覆盖
+
+### Notes:
+- 所有外部 API 调用在单元测试中使用 unittest.mock 模拟
+- 数据库测试使用 tempfile 创建临时 SQLite 文件
