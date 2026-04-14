@@ -44,6 +44,28 @@
 ### Testing:
 - python -m py_compile storage/database.py storage/models.py 无错误
 - tests/test_storage.py 6 个测试全部通过
+## 2026-04-15 - Task 4: 核心监控逻辑：价格采集与调度
+
+### What was done:
+- 创建 core/monitor.py，实现 PriceMonitor 类
+- 实现 collect_prices()：读取 config.watchlist，批量调用 SteamDT API 获取当前价格
+- 解析 API 响应并写入 price_records 表，同时处理 items 表外键约束
+- 创建 core/scheduler.py，实现 MonitorScheduler 类
+- 使用 APScheduler BackgroundScheduler 注册普通监控定时任务
+- 配置默认每 30 分钟执行一次价格采集
+- 首次启动时立即执行一次价格采集
+- 支持优雅关闭调度器
+
+### Testing:
+- python -m py_compile core/monitor.py core/scheduler.py tests/test_monitor.py 无错误
+- tests/test_monitor.py 4 个测试全部通过
+- 全部 16 个单元测试通过
+- python main.py 可正常启动
+
+### Notes:
+- PriceMonitor 对 API 失败、空 watchlist、异常响应都做了防御性处理
+- 首次采集在 scheduler.start() 中立即触发
+
 ### Testing:
 - python -m py_compile api/steamdt.py 无错误
 - tests/test_api.py 6 个测试全部通过
