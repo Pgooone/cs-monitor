@@ -8,6 +8,7 @@ from loguru import logger
 
 from api.steamdt import SteamDTClient
 from config import MonitorConfig
+from core.analyzer import PriceAnalyzer
 from storage.database import Database
 
 
@@ -23,6 +24,7 @@ class PriceMonitor:
         self.client = client
         self.db = db
         self.config = config
+        self.analyzer = PriceAnalyzer(client, db, config)
 
     def collect_prices(self) -> list[dict[str, Any]]:
         """采集 watchlist 中所有饰品的价格并存储.
@@ -83,4 +85,10 @@ class PriceMonitor:
                 })
 
         logger.info(f"本次采集完成，共写入 {len(records)} 条价格记录")
+
+        # 采集完成后执行波动分析
+        if records:
+            alerts = self.analyzer.analyze(records)
+            logger.info(f"本次分析触发 {len(alerts)} 条告警")
+
         return records

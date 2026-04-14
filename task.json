@@ -76,7 +76,7 @@
         "将触发的告警写入 alert_logs 表",
         "集成到 monitor.py 的采集流程中，每次采集后执行分析"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,

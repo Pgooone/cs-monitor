@@ -114,6 +114,24 @@ class Database:
             row = cursor.fetchone()
             return dict(row) if row else None
 
+    def get_latest_price_any_platform(
+        self,
+        market_hash_name: str,
+    ) -> dict[str, Any] | None:
+        """获取指定饰品的最新价格记录（不区分平台）."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT * FROM price_records
+                WHERE market_hash_name = ?
+                ORDER BY recorded_at DESC
+                LIMIT 1
+                """,
+                (market_hash_name,),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
     # ------------------------------------------------------------------
     # alert_logs 表操作
     # ------------------------------------------------------------------

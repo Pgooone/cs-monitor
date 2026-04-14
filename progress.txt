@@ -62,9 +62,27 @@
 - 全部 16 个单元测试通过
 - python main.py 可正常启动
 
+## 2026-04-15 - Task 5: 核心监控逻辑：波动分析与告警检测
+
+### What was done:
+- 创建 core/analyzer.py，实现 PriceAnalyzer 类
+- 实现波动率计算：(当前价 - 基准价) / 基准价 × 100%
+- 基准价优先使用 7 天均价（get_7day_average），缺失时回退到上一次采集价格
+- 实现告警判断：涨幅 ≥ 阈值% 触发 price_surge，跌幅 ≤ -阈值% 触发 price_drop
+- 实现告警冷却：同一饰品同一方向 4 小时内只告警 1 次
+- 将触发的告警写入 alert_logs 表
+- 集成 analyzer 到 monitor.py，每次采集后自动执行分析
+- 为 database.py 添加 get_latest_price_any_platform() 支持无平台限制的基准价查询
+
+### Testing:
+- python -m py_compile core/analyzer.py tests/test_analyzer.py 无错误
+- tests/test_analyzer.py 5 个测试全部通过（涨价、跌价、阈值内、冷却、回退基准价）
+- 全部 21 个单元测试通过
+
 ### Notes:
 - PriceMonitor 对 API 失败、空 watchlist、异常响应都做了防御性处理
 - 首次采集在 scheduler.start() 中立即触发
+- analyzer 取各平台最低价为当前价进行波动判断
 
 ### Testing:
 - python -m py_compile api/steamdt.py 无错误
