@@ -18,3 +18,19 @@
 ### Notes:
 - .env 已配置 STEAMDT_API_KEY
 - Git 仓库已初始化并提交初始 commit
+
+## 2026-04-14 - Task 2: SteamDT API 封装模块
+
+### What was done:
+- 创建 api/steamdt.py，实现 SteamDTClient 类
+- 实现 get_items_batch() 批量查询饰品价格（支持 1-100 个）
+- 实现 get_7day_average() 查询 7 天均价
+- 实现 get_all_items() 获取饰品基础信息
+- 实现 get_item_kline() 查询 K 线数据（预留接口）
+- 统一错误处理：重试 3 次、间隔 10 秒、1-3 秒随机延迟防风控
+- 认证方式：Authorization: Bearer API_KEY
+- Base URL 使用 https://open.steamdt.com
+
+### Testing:
+- python -m py_compile api/steamdt.py 无错误
+- tests/test_api.py 6 个测试全部通过
