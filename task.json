@@ -110,7 +110,7 @@
         "通知发送失败时重试 3 次",
         "在 analyzer.py 和 extreme_tracker.py 中集成通知发送"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 8,

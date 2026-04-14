@@ -8,6 +8,7 @@ from loguru import logger
 
 from api.steamdt import SteamDTClient
 from config import MonitorConfig
+from notify.manager import NotificationManager
 from storage.database import Database
 
 
@@ -23,6 +24,7 @@ class PriceAnalyzer:
         self.client = client
         self.db = db
         self.config = config
+        self.notifier = NotificationManager(config)
 
     def _get_baseline_price(self, market_hash_name: str) -> float | None:
         """获取基准价.
@@ -142,6 +144,7 @@ class PriceAnalyzer:
                         f"🚨 {market_hash_name} 涨价告警: "
                         f"+{change_percent:.2f}%"
                     )
+                    self.notifier.send_normal_alert(alerts[-1])
                 else:
                     logger.info(
                         f"{market_hash_name} 涨价告警在冷却期内，跳过"
@@ -170,6 +173,7 @@ class PriceAnalyzer:
                         f"🚨 {market_hash_name} 跌价告警: "
                         f"{change_percent:.2f}%"
                     )
+                    self.notifier.send_normal_alert(alerts[-1])
                 else:
                     logger.info(
                         f"{market_hash_name} 跌价告警在冷却期内，跳过"

@@ -99,3 +99,26 @@
 ### Testing:
 - python -m py_compile api/steamdt.py 无错误
 - tests/test_api.py 6 个测试全部通过
+
+## 2026-04-15 - Task 7: 通知推送模块
+
+### What was done:
+- 创建 notify/base.py，定义 NotificationChannel 抽象基类
+- 创建 notify/wecom.py，实现企业微信机器人 Webhook 推送（P0）
+- 创建 notify/telegram.py，实现 Telegram Bot 推送（P1）
+- 创建 notify/serverchan.py，实现 Server 酱推送（P1）
+- 创建 notify/manager.py，实现 NotificationManager 负责消息格式化和渠道路由
+- 支持通过 config.notify_channel 切换默认渠道
+- 通知发送失败时重试 3 次（send_with_retry）
+- 集成通知到 analyzer.py，普通监控触发告警后自动推送
+- 集成通知到 extreme_tracker.py，极致追踪触发告警后自动推送
+- 按照 PRD 模板格式化普通监控和极致追踪三种消息内容
+
+### Testing:
+- python -m py_compile notify/*.py tests/test_notify.py 无错误
+- tests/test_notify.py 8 个测试全部通过（企微成功/失败、TG、Server酱、渠道创建、消息格式化）
+- 全部 36 个单元测试通过
+
+### Notes:
+- 通知渠道配置依赖 .env 中的 Webhook URL / Bot Token
+- 未配置时 channel 为 None，告警仅记录数据库不发送通知

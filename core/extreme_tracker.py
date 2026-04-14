@@ -11,6 +11,7 @@ from loguru import logger
 
 from api.steamdt import SteamDTAPIError, SteamDTClient
 from config import MonitorConfig
+from notify.manager import NotificationManager
 from storage.database import Database
 
 
@@ -26,6 +27,7 @@ class ExtremeTracker:
         self.client = client
         self.db = db
         self.config = config
+        self.notifier = NotificationManager(config)
         self._consecutive_success: dict[str, int] = {}
         self._current_intervals: dict[str, int] = {}
         self._next_run_at: dict[str, float] = {}
@@ -332,7 +334,7 @@ class ExtremeTracker:
             f"价格 {prev_price}→{curr_price}, 数量 {prev_qty}→{curr_qty}"
         )
 
-        return {
+        result = {
             "track_id": tid,
             "alert_type": alert_type,
             "prev_price": prev_price,
@@ -344,6 +346,8 @@ class ExtremeTracker:
             "quantity_change": qty_change,
             "quantity_change_percent": qty_change_pct,
         }
+        self.notifier.send_extreme_alert(result, market_hash_name, platform)
+        return result
 
     def tick(self) -> list[dict[str, Any]]:
         """执行一轮极致追踪检查."""
