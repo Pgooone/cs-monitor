@@ -31,6 +31,19 @@
 - 认证方式：Authorization: Bearer API_KEY
 - Base URL 使用 https://open.steamdt.com
 
+## 2026-04-14 - Task 3: 数据存储模块（SQLite）
+
+### What was done:
+- 创建 storage/models.py，定义 6 张表的建表 SQL
+- 创建 storage/database.py，封装 Database 类
+- 实现自动建表（首次运行时 _init_tables）
+- 实现 items、price_records、alert_logs、extreme_track_snapshots、extreme_track_alerts 的 CRUD 方法
+- 包括：insert_item, get_item, insert_price_record, get_latest_price, insert_alert_log, get_recent_alerts
+- 包括：insert_extreme_snapshot, get_latest_snapshot, insert_extreme_alert, get_latest_extreme_alert
+
+### Testing:
+- python -m py_compile storage/database.py storage/models.py 无错误
+- tests/test_storage.py 6 个测试全部通过
 ### Testing:
 - python -m py_compile api/steamdt.py 无错误
 - tests/test_api.py 6 个测试全部通过

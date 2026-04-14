@@ -46,7 +46,7 @@
         "首次运行时自动执行建表",
         "封装 insert_price_record(), insert_alert_log() 等常用写入方法"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
