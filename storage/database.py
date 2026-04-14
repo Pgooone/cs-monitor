@@ -269,3 +269,21 @@ class Database:
             )
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    def get_recent_extreme_alerts(
+        self,
+        market_hash_name: str,
+        platform: str,
+        alert_type: str,
+        seconds: int = 0,
+    ) -> list[dict[str, Any]]:
+        """查询最近 N 秒内的同类极致追踪告警记录."""
+        with self._cursor() as cursor:
+            sql = f"""
+                SELECT * FROM extreme_track_alerts
+                WHERE market_hash_name = ? AND platform = ? AND alert_type = ?
+                  AND notified_at >= datetime('now', '-{seconds} seconds')
+                ORDER BY notified_at DESC
+            """
+            cursor.execute(sql, (market_hash_name, platform, alert_type))
+            return [dict(row) for row in cursor.fetchall()]

@@ -94,7 +94,7 @@
         "支持免打扰时段（quiet_hours）和冷却期（alert_cooldown_seconds）",
         "在 scheduler.py 中为极致追踪注册独立的定时任务"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,

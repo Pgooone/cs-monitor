@@ -8,6 +8,7 @@ from loguru import logger
 
 from api.steamdt import SteamDTClient
 from config import MonitorConfig
+from core.extreme_tracker import ExtremeTracker
 from core.monitor import PriceMonitor
 from storage.database import Database
 
@@ -25,11 +26,13 @@ class MonitorScheduler:
         self.db = db
         self.config = config
         self.monitor = PriceMonitor(client, db, config)
+        self.extreme_tracker = ExtremeTracker(client, db, config)
         self.scheduler = BackgroundScheduler()
 
     def start(self) -> None:
         """启动调度器并注册任务."""
         self._add_monitor_job()
+        self._add_extreme_tracker_job()
         self.scheduler.start()
         logger.info("调度器已启动")
 
@@ -48,6 +51,22 @@ class MonitorScheduler:
             replace_existing=True,
         )
         logger.info(f"普通监控任务已注册，间隔: {interval} 分钟")
+
+    def _add_extreme_tracker_job(self) -> None:
+        """注册极致追踪定时任务."""
+        if not self.config.extreme_track_list:
+            logger.info("极致追踪列表为空，跳过注册")
+            return
+
+        # 统一使用 10 秒 tick，由 ExtremeTracker 内部管理各追踪项的执行时间
+        self.scheduler.add_job(
+            self.extreme_tracker.tick,
+            trigger=IntervalTrigger(seconds=10),
+            id="extreme_tracker",
+            name="极致追踪轮询",
+            replace_existing=True,
+        )
+        logger.info("极致追踪任务已注册，tick 间隔: 10 秒")
 
     def shutdown(self, wait: bool = True) -> None:
         """优雅关闭调度器."""

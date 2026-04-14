@@ -74,10 +74,22 @@
 - 集成 analyzer 到 monitor.py，每次采集后自动执行分析
 - 为 database.py 添加 get_latest_price_any_platform() 支持无平台限制的基准价查询
 
+## 2026-04-15 - Task 6: 极致追踪模块（高频单品狙击）
+
+### What was done:
+- 创建 core/extreme_tracker.py，实现 ExtremeTracker 类
+- 使用统一 tick 机制（每 10 秒）管理多个追踪项，各追踪项按自定义间隔独立执行
+- 支持 any 模式（任何变动通知）和 percent 模式（超百分比通知）
+- 自动降频保护：API 返回 429 时自动翻倍间隔（最大 1 小时），连续成功 10 次后逐步恢复
+- 价格和数量同时变动时合并为 both 类型告警写入 extreme_track_alerts
+- 支持 alert_cooldown_seconds 冷却期和 quiet_hours 免打扰时段
+- 集成到 scheduler.py，注册独立的 extreme_tracker 定时任务
+- database.py 新增 get_latest_price_any_platform() 和 get_recent_extreme_alerts() 支持新功能
+
 ### Testing:
-- python -m py_compile core/analyzer.py tests/test_analyzer.py 无错误
-- tests/test_analyzer.py 5 个测试全部通过（涨价、跌价、阈值内、冷却、回退基准价）
-- 全部 21 个单元测试通过
+- python -m py_compile core/extreme_tracker.py core/scheduler.py tests/test_extreme_tracker.py 无错误
+- tests/test_extreme_tracker.py 7 个测试全部通过（首次运行、价格告警、合并告警、冷却、429降频、禁用、免打扰）
+- 全部 28 个单元测试通过
 
 ### Notes:
 - PriceMonitor 对 API 失败、空 watchlist、异常响应都做了防御性处理
