@@ -1,6 +1,5 @@
 """API 模块单元测试."""
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest

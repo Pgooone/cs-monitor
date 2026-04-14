@@ -163,3 +163,26 @@
 ### Notes:
 - 所有外部 API 调用在单元测试中使用 unittest.mock 模拟
 - 数据库测试使用 tempfile 创建临时 SQLite 文件
+
+## 2026-04-15 - Task 10: 最终集成测试与优化
+
+### What was done:
+- 运行全部 36 个单元测试，全部通过
+- 运行 ruff check . --fix，修复 2 个未使用 import 问题
+- 运行 mypy，除 apscheduler 第三方库缺失类型存根外无其他错误
+- 验证 main.py 可正常启动、初始化、执行首次价格采集和波动分析
+- 验证普通监控模式完整流程：批量采集 → 写入数据库 → 波动分析 → 触发告警 → 通知推送
+- 验证极致追踪模式已通过单元测试覆盖：高频轮询 → 快照对比 → 合并通知
+- 验证 429 自动降频、告警冷却、免打扰时段逻辑全部通过测试
+- 代码格式统一，清理未使用 import
+
+### Testing:
+- python -m pytest tests/ -v：36 passed
+- python -m ruff check .：0 errors
+- python -m mypy .：仅 apscheduler 缺少 stubs（第三方库问题）
+- python main.py：启动正常，API 调用成功，首次采集完成
+
+### Notes:
+- 项目核心功能已全部开发完成
+- 用户只需在 .env 中配置真实的 Webhook URL 即可接收通知
+- 企微通知在测试中出现 93000 错误是因为使用了占位符 Webhook URL

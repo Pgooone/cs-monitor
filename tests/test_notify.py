@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from config import MonitorConfig
 from notify.manager import NotificationManager
