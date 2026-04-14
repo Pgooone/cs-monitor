@@ -122,3 +122,26 @@
 ### Notes:
 - 通知渠道配置依赖 .env 中的 Webhook URL / Bot Token
 - 未配置时 channel 为 None，告警仅记录数据库不发送通知
+
+## 2026-04-15 - Task 8: 主程序入口与优雅退出
+
+### What was done:
+- 重写 main.py 作为完整主程序入口
+- 加载配置（MonitorConfig.from_env()），校验 STEAMDT_API_KEY 是否存在
+- 初始化 SQLite 数据库（data/prices.db）
+- 初始化 SteamDTClient 并传入配置
+- 启动 MonitorScheduler 调度器，注册普通监控和极致追踪任务
+- 首次启动立即执行一次价格采集（已在 scheduler.start() 中实现）
+- 实现 Ctrl+C (SIGINT) 和 SIGTERM 优雅退出处理，关闭调度器和 HTTP 客户端
+- 添加主循环保持程序常驻运行
+- 修正 .env 中 STEAMDT_API_BASE_URL 为 https://open.steamdt.com
+
+### Testing:
+- python -m py_compile main.py 无错误
+- python main.py 可正常启动、初始化、执行首次价格采集和波动分析
+- 企微通知失败符合预期（因为 Webhook URL 为占位符）
+- 全部 36 个单元测试仍然通过
+
+### Notes:
+- 主程序运行后会一直阻塞在 while True 循环中，直到收到中断信号
+- 首次启动时会立即调用 collect_prices() 进行一轮采集
