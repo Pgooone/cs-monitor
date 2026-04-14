@@ -2,3 +2,19 @@
 
 # CS2 饰品价格波动监控系统 - Agent 开发进度
 
+## 2026-04-14 - Task 1: 项目脚手架与基础配置
+
+### What was done:
+- 确认 requirements.txt、.env.example、config.py、README.md 已存在
+- 创建 utils/logger.py，配置 loguru 日志输出（含控制台彩色日志和文件日志）
+- 确认目录结构完整（api/, core/, notify/, storage/, utils/, data/, tests/）
+- 运行 init.sh 初始化虚拟环境和依赖
+- 语法检查通过
+
+### Testing:
+- python -m py_compile utils/logger.py config.py main.py 无错误
+- .venv 环境创建成功，依赖安装完成
+
+### Notes:
+- .env 已配置 STEAMDT_API_KEY
+- Git 仓库已初始化并提交初始 commit

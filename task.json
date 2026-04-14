@@ -14,7 +14,7 @@
         "创建 README.md 项目说明文档",
         "确保所有目录结构完整（api/, core/, notify/, storage/, utils/, data/, tests/）"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 2,
