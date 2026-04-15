@@ -156,7 +156,15 @@ for ((run=1; run<=TOTAL_RUNS; run++)); do
     # Create a temporary file with the prompt
     PROMPT_FILE=$(mktemp)
     cat > "$PROMPT_FILE" << 'PROMPT_EOF'
-Please follow the workflow in CLAUDE.md:
+IMPORTANT: You are starting a FRESH Claude Code session with a completely clean context window. Do not assume any prior conversation history.
+
+To understand the current project state, you MUST read the following files IN ORDER:
+1. CLAUDE.md - the workflow rules you must follow
+2. task.json - the list of tasks; find the next one with "passes": false
+3. progress.txt - what previous sessions have done
+4. git log --oneline -20 - the recent code changes
+
+Then follow the workflow in CLAUDE.md:
 1. Run ./init.sh to initialize the environment
 2. Read task.json and select the next task with passes: false
 3. Implement the task following all steps
@@ -164,7 +172,7 @@ Please follow the workflow in CLAUDE.md:
 5. Update progress.txt with your work
 6. Commit all changes including task.json update in a single commit
 
-Start by reading task.json to find your task.
+Start by reading CLAUDE.md, then task.json to find your task.
 Please complete only one task in this session, and stop once you are done or if you encounter an unresolvable issue.
 PROMPT_EOF
 
