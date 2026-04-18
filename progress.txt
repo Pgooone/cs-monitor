@@ -620,5 +620,79 @@
 
 ---
 
+---
+
+## 2026-04-19 - Docker 部署实战与 WebSocket 问题修复
+
+### Docker 部署过程记录
+
+**Step 1: 首次构建失败 — Docker Hub 连接超时**
+```
+docker compose build
+ERROR: failed to fetch anonymous token: dial tcp ...: connectex:
+A connection attempt failed because the connected party did not
+properly respond after a period of time
+```
+原因：中国大陆访问 Docker Hub 官方 registry 不稳定，无法拉取 `node:20-slim` 和 `python:3.12-slim` 基础镜像。
+
+**Step 2: 配置国内 Docker 镜像源**
+- 修改 `~/.docker/daemon.json`，添加 registry-mirrors：
+  - `https://docker.m.daocloud.io`
+  - `https://hub-mirror.c.163.com`
+  - `https://mirror.ccs.tencentyun.com`
+- 重启 Docker Desktop 使配置生效
+
+**Step 3: 手动拉取基础镜像**
+```bash
+docker pull docker.m.daocloud.io/library/node:20-slim
+docker tag docker.m.daocloud.io/library/node:20-slim node:20-slim
+docker pull docker.m.daocloud.io/library/python:3.12-slim
+docker tag docker.m.daocloud.io/library/python:3.12-slim python:3.12-slim
+```
+手动拉取并打 tag 后，docker compose build 可以复用本地已存在的镜像，跳过 registry 拉取。
+
+**Step 4: 构建成功并启动**
+```bash
+docker compose build  # 成功，耗时约 3 分钟
+docker compose up -d   # 容器启动，状态 healthy
+```
+
+**Step 5: 日志监控发现问题**
+启动 `docker compose logs -f` 监控日志，发现以下警告频繁出现：
+```
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected.
+Please use "pip install 'uvicorn[standard]'", or install
+'websockets' or 'wsproto' manually.
+```
+
+**Step 6: 排查 WebSocket 问题**
+- 问题根因：Task 22 生成的 Dockerfile 基于 `python:3.12-slim`，pip 安装的是基础版 uvicorn，不含 WebSocket 支持
+- Task 19 实现 WebSocket 实时推送时，在本地 dev 环境测试通过（本地安装了 uvicorn[standard] 自动包含 websockets），但 requirements.txt 中遗漏了 `websockets` 依赖声明
+- 导致 Docker 容器内 uvicorn 无法处理 WebSocket upgrade 请求
+
+**Step 7: 修复并验证**
+```
+requirements.txt 添加：websockets>=12.0
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+重建后重启容器，监控 2 分钟日志，WebSocket 警告彻底消失，`/ws/alerts` 连接正常建立。
+
+### 部署验证结果
+- 容器状态：healthy
+- 健康检查：`{"status":"ok","database":"ok","scheduler":"ok"}`
+- WebSocket：连接正常，无 upgrade 警告
+- 企微通知：93000 错误（预期，.env 中为占位符 Webhook URL）
+- 前端访问：`http://localhost:8080` 正常打开仪表盘
+
+### 经验总结
+1. 中国大陆 Docker 部署必须配置国内镜像源或手动拉取基础镜像
+2. WebSocket 功能依赖 `websockets` 库，不能假设 uvicorn 默认包含
+3. dev 环境和 Docker 环境的依赖差异必须通过完整测试覆盖
+
+---
+
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。
