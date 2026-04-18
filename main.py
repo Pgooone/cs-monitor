@@ -32,6 +32,10 @@ def main() -> None:
     db = Database("data/prices.db")
     logger.info("✅ 数据库初始化完成")
 
+    # 首次启动时从 config.py 默认值导入数据
+    db.import_default_watchlist(config.watchlist)
+    db.import_default_extreme_track(config.extreme_track_list)
+
     # 初始化 SteamDT 客户端
     steamdt_config = SteamDTConfig(
         api_key=config.api_key,

@@ -32,15 +32,15 @@ class PriceMonitor:
         Returns:
             采集到的价格记录列表，每条记录包含 market_hash_name、platform、price.
         """
-        watchlist = self.config.watchlist
+        watchlist = self.db.get_watchlist(enabled_only=True)
         if not watchlist:
             logger.info("监控清单为空，跳过本次采集")
             return []
 
         names = [
-            item["name"]
+            item["market_hash_name"]
             for item in watchlist
-            if isinstance(item, dict) and "name" in item
+            if item.get("market_hash_name")
         ]
         if not names:
             logger.warning("监控清单格式异常，无法提取饰品名称")

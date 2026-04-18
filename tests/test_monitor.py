@@ -27,6 +27,11 @@ class TestPriceMonitor:
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             db = Database(Path(tmpdir) / "test.db")
+            db.insert_watchlist_item(
+                market_hash_name="AK-47 | Redline (Field-Tested)",
+                threshold_percent=5.0,
+                enabled=True,
+            )
             yield PriceMonitor(client, db, monitor_config)
 
     @patch("api.steamdt.time.sleep", return_value=None)
@@ -64,7 +69,8 @@ class TestPriceMonitor:
     @patch("api.steamdt.time.sleep", return_value=None)
     def test_collect_prices_empty_watchlist(self, mock_sleep, monitor):
         """测试空监控清单."""
-        monitor.config.watchlist = []
+        with monitor.db._cursor() as cursor:
+            cursor.execute("DELETE FROM watchlist")
         records = monitor.collect_prices()
         assert records == []
 

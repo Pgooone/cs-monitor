@@ -54,13 +54,9 @@ class PriceAnalyzer:
 
     def _get_threshold(self, market_hash_name: str) -> float:
         """获取指定饰品的波动阈值."""
-        for item in self.config.watchlist:
-            if (
-                isinstance(item, dict)
-                and item.get("name") == market_hash_name
-                and "threshold" in item
-            ):
-                return float(item["threshold"])
+        threshold = self.db.get_watchlist_threshold(market_hash_name)
+        if threshold is not None:
+            return float(threshold)
         return float(self.config.default_threshold_percent)
 
     def _check_alert_cooldown(

@@ -185,7 +185,7 @@
         "修改 core/monitor.py 和 core/extreme_tracker.py，从 DB 读取清单而非 config",
         "保持 config.py 作为默认值兜底，DB 优先"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 13,

@@ -249,5 +249,38 @@
 - storage/models.py 新增 watchlist、extreme_track_config、system_config 表
 - 采用 DB 优先策略：config.py 仅作初始默认值
 
+## 2026-04-18 - Task 12: 数据库迁移：监控清单持久化
+
+### What was done:
+- storage/models.py 新增 3 张表：
+  - watchlist 表（market_hash_name, display_name, threshold_percent, enabled, created_at, updated_at）
+  - extreme_track_config 表（完整的追踪配置字段，含 interval_seconds、price/quantity 追踪模式、阈值、冷却、免打扰等）
+  - system_config 表（key-value 系统配置）
+- storage/database.py 新增 CRUD 方法：
+  - watchlist: insert/get/update/delete + get_watchlist_threshold
+  - extreme_track_config: insert/get/update/delete
+  - system_config: set/get
+  - import_default_watchlist() / import_default_extreme_track()：首次启动时从 config.py 默认值自动导入
+  - 数据库连接启用 WAL 模式（PRAGMA journal_mode = WAL）
+- core/monitor.py：collect_prices() 改为从 self.db.get_watchlist() 读取监控清单
+- core/analyzer.py：_get_threshold() 改为从 DB 读取，不存在时回退到 config.default_threshold_percent
+- core/extreme_tracker.py：tick() 改为从 self.db.get_extreme_track_configs() 读取追踪配置
+- core/scheduler.py：_add_extreme_tracker_job() 改为从 DB 检查列表是否为空
+- main.py：初始化数据库后调用默认数据导入方法
+- 保持 config.py 作为初始默认值兜底，DB 优先策略
+
+### Testing:
+- python -m py_compile 所有修改文件无语法错误
+- python -m ruff check .：0 errors
+- python -m pytest tests/ -v：39 个测试全部通过
+- 修正 test_monitor.py 和 test_extreme_tracker.py 的 fixture：测试数据通过 DB 插入而非仅配置 config
+
+### Notes:
+- DB 优先策略已落地：运行时所有清单数据从 SQLite 读取，config.py 仅在首次启动时作为默认种子
+- 新增表结构兼容后续 Web API（Task 13/14）的 CRUD 操作
+- WAL 模式启用，支持并发读写，避免 Web API 和 scheduler 之间的数据库锁冲突
+
+---
+
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。

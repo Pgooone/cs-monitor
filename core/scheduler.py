@@ -54,7 +54,8 @@ class MonitorScheduler:
 
     def _add_extreme_tracker_job(self) -> None:
         """注册极致追踪定时任务."""
-        if not self.config.extreme_track_list:
+        tracks = self.db.get_extreme_track_configs(enabled_only=True)
+        if not tracks:
             logger.info("极致追踪列表为空，跳过注册")
             return
 

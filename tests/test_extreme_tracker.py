@@ -36,6 +36,16 @@ class TestExtremeTracker:
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             db = Database(Path(tmpdir) / "test.db")
+            db.insert_extreme_track_config(
+                market_hash_name="AK-47 | Redline (Field-Tested)",
+                platform="BUFF",
+                interval_seconds=60,
+                price_track_enabled=True,
+                price_change_mode="any",
+                quantity_track_enabled=True,
+                quantity_change_mode="any",
+                alert_cooldown_seconds=0,
+            )
             yield ExtremeTracker(client, db, monitor_config)
 
     @patch("api.steamdt.time.sleep", return_value=None)
@@ -154,7 +164,10 @@ class TestExtremeTracker:
     @patch("core.extreme_tracker.time.time")
     def test_tick_cooldown(self, mock_time, mock_sleep, tracker):
         """测试告警冷却期内不重复触发."""
-        tracker.config.extreme_track_list[0]["alert_cooldown_seconds"] = 3600
+        tracker.db.update_extreme_track_config(
+            "AK-47 | Redline (Field-Tested)", "BUFF",
+            alert_cooldown_seconds=3600,
+        )
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -228,7 +241,10 @@ class TestExtremeTracker:
     @patch("api.steamdt.time.sleep", return_value=None)
     def test_tick_disabled(self, mock_sleep, tracker):
         """测试禁用的追踪项不执行."""
-        tracker.config.extreme_track_list[0]["enabled"] = False
+        tracker.db.update_extreme_track_config(
+            "AK-47 | Redline (Field-Tested)", "BUFF",
+            enabled=False,
+        )
         results = tracker.tick()
         assert len(results) == 0
 

@@ -21,10 +21,11 @@ class Database:
         self._init_tables()
 
     def _connect(self) -> sqlite3.Connection:
-        """创建数据库连接."""
+        """创建数据库连接（启用 WAL 模式）."""
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode = WAL")
         return conn
 
     @contextmanager
@@ -287,6 +288,295 @@ class Database:
             """
             cursor.execute(sql, (market_hash_name, platform, alert_type))
             return [dict(row) for row in cursor.fetchall()]
+
+    # ------------------------------------------------------------------
+    # watchlist 表操作
+    # ------------------------------------------------------------------
+    def insert_watchlist_item(
+        self,
+        market_hash_name: str,
+        display_name: str | None = None,
+        threshold_percent: float = 5.0,
+        enabled: bool = True,
+    ) -> None:
+        """插入监控清单项."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO watchlist
+                (market_hash_name, display_name, threshold_percent, enabled, updated_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
+                """,
+                (market_hash_name, display_name, threshold_percent, 1 if enabled else 0),
+            )
+
+    def get_watchlist(self, enabled_only: bool = True) -> list[dict[str, Any]]:
+        """获取监控清单."""
+        with self._cursor() as cursor:
+            if enabled_only:
+                cursor.execute(
+                    """
+                    SELECT * FROM watchlist
+                    WHERE enabled = 1
+                    ORDER BY created_at
+                    """
+                )
+            else:
+                cursor.execute("SELECT * FROM watchlist ORDER BY created_at")
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_watchlist_item(
+        self, market_hash_name: str
+    ) -> dict[str, Any] | None:
+        """获取单个监控项."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM watchlist WHERE market_hash_name = ?",
+                (market_hash_name,),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def update_watchlist_item(
+        self,
+        market_hash_name: str,
+        display_name: str | None = None,
+        threshold_percent: float | None = None,
+        enabled: bool | None = None,
+    ) -> None:
+        """更新监控清单项."""
+        fields = []
+        values = []
+        if display_name is not None:
+            fields.append("display_name = ?")
+            values.append(display_name)
+        if threshold_percent is not None:
+            fields.append("threshold_percent = ?")
+            values.append(threshold_percent)
+        if enabled is not None:
+            fields.append("enabled = ?")
+            values.append(1 if enabled else 0)
+        if not fields:
+            return
+        fields.append("updated_at = datetime('now')")
+        values.append(market_hash_name)
+        with self._cursor() as cursor:
+            cursor.execute(
+                f"""
+                UPDATE watchlist
+                SET {', '.join(fields)}
+                WHERE market_hash_name = ?
+                """,
+                tuple(values),
+            )
+
+    def delete_watchlist_item(self, market_hash_name: str) -> None:
+        """删除监控清单项."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM watchlist WHERE market_hash_name = ?",
+                (market_hash_name,),
+            )
+
+    def get_watchlist_threshold(self, market_hash_name: str) -> float:
+        """获取指定饰品的阈值，不存在则返回 None."""
+        item = self.get_watchlist_item(market_hash_name)
+        if item:
+            return float(item["threshold_percent"])
+        return None
+
+    # ------------------------------------------------------------------
+    # extreme_track_config 表操作
+    # ------------------------------------------------------------------
+    def insert_extreme_track_config(
+        self,
+        market_hash_name: str,
+        platform: str,
+        interval_seconds: int = 60,
+        enabled: bool = True,
+        price_track_enabled: bool = True,
+        price_change_mode: str = "any",
+        price_threshold_percent: float = 0.0,
+        quantity_track_enabled: bool = True,
+        quantity_change_mode: str = "any",
+        quantity_threshold_percent: float = 0.0,
+        alert_cooldown_seconds: int = 0,
+        quiet_hours_start: str | None = None,
+        quiet_hours_end: str | None = None,
+    ) -> None:
+        """插入或更新极致追踪配置."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO extreme_track_config
+                (market_hash_name, platform, interval_seconds, enabled,
+                 price_track_enabled, price_change_mode, price_threshold_percent,
+                 quantity_track_enabled, quantity_change_mode, quantity_threshold_percent,
+                 alert_cooldown_seconds, quiet_hours_start, quiet_hours_end, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                """,
+                (
+                    market_hash_name, platform, interval_seconds, 1 if enabled else 0,
+                    1 if price_track_enabled else 0, price_change_mode, price_threshold_percent,
+                    1 if quantity_track_enabled else 0, quantity_change_mode, quantity_threshold_percent,
+                    alert_cooldown_seconds, quiet_hours_start, quiet_hours_end,
+                ),
+            )
+
+    def get_extreme_track_configs(
+        self, enabled_only: bool = True
+    ) -> list[dict[str, Any]]:
+        """获取极致追踪配置列表."""
+        with self._cursor() as cursor:
+            if enabled_only:
+                cursor.execute(
+                    """
+                    SELECT * FROM extreme_track_config
+                    WHERE enabled = 1
+                    ORDER BY created_at
+                    """
+                )
+            else:
+                cursor.execute(
+                    "SELECT * FROM extreme_track_config ORDER BY created_at"
+                )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_extreme_track_config(
+        self, market_hash_name: str, platform: str
+    ) -> dict[str, Any] | None:
+        """获取单个极致追踪配置."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT * FROM extreme_track_config
+                WHERE market_hash_name = ? AND platform = ?
+                """,
+                (market_hash_name, platform),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def update_extreme_track_config(
+        self,
+        market_hash_name: str,
+        platform: str,
+        **kwargs: Any,
+    ) -> None:
+        """更新极致追踪配置."""
+        allowed = {
+            "interval_seconds", "enabled", "price_track_enabled",
+            "price_change_mode", "price_threshold_percent",
+            "quantity_track_enabled", "quantity_change_mode",
+            "quantity_threshold_percent", "alert_cooldown_seconds",
+            "quiet_hours_start", "quiet_hours_end",
+        }
+        fields = []
+        values = []
+        for key, value in kwargs.items():
+            if key not in allowed:
+                continue
+            if isinstance(value, bool):
+                value = 1 if value else 0
+            fields.append(f"{key} = ?")
+            values.append(value)
+        if not fields:
+            return
+        fields.append("updated_at = datetime('now')")
+        values.extend([market_hash_name, platform])
+        with self._cursor() as cursor:
+            cursor.execute(
+                f"""
+                UPDATE extreme_track_config
+                SET {', '.join(fields)}
+                WHERE market_hash_name = ? AND platform = ?
+                """,
+                tuple(values),
+            )
+
+    def delete_extreme_track_config(
+        self, market_hash_name: str, platform: str
+    ) -> None:
+        """删除极致追踪配置."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                DELETE FROM extreme_track_config
+                WHERE market_hash_name = ? AND platform = ?
+                """,
+                (market_hash_name, platform),
+            )
+
+    # ------------------------------------------------------------------
+    # system_config 表操作
+    # ------------------------------------------------------------------
+    def set_system_config(self, key: str, value: str) -> None:
+        """设置系统配置项."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO system_config (key, value, updated_at)
+                VALUES (?, ?, datetime('now'))
+                """,
+                (key, value),
+            )
+
+    def get_system_config(self, key: str) -> str | None:
+        """获取系统配置项."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                "SELECT value FROM system_config WHERE key = ?",
+                (key,),
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    # ------------------------------------------------------------------
+    # 默认数据导入
+    # ------------------------------------------------------------------
+    def import_default_watchlist(self, watchlist: list[dict]) -> None:
+        """首次启动时从 config.py 默认值导入监控清单."""
+        existing = self.get_watchlist(enabled_only=False)
+        if existing:
+            logger.info("watchlist 表已有数据，跳过默认导入")
+            return
+        for item in watchlist:
+            if isinstance(item, dict) and "name" in item:
+                self.insert_watchlist_item(
+                    market_hash_name=item["name"],
+                    display_name=item.get("display_name"),
+                    threshold_percent=item.get("threshold", 5.0),
+                    enabled=item.get("enabled", True),
+                )
+                logger.info(f"已导入默认监控项: {item['name']}")
+
+    def import_default_extreme_track(self, track_list: list[dict]) -> None:
+        """首次启动时从 config.py 默认值导入极致追踪配置."""
+        existing = self.get_extreme_track_configs(enabled_only=False)
+        if existing:
+            logger.info("extreme_track_config 表已有数据，跳过默认导入")
+            return
+        for item in track_list:
+            if not isinstance(item, dict):
+                continue
+            self.insert_extreme_track_config(
+                market_hash_name=item.get("market_hash_name", ""),
+                platform=item.get("platform", ""),
+                interval_seconds=item.get("interval_seconds", 60),
+                enabled=item.get("enabled", True),
+                price_track_enabled=item.get("price_track_enabled", True),
+                price_change_mode=item.get("price_change_mode", "any"),
+                price_threshold_percent=item.get("price_threshold_percent", 0.0),
+                quantity_track_enabled=item.get("quantity_track_enabled", True),
+                quantity_change_mode=item.get("quantity_change_mode", "any"),
+                quantity_threshold_percent=item.get("quantity_threshold_percent", 0.0),
+                alert_cooldown_seconds=item.get("alert_cooldown_seconds", 0),
+                quiet_hours_start=item.get("quiet_hours_start"),
+                quiet_hours_end=item.get("quiet_hours_end"),
+            )
+            logger.info(
+                f"已导入默认极致追踪: {item.get('market_hash_name')}@{item.get('platform')}"
+            )
 
     # ------------------------------------------------------------------
     # 统计查询（Dashboard 用）

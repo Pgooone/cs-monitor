@@ -351,7 +351,7 @@ class ExtremeTracker:
 
     def tick(self) -> list[dict[str, Any]]:
         """执行一轮极致追踪检查."""
-        tracks = self.config.extreme_track_list
+        tracks = self.db.get_extreme_track_configs(enabled_only=True)
         if not tracks:
             return []
 

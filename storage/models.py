@@ -70,6 +70,61 @@ CREATE TABLE IF NOT EXISTS extreme_track_alerts (
 );
 """
 
+# 监控清单表（从 config.py 迁移）
+CREATE_WATCHLIST_TABLE = """
+CREATE TABLE IF NOT EXISTS watchlist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    market_hash_name TEXT UNIQUE NOT NULL,
+    display_name TEXT,
+    threshold_percent REAL DEFAULT 5.0,
+    enabled INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+CREATE_IDX_WATCHLIST_ENABLED = """
+CREATE INDEX IF NOT EXISTS idx_watchlist_enabled
+    ON watchlist(enabled);
+"""
+
+# 极致追踪配置表（从 config.py 迁移）
+CREATE_EXTREME_TRACK_CONFIG_TABLE = """
+CREATE TABLE IF NOT EXISTS extreme_track_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    market_hash_name TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    interval_seconds INTEGER DEFAULT 60,
+    enabled INTEGER DEFAULT 1,
+    price_track_enabled INTEGER DEFAULT 1,
+    price_change_mode TEXT DEFAULT 'any',
+    price_threshold_percent REAL DEFAULT 0.0,
+    quantity_track_enabled INTEGER DEFAULT 1,
+    quantity_change_mode TEXT DEFAULT 'any',
+    quantity_threshold_percent REAL DEFAULT 0.0,
+    alert_cooldown_seconds INTEGER DEFAULT 0,
+    quiet_hours_start TEXT,
+    quiet_hours_end TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(market_hash_name, platform)
+);
+"""
+
+CREATE_IDX_EXTREME_ENABLED = """
+CREATE INDEX IF NOT EXISTS idx_extreme_enabled
+    ON extreme_track_config(enabled);
+"""
+
+# 系统配置表
+CREATE_SYSTEM_CONFIG_TABLE = """
+CREATE TABLE IF NOT EXISTS system_config (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 ALL_TABLES = [
     CREATE_ITEMS_TABLE,
     CREATE_PRICE_RECORDS_TABLE,
@@ -77,4 +132,9 @@ ALL_TABLES = [
     CREATE_EXTREME_TRACK_SNAPSHOTS_TABLE,
     CREATE_IDX_SNAPSHOT,
     CREATE_EXTREME_TRACK_ALERTS_TABLE,
+    CREATE_WATCHLIST_TABLE,
+    CREATE_IDX_WATCHLIST_ENABLED,
+    CREATE_EXTREME_TRACK_CONFIG_TABLE,
+    CREATE_IDX_EXTREME_ENABLED,
+    CREATE_SYSTEM_CONFIG_TABLE,
 ]
