@@ -226,7 +226,7 @@
         "创建 axios 封装（frontend/src/api/index.ts）和 Pinia store（dashboard.ts）",
         "实现 Dashboard 首页：4 个统计卡片 + 价格概览表 + 最近告警列表"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 16,

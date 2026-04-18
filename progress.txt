@@ -337,6 +337,32 @@
 - get_price_history 的 days 参数使用 SQLite datetime 字符串拼接（参数绑定不支持间隔值）
 - extreme_track 的 toggle 端点返回布尔值 enabled，便于前端直接更新状态
 
+## 2026-04-18 - Task 15: Vue 3 前端初始化与 Dashboard 首页
+
+### What was done:
+- 创建 frontend/package.json（Vue 3 + Vite + TypeScript + UnoCSS）
+- 创建 frontend/vite.config.ts，配置 /api 代理到 localhost:8080
+- 创建 tsconfig.json / tsconfig.node.json 严格模式配置
+- 创建 frontend/src/main.ts，集成 Vue Router + Pinia + Naive UI
+- 创建基础布局 AppLayout.vue：可折叠侧边栏导航 + 主内容区
+- 创建 axios 封装 frontend/src/api/index.ts，定义 DashboardSummary / WatchlistItemWithPrice / AlertRecord 类型
+- 创建 Pinia store dashboard.ts，管理 Dashboard 数据状态
+- 实现 Dashboard.vue 首页：4 个统计卡片 + 监控价格概览表 + 最近告警列表
+- 创建 Watchlist.vue / ExtremeTrack.vue / Alerts.vue / Settings.vue 占位页面（支持路由切换）
+- 路由配置：/ → Dashboard, /watchlist, /extreme-track, /alerts, /settings
+
+### Testing:
+- cd frontend && npm install：依赖安装成功
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m pytest tests/ -v：65 个后端测试全部通过，无回归
+- python -m ruff check .：0 errors
+
+### Notes:
+- 前端路由使用懒加载（Dashboard 除外），优化首屏加载
+- 统计卡片使用 naive-ui NStatistic + NCard 组件
+- 表格使用 NDataTable，支持分页和溢出提示
+- 构建产物输出到 frontend/dist（为 Task 18 静态文件托管做准备）
+
 ---
 
 ### Development Guide:
