@@ -208,3 +208,20 @@ class ExtremeTrackConfigUpdate(BaseModel):
     alert_cooldown_seconds: int | None = Field(None, ge=0, description="告警冷却秒数")
     quiet_hours_start: str | None = Field(None, description="免打扰开始时间 (HH:MM)")
     quiet_hours_end: str | None = Field(None, description="免打扰结束时间 (HH:MM)")
+
+
+class NotifySettings(BaseModel):
+    """通知配置模型."""
+
+    notify_channel: str = Field("wecom", description="默认通知渠道")
+    wecom_webhook_url: str = Field("", description="企业微信 Webhook URL")
+    telegram_bot_token: str = Field("", description="Telegram Bot Token")
+    telegram_chat_id: str = Field("", description="Telegram Chat ID")
+    serverchan_sendkey: str = Field("", description="Server 酱 SendKey")
+
+
+class NotifyTestRequest(BaseModel):
+    """测试通知请求."""
+
+    channel: str | None = Field(None, description="指定测试渠道")
+    extra: dict | None = Field(None, description="额外参数（如 webhook_url）")

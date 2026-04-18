@@ -399,5 +399,45 @@
 
 ---
 
+## 2026-04-18 - Task 17: 极致追踪页、告警页与设置页
+
+### What was done:
+- 新建后端 web/routers/settings.py：
+  - GET /api/settings/notify：读取通知配置（DB 优先，fallback 到 .env）
+  - PUT /api/settings/notify：保存通知配置到 system_config 表
+  - POST /api/settings/notify/test：发送测试通知（当前支持企微）
+- 扩展 web/schemas.py：新增 NotifySettings、NotifyTestRequest Pydantic 模型
+- 更新 web/app.py：注册 settings 路由
+- 扩展 frontend/src/api/index.ts：
+  - 新增 ExtremeTrackConfig 相关类型和 API（extremeTrackList、createExtremeTrack、updateExtremeTrack、deleteExtremeTrack、toggleExtremeTrack）
+  - 新增 alertStats、getNotifySettings、updateNotifySettings、testNotify API
+- 创建 Pinia store stores/extremeTrack.ts：管理极致追踪状态（CRUD + toggle）
+- 创建 Pinia store stores/alerts.ts：管理告警记录状态（分页查询 + 统计）
+- 实现 ExtremeTrack.vue：
+  - 表格展示追踪项（饰品、平台、间隔、价格/数量追踪模式、状态、操作）
+  - 添加/编辑弹窗（含价格/数量追踪开关、模式选择、阈值、冷却、免打扰时段）
+  - 启停开关、删除确认
+- 实现 Alerts.vue：
+  - 筛选区：告警类型、开始/结束日期、饰品名称搜索
+  - ECharts 柱状图展示按天告警趋势
+  - 分页告警列表（类型标签化、价格/波动格式化）
+- 实现 Settings.vue：
+  - 通知渠道选择（企微/Telegram/Server酱）
+  - 各渠道对应配置表单输入
+  - 保存配置按钮、测试通知按钮
+
+### Testing:
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m py_compile web/routers/settings.py web/app.py web/schemas.py：无语法错误
+- python -m pytest tests/ -v：65 个后端测试全部通过，无回归
+- python -m ruff check .：0 errors
+
+### Notes:
+- 后端 settings 路由使用 system_config 表持久化通知配置，与 config.py 解耦
+- 前端三个页面均使用 Naive UI 组件 + Pinia 状态管理，保持与 Watchlist.vue 一致的交互模式
+- Alerts.vue 柱状图在筛选条件变化时自动重绘
+
+---
+
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。

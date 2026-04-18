@@ -253,7 +253,7 @@
         "实现 Settings.vue：通知渠道配置表单",
         "实现 Settings.vue：测试通知按钮"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 18,

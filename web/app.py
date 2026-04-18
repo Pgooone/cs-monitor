@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import MonitorConfig
 from storage.database import Database
-from web.routers import alerts, dashboard, extreme_track, prices, watchlist
+from web.routers import alerts, dashboard, extreme_track, prices, settings, watchlist
 
 
 def create_app(db: Database, config: MonitorConfig) -> FastAPI:
@@ -37,6 +37,7 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
     app.include_router(alerts.router, prefix="/api")
     app.include_router(prices.router, prefix="/api")
     app.include_router(extreme_track.router, prefix="/api")
+    app.include_router(settings.router, prefix="/api")
 
     @app.get("/api/health")
     def health_check() -> dict[str, str]:

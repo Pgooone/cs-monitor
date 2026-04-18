@@ -56,6 +56,18 @@ export interface AlertListResponse {
   limit: number
 }
 
+export interface AlertStatsItem {
+  date: string
+  alert_type: string
+  count: number
+}
+
+export interface AlertStatsResponse {
+  total: number
+  by_day: AlertStatsItem[]
+  by_type: AlertStatsItem[]
+}
+
 export interface PriceHistoryItem {
   id: number
   market_hash_name: string
@@ -84,6 +96,63 @@ export interface UpdateWatchlistPayload {
   enabled?: boolean
 }
 
+export interface ExtremeTrackConfig {
+  id: number
+  market_hash_name: string
+  platform: string
+  interval_seconds: number
+  enabled: number
+  price_track_enabled: number
+  price_change_mode: string
+  price_threshold_percent: number
+  quantity_track_enabled: number
+  quantity_change_mode: string
+  quantity_threshold_percent: number
+  alert_cooldown_seconds: number
+  quiet_hours_start: string | null
+  quiet_hours_end: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface CreateExtremeTrackPayload {
+  market_hash_name: string
+  platform: string
+  interval_seconds?: number
+  enabled?: boolean
+  price_track_enabled?: boolean
+  price_change_mode?: string
+  price_threshold_percent?: number
+  quantity_track_enabled?: boolean
+  quantity_change_mode?: string
+  quantity_threshold_percent?: number
+  alert_cooldown_seconds?: number
+  quiet_hours_start?: string | null
+  quiet_hours_end?: string | null
+}
+
+export interface UpdateExtremeTrackPayload {
+  interval_seconds?: number
+  enabled?: boolean
+  price_track_enabled?: boolean
+  price_change_mode?: string
+  price_threshold_percent?: number
+  quantity_track_enabled?: boolean
+  quantity_change_mode?: string
+  quantity_threshold_percent?: number
+  alert_cooldown_seconds?: number
+  quiet_hours_start?: string | null
+  quiet_hours_end?: string | null
+}
+
+export interface NotifySettings {
+  notify_channel: string
+  wecom_webhook_url: string
+  telegram_bot_token: string
+  telegram_chat_id: string
+  serverchan_sendkey: string
+}
+
 export default {
   health() {
     return api.get('/health')
@@ -106,6 +175,9 @@ export default {
   alerts(page = 1, limit = 10, params?: { alert_type?: string; start_date?: string; end_date?: string; market_hash_name?: string }) {
     return api.get<AlertListResponse>('/alerts', { params: { page, limit, ...params } })
   },
+  alertStats(params?: { start_date?: string; end_date?: string }) {
+    return api.get<AlertStatsResponse>('/alerts/stats', { params })
+  },
   priceHistory(marketHashName: string, days?: number, platform?: string) {
     return api.get<PriceHistoryItem[]>(`/prices/${encodeURIComponent(marketHashName)}/history`, {
       params: { days, platform },
@@ -113,5 +185,29 @@ export default {
   },
   platformPrices(marketHashName: string) {
     return api.get<PlatformPriceItem[]>(`/prices/${encodeURIComponent(marketHashName)}/platforms`)
+  },
+  extremeTrackList() {
+    return api.get<ExtremeTrackConfig[]>('/extreme-track')
+  },
+  createExtremeTrack(payload: CreateExtremeTrackPayload) {
+    return api.post<ExtremeTrackConfig>('/extreme-track', payload)
+  },
+  updateExtremeTrack(marketHashName: string, platform: string, payload: UpdateExtremeTrackPayload) {
+    return api.put<ExtremeTrackConfig>(`/extreme-track/${encodeURIComponent(marketHashName)}/${encodeURIComponent(platform)}`, payload)
+  },
+  deleteExtremeTrack(marketHashName: string, platform: string) {
+    return api.delete(`/extreme-track/${encodeURIComponent(marketHashName)}/${encodeURIComponent(platform)}`)
+  },
+  toggleExtremeTrack(marketHashName: string, platform: string) {
+    return api.post(`/extreme-track/${encodeURIComponent(marketHashName)}/${encodeURIComponent(platform)}/toggle`)
+  },
+  getNotifySettings() {
+    return api.get<NotifySettings>('/settings/notify')
+  },
+  updateNotifySettings(payload: Partial<NotifySettings>) {
+    return api.put('/settings/notify', payload)
+  },
+  testNotify(channel?: string, extra?: Record<string, any>) {
+    return api.post('/settings/notify/test', { channel, extra })
   },
 }
