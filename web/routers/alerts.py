@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from storage.database import Database
 from web.deps import get_db, require_auth
-from web.schemas import AlertRecord, AlertRecordFilter, AlertStatsItem, AlertStatsResponse
+from web.schemas import AlertRecord, AlertStatsItem, AlertStatsResponse
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 

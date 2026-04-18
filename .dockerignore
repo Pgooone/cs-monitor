@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.venv
+venv
+
+# Frontend dev
+frontend/node_modules
+frontend/dist
+frontend/.cache
+
+# Data & logs
+data/*.db
+*.log
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Tests
+tests/
+.pytest_cache
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+architecture.md
+progress.txt
+CLAUDE.md

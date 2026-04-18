@@ -581,5 +581,44 @@
 
 ---
 
+## 2026-04-18 - Task 22: Docker 容器化与性能优化
+
+### What was done:
+- **Dockerfile 多阶段构建**：
+  - Stage 1：node:20-slim 构建前端（npm ci + npm run build）
+  - Stage 2：python:3.12-slim 构建后端运行时镜像
+  - 安装 curl 用于健康检查，前端产物复制到 /app/frontend/dist
+- **docker-compose.yml**：
+  - 端口映射 8080:8080，数据卷 ./data:/app/data，.env:/app.env:ro
+  - 健康检查：每 30 秒检测 /api/health，连续 3 次失败自动重启
+  - restart: unless-stopped，TZ=Asia/Shanghai
+- **SQLite 性能优化**：
+  - database.py 新增 PRAGMA 调优：synchronous=NORMAL、busy_timeout=5000（写入重试）、cache_size=-64000（64MB缓存）、temp_store=MEMORY
+  - 启用 WAL 模式（已存在）支持并发读写
+- **前端性能优化**：
+  - 安装 vite-plugin-compression，启用 gzip 压缩（threshold=1024B，过滤 js/css/html/svg）
+  - vite.config.ts 配置 rollup manualChunks：echarts 和 vendor（vue/vue-router/pinia/axios）独立 chunk
+  - 路由懒加载：Dashboard.vue 从同步加载改为动态 import()
+- **代码质量修复**：
+  - ruff 自动修复 5 个未使用 import 问题
+  - mypy 修复 storage/database.py 类型注解（values: list[Any]、get_watchlist_threshold 返回 float | None）
+  - mypy 修复 web/routers/watchlist.py 和 extreme_track.py 的 dict(None) 类型安全问题
+- **README.md**：新增 Docker 一键部署章节，更新改造指引中 Docker 状态为已实现
+
+### Testing:
+- `python -m py_compile` 所有修改文件无语法错误
+- `python -m pytest tests/ -v`：81 个测试全部通过，无回归
+- `python -m ruff check .`：0 errors
+- `python -m mypy main.py config.py api/ core/ notify/ storage/ web/`：0 errors
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，gzip 插件成功生成 .gz 文件
+
+### Notes:
+- Docker 镜像体积优化：多阶段构建避免将 node_modules 和前端源码带入最终镜像
+- 生产环境推荐使用 docker-compose up -d --build 一键部署
+- 数据持久化通过 volume 挂载实现，数据库和日志不随容器销毁而丢失
+- 前端 gzip 压缩后 vendor chunk 从 143KB 降至 55KB（gzip），显著减少传输体积
+
+---
+
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。

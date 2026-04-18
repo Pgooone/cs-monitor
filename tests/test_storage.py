@@ -102,7 +102,6 @@ class TestDatabase:
 
     def test_archive_old_price_records(self, db):
         """测试归档 90 天以上价格记录."""
-        import sqlite3
 
         db.insert_item("AK-47 | Redline")
         db.insert_item("AWP | Asiimov")

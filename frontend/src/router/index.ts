@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
-import Dashboard from '@/views/Dashboard.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,7 +11,7 @@ const router = createRouter({
         {
           path: '',
           name: 'Dashboard',
-          component: Dashboard,
+          component: () => import('@/views/Dashboard.vue'),
         },
         {
           path: 'watchlist',

@@ -105,6 +105,8 @@ def update_extreme_track_config(
         market_hash_name, platform, **update_fields
     )
     result = db.get_extreme_track_config(market_hash_name, platform)
+    if result is None:
+        raise HTTPException(status_code=404, detail="追踪配置不存在")
     return dict(result)
 
 

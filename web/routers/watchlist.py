@@ -71,6 +71,8 @@ def update_watchlist_item(
         enabled=item.enabled,
     )
     result = db.get_watchlist_item(market_hash_name)
+    if result is None:
+        raise HTTPException(status_code=404, detail="饰品不存在")
     return dict(result)
 
 

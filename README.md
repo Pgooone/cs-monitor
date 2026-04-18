@@ -144,7 +144,34 @@ python main.py
 
 按 `Ctrl+C` 可优雅退出。
 
-### 4. 开发模式（前端热更新）
+### 4. Docker 一键部署（推荐生产环境）
+
+```bash
+# 1. 确保 .env 已配置好
+cp .env.example .env
+# 编辑 .env 填写 STEAMDT_API_KEY 和通知渠道
+
+# 2. 构建并启动
+docker-compose up -d --build
+
+# 3. 查看日志
+docker-compose logs -f
+
+# 4. 访问仪表盘
+open http://localhost:8080
+```
+
+**数据持久化**：`docker-compose.yml` 已将 `./data` 目录挂载到容器，SQLite 数据库和日志不会随容器销毁而丢失。
+
+**健康检查**：容器内置 healthcheck，每 30 秒检测 `/api/health`，连续 3 次失败自动重启。
+
+**停止服务**：
+
+```bash
+docker-compose down
+```
+
+### 5. 开发模式（前端热更新）
 
 如需修改前端代码并实时预览：
 
@@ -159,7 +186,7 @@ npm run dev
 
 前端开发服务器运行在 `http://localhost:5173`，通过 Vite 代理访问后端 API。开发完成后记得运行 `npm run build` 重新构建，使生产环境生效。
 
-### 5. 运行测试
+### 6. 运行测试
 
 ```bash
 # Python 后端测试
@@ -201,7 +228,7 @@ watchlist = [
 1. **更多通知渠道**：钉钉、Discord、Bark 等
 2. **套利价差提醒**：对比同一饰品在不同平台的价格差（Phase 2 已规划）
 3. **K 线趋势分析**：接入 `get_item_kline()` 做更复杂的技术分析（Phase 2 已规划）
-4. **Docker 部署**：添加 Dockerfile 和 docker-compose.yml（Phase 3 已规划）
+4. **Docker 部署**：已支持 Dockerfile + docker-compose.yml 一键部署（见下方 Docker 部署章节）
 5. **多用户支持**：扩展 JWT 认证为多用户模式
 6. **数据归档**：自动归档 90 天以上的历史价格数据
 

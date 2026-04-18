@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from config import MonitorConfig
-from storage.database import Database
-from web.deps import create_access_token, get_config, get_db
+from web.deps import create_access_token, get_config
 from web.schemas import LoginRequest, LoginResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])

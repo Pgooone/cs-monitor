@@ -21,11 +21,15 @@ class Database:
         self._init_tables()
 
     def _connect(self) -> sqlite3.Connection:
-        """创建数据库连接（启用 WAL 模式）."""
-        conn = sqlite3.connect(str(self.db_path))
+        """创建数据库连接（启用 WAL 模式与性能优化）."""
+        conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("PRAGMA busy_timeout = 5000")
+        conn.execute("PRAGMA cache_size = -64000")
+        conn.execute("PRAGMA temp_store = MEMORY")
         return conn
 
     @contextmanager
@@ -345,8 +349,8 @@ class Database:
         enabled: bool | None = None,
     ) -> None:
         """更新监控清单项."""
-        fields = []
-        values = []
+        fields: list[str] = []
+        values: list[Any] = []
         if display_name is not None:
             fields.append("display_name = ?")
             values.append(display_name)
@@ -378,7 +382,7 @@ class Database:
                 (market_hash_name,),
             )
 
-    def get_watchlist_threshold(self, market_hash_name: str) -> float:
+    def get_watchlist_threshold(self, market_hash_name: str) -> float | None:
         """获取指定饰品的阈值，不存在则返回 None."""
         item = self.get_watchlist_item(market_hash_name)
         if item:

@@ -318,7 +318,7 @@
         "端到端测试：docker-compose up 一键启动",
         "最终验收：所有 Phase 1/2/3 验收标准通过"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

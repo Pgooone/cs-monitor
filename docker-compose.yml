@@ -1,0 +1,24 @@
+# =============================================================================
+# CS2 饰品价格波动监控系统 — Docker Compose 部署配置
+# =============================================================================
+
+services:
+  cs-monitor:
+    build: .
+    container_name: cs-monitor
+    ports:
+      - "8080:8080"
+    volumes:
+      # 数据持久化：SQLite 数据库文件
+      - ./data:/app/data
+      # 环境变量配置
+      - ./.env:/app/.env:ro
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
