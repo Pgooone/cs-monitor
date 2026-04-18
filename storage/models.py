@@ -125,6 +125,22 @@ CREATE TABLE IF NOT EXISTS system_config (
 );
 """
 
+# 价格归档表（90 天以上历史数据按天聚合归档）
+CREATE_ARCHIVED_PRICES_TABLE = """
+CREATE TABLE IF NOT EXISTS archived_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    market_hash_name TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    date TEXT NOT NULL,
+    avg_price REAL NOT NULL,
+    min_price REAL,
+    max_price REAL,
+    record_count INTEGER NOT NULL,
+    archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(market_hash_name, platform, date)
+);
+"""
+
 ALL_TABLES = [
     CREATE_ITEMS_TABLE,
     CREATE_PRICE_RECORDS_TABLE,
@@ -137,4 +153,5 @@ ALL_TABLES = [
     CREATE_EXTREME_TRACK_CONFIG_TABLE,
     CREATE_IDX_EXTREME_ENABLED,
     CREATE_SYSTEM_CONFIG_TABLE,
+    CREATE_ARCHIVED_PRICES_TABLE,
 ]

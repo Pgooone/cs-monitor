@@ -13,7 +13,8 @@ from loguru import logger
 
 from config import MonitorConfig
 from storage.database import Database
-from web.routers import alerts, dashboard, extreme_track, kline, prices, settings, watchlist
+from web.routers import alerts, archive, auth, dashboard, extreme_track, kline, prices, settings, watchlist
+from web.schemas import HealthResponse
 from web.ws_manager import ws_manager
 
 
@@ -39,6 +40,7 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
     )
 
     # 注册路由
+    app.include_router(auth.router, prefix="/api")
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(watchlist.router, prefix="/api")
     app.include_router(alerts.router, prefix="/api")
@@ -48,11 +50,24 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
     app.include_router(kline.router, prefix="/api")
     app.include_router(kline.arbitrage_router, prefix="/api")
     app.include_router(kline.trends_router, prefix="/api")
+    app.include_router(archive.router, prefix="/api")
 
-    @app.get("/api/health")
+    @app.get("/api/health", response_model=HealthResponse)
     def health_check() -> dict[str, str]:
-        """健康检查端点."""
-        return {"status": "ok"}
+        """健康检查端点（无需认证，供 Docker / 运维监控使用）."""
+        try:
+            # 简单验证数据库可连接
+            db.get_watchlist_count()
+            db_status = "ok"
+        except Exception:
+            db_status = "error"
+
+        return {
+            "status": "ok",
+            "version": "1.0.0",
+            "database": db_status,
+            "scheduler": "ok",
+        }
 
     # ------------------------------------------------------------------
     # WebSocket 端点

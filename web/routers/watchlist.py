@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
 from storage.database import Database
+from web.deps import get_db, require_auth
 from web.schemas import (
     WatchlistItem,
     WatchlistItemCreate,
@@ -15,14 +16,10 @@ from web.schemas import (
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
 
-def get_db(request: Request) -> Database:
-    """依赖注入：数据库实例."""
-    return request.app.state.db
-
-
 @router.get("", response_model=list[WatchlistItemWithPrice])
 def get_watchlist(
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> list[dict]:
     """获取全部监控清单（含最新价格）."""
     return db.get_watchlist_with_latest_price(enabled_only=False)
@@ -32,6 +29,7 @@ def get_watchlist(
 def create_watchlist_item(
     item: WatchlistItemCreate,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """添加监控清单项."""
     existing = db.get_watchlist_item(item.market_hash_name)
@@ -57,6 +55,7 @@ def update_watchlist_item(
     market_hash_name: str,
     item: WatchlistItemUpdate,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """更新监控清单项."""
     existing = db.get_watchlist_item(market_hash_name)
@@ -79,6 +78,7 @@ def update_watchlist_item(
 def delete_watchlist_item(
     market_hash_name: str,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """删除监控清单项."""
     existing = db.get_watchlist_item(market_hash_name)

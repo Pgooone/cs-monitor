@@ -40,6 +40,11 @@ class MonitorConfig:
     web_host: str = "0.0.0.0"
     web_port: int = 8080
 
+    # === 认证配置 ===
+    admin_password: str = "admin"
+    jwt_secret: str = "change-me-in-production"
+    jwt_expiry_hours: int = 24
+
     # === 极致追踪配置 ===
     extreme_track_list: list = field(default_factory=list)
 
@@ -56,6 +61,9 @@ class MonitorConfig:
             alert_cooldown_hours=int(getenv("ALERT_COOLDOWN_HOURS", "4")),
             web_host=getenv("WEB_HOST", "0.0.0.0"),
             web_port=int(getenv("WEB_PORT", "8080")),
+            admin_password=getenv("ADMIN_PASSWORD", "admin"),
+            jwt_secret=getenv("JWT_SECRET", "change-me-in-production"),
+            jwt_expiry_hours=int(getenv("JWT_EXPIRY_HOURS", "24")),
             notify_channel=getenv("NOTIFY_CHANNEL", "wecom"),
             wecom_webhook_url=getenv("WECOM_WEBHOOK_URL", ""),
             telegram_bot_token=getenv("TELEGRAM_BOT_TOKEN", ""),

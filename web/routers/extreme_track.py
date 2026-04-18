@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
 from storage.database import Database
+from web.deps import get_db, require_auth
 from web.schemas import (
     ExtremeTrackConfig,
     ExtremeTrackConfigCreate,
@@ -14,14 +15,10 @@ from web.schemas import (
 router = APIRouter(prefix="/extreme-track", tags=["extreme-track"])
 
 
-def get_db(request: Request) -> Database:
-    """依赖注入：数据库实例."""
-    return request.app.state.db
-
-
 @router.get("", response_model=list[ExtremeTrackConfig])
 def get_extreme_track_configs(
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> list[dict]:
     """获取全部极致追踪配置."""
     return db.get_extreme_track_configs(enabled_only=False)
@@ -31,6 +28,7 @@ def get_extreme_track_configs(
 def create_extreme_track_config(
     item: ExtremeTrackConfigCreate,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """添加极致追踪配置."""
     existing = db.get_extreme_track_config(
@@ -70,6 +68,7 @@ def update_extreme_track_config(
     platform: str,
     item: ExtremeTrackConfigUpdate,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """更新极致追踪配置."""
     existing = db.get_extreme_track_config(market_hash_name, platform)
@@ -114,6 +113,7 @@ def delete_extreme_track_config(
     market_hash_name: str,
     platform: str,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """删除极致追踪配置."""
     existing = db.get_extreme_track_config(market_hash_name, platform)
@@ -131,6 +131,7 @@ def toggle_extreme_track_config(
     market_hash_name: str,
     platform: str,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """切换极致追踪配置启停状态."""
     existing = db.get_extreme_track_config(market_hash_name, platform)

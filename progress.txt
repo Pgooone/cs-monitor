@@ -544,5 +544,42 @@
 
 ---
 
+## 2026-04-18 - Task 21: 用户认证与数据归档
+
+### What was done:
+- **JWT 认证中间件（单用户模式）**：
+  - 新增 `web/deps.py`：实现 `require_auth` 依赖（HTTPBearer + PyJWT 验证），`create_access_token` 令牌生成
+  - 新增 `web/routers/auth.py`：实现 `POST /api/auth/login` 登录端点（验证 admin_password，返回 JWT）
+  - 扩展 `config.py`：新增 `admin_password`、`jwt_secret`、`jwt_expiry_hours` 配置，支持从环境变量读取
+  - 更新 `.env.example`：新增 `ADMIN_PASSWORD`、`JWT_SECRET`、`JWT_EXPIRY_HOURS` 配置项
+  - 更新 `requirements.txt`：添加 `pyjwt>=2.8.0`
+- **API 路由登录保护**：
+  - 所有 API 路由（dashboard、watchlist、alerts、prices、extreme-track、settings、kline、arbitrage、trends、archive）添加 `Depends(require_auth)`
+  - `/api/health` 健康检查端点保持开放（无需认证，供 Docker/运维监控使用）
+  - 重构所有 router：将 `get_db`/`get_config` 提取到 `web/deps.py`，统一依赖注入入口
+- **数据归档逻辑**：
+  - `storage/models.py`：新增 `archived_prices` 表（按天聚合归档：avg_price、min_price、max_price、record_count）
+  - `storage/database.py`：新增 `archive_old_price_records()` 方法（聚合 90 天以上数据 → 写入归档表 → 删除原始记录），新增 `get_archived_price_history()` 查询方法
+  - `core/scheduler.py`：新增每日凌晨 3 点 CronTrigger 归档任务 `_add_archive_job()`
+  - 新增 `web/routers/archive.py`：`POST /api/archive/run` 手动触发归档接口
+- **完善健康检查端点**：
+  - `/api/health` 返回 `{"status", "version", "database", "scheduler"}`，包含数据库连接状态检查
+
+### Testing:
+- `python -m py_compile` 所有修改文件无语法错误
+- `python -m pytest tests/ -v`：81 个测试全部通过（原有 75 + 新增 4 个认证测试 + 2 个归档测试）
+- `python -m ruff check .`：0 errors
+- `python main.py`：可正常启动，调度器包含归档任务
+- 使用 curl 测试：未携带 Token 访问 /api/watchlist 返回 401，携带正确 Token 返回 200
+- 手动触发归档 API 测试通过
+
+### Notes:
+- 单用户模式：无需注册，首次部署时通过 .env 的 ADMIN_PASSWORD 设置密码
+- JWT 密钥长度低于 32 字节时 PyJWT 会发出 InsecureKeyLengthWarning（生产环境应设置更长的 JWT_SECRET）
+- 归档任务每日凌晨 3:00 自动执行，不会影响实时价格查询
+- 所有原有 API 测试已适配 JWT 认证（fixture 自动登录获取 Token）
+
+---
+
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。

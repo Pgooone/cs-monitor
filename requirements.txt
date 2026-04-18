@@ -7,3 +7,4 @@ ruff>=0.3.0
 mypy>=1.9.0
 fastapi>=0.110.0
 uvicorn>=0.29.0
+pyjwt>=2.8.0

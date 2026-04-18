@@ -304,7 +304,7 @@
         "实现 90 天以上价格记录自动归档/压缩逻辑",
         "完善 /api/health 端点，供 Docker / 运维监控系统调用"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 22,

@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 
 from storage.database import Database
+from web.deps import get_db, require_auth
 from web.schemas import AlertRecord, AlertRecordFilter, AlertStatsItem, AlertStatsResponse
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
-
-
-def get_db(request: Request) -> Database:
-    """依赖注入：数据库实例."""
-    return request.app.state.db
 
 
 @router.get("", response_model=list[AlertRecord])
@@ -24,6 +20,7 @@ def get_alerts(
     end_date: str | None = None,
     market_hash_name: str | None = None,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> list[dict]:
     """分页查询告警记录.
 
@@ -51,6 +48,7 @@ def get_alert_stats(
     start_date: str | None = None,
     end_date: str | None = None,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """告警统计（按天/类型聚合）.
 

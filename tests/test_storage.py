@@ -92,3 +92,58 @@ class TestDatabase:
         assert latest is not None
         assert latest["prev_price"] == 125.0
         assert latest["curr_price"] == 128.5
+
+    def test_archive_old_price_records_empty(self, db):
+        """测试空数据归档不报错."""
+        result = db.archive_old_price_records(days=90)
+        assert result["archived"] == 0
+        assert result["deleted"] == 0
+        assert result["aggregated"] == 0
+
+    def test_archive_old_price_records(self, db):
+        """测试归档 90 天以上价格记录."""
+        import sqlite3
+
+        db.insert_item("AK-47 | Redline")
+        db.insert_item("AWP | Asiimov")
+
+        # 插入近期记录（不应被归档）
+        db.insert_price_record("AK-47 | Redline", "buff", 100.0)
+        db.insert_price_record("AK-47 | Redline", "buff", 102.0)
+
+        # 直接插入 91 天前的记录（模拟旧数据）
+        with db._cursor() as cursor:
+            old_date = "date('now', '-91 days')"
+            cursor.execute(
+                f"""
+                INSERT INTO price_records (market_hash_name, platform, price, recorded_at)
+                VALUES ('AK-47 | Redline', 'buff', 90.0, {old_date})
+                """
+            )
+            cursor.execute(
+                f"""
+                INSERT INTO price_records (market_hash_name, platform, price, recorded_at)
+                VALUES ('AK-47 | Redline', 'buff', 92.0, {old_date})
+                """
+            )
+            cursor.execute(
+                f"""
+                INSERT INTO price_records (market_hash_name, platform, price, recorded_at)
+                VALUES ('AWP | Asiimov', 'uu', 200.0, {old_date})
+                """
+            )
+
+        result = db.archive_old_price_records(days=90)
+        assert result["aggregated"] == 2  # 2 个饰品各 1 条天级记录
+        assert result["archived"] == 2
+        assert result["deleted"] == 3
+
+        # 验证归档表数据
+        archived = db.get_archived_price_history("AK-47 | Redline")
+        assert len(archived) == 1
+        assert archived[0]["avg_price"] == 91.0
+        assert archived[0]["record_count"] == 2
+
+        # 验证近期记录仍在 price_records 中
+        recent = db.get_price_history("AK-47 | Redline")
+        assert len(recent) == 2

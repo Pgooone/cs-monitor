@@ -12,28 +12,81 @@ from web.app import create_app
 
 @pytest.fixture
 def client():
-    """创建 TestClient."""
+    """创建 TestClient（自动携带 JWT Token）."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         db = Database(tmp.name)
 
     config = MonitorConfig(
         api_key="test_key",
+        admin_password="testpass",
+        jwt_secret="test-secret",
         watchlist=[{"name": "Test Item", "threshold": 5.0}],
     )
 
     app = create_app(db, config)
     with TestClient(app) as tc:
+        # 登录获取 JWT 令牌
+        resp = tc.post("/api/auth/login", json={"password": "testpass"})
+        assert resp.status_code == 200
+        token = resp.json()["access_token"]
+        tc.headers["Authorization"] = f"Bearer {token}"
         yield tc
+
+
+class TestAuthEndpoint:
+    """认证端点测试."""
+
+    def test_login_success(self, client: TestClient) -> None:
+        """测试正确密码登录成功."""
+        response = client.post("/api/auth/login", json={"password": "testpass"})
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+
+    def test_login_failure(self, client: TestClient) -> None:
+        """测试错误密码登录失败."""
+        response = client.post("/api/auth/login", json={"password": "wrongpass"})
+        assert response.status_code == 401
+
+    def test_access_protected_without_token(self, client: TestClient) -> None:
+        """测试未携带 Token 访问受保护接口返回 401."""
+        # 临时移除 Authorization header
+        original = client.headers.pop("Authorization", None)
+        try:
+            response = client.get("/api/watchlist")
+            assert response.status_code == 401
+        finally:
+            if original:
+                client.headers["Authorization"] = original
+
+    def test_access_protected_with_invalid_token(self, client: TestClient) -> None:
+        """测试携带无效 Token 访问受保护接口返回 401."""
+        original = client.headers.get("Authorization", "")
+        client.headers["Authorization"] = "Bearer invalid-token"
+        try:
+            response = client.get("/api/watchlist")
+            assert response.status_code == 401
+        finally:
+            client.headers["Authorization"] = original
 
 
 class TestHealthEndpoint:
     """健康检查端点测试."""
 
     def test_health_check(self, client: TestClient) -> None:
-        """测试 /api/health 返回 ok."""
-        response = client.get("/api/health")
-        assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
+        """测试 /api/health 返回 ok（无需认证）."""
+        original = client.headers.pop("Authorization", None)
+        try:
+            response = client.get("/api/health")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "ok"
+            assert "database" in data
+            assert "scheduler" in data
+        finally:
+            if original:
+                client.headers["Authorization"] = original
 
 
 class TestDashboardEndpoint:

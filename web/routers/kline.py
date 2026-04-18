@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
 from api.steamdt import SteamDTClient, SteamDTConfig
 from core.trend_analyzer import TrendAnalyzer
 from storage.database import Database
+from web.deps import get_config, get_db, require_auth
 from web.schemas import TrendAnalysisResponse
 
 router = APIRouter(prefix="/kline", tags=["kline"])
@@ -16,22 +17,13 @@ arbitrage_router = APIRouter(prefix="/arbitrage", tags=["arbitrage"])
 trends_router = APIRouter(prefix="/trends", tags=["trends"])
 
 
-def get_db(request: Request) -> Database:
-    """依赖注入：数据库实例."""
-    return request.app.state.db
-
-
-def get_config(request: Request) -> Any:
-    """依赖注入：配置实例."""
-    return request.app.state.config
-
-
 @router.get("/{market_hash_name}")
 def get_kline(
     market_hash_name: str,
     period: int = 2,
     count: int = 30,
-    config: Any = Depends(get_config),
+    config=Depends(get_config),
+    user: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """查询饰品 K 线数据.
 
@@ -80,6 +72,7 @@ def get_kline(
 @arbitrage_router.get("", response_model=list[dict[str, Any]])
 def get_arbitrage(
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> list[dict[str, Any]]:
     """获取所有监控品的跨平台价差."""
     latest = db.get_latest_prices()
@@ -119,6 +112,7 @@ def get_arbitrage(
 def get_arbitrage_item(
     market_hash_name: str,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """获取指定饰品的各平台价差明细."""
     platforms = db.get_price_by_platforms(market_hash_name)
@@ -154,6 +148,7 @@ def get_trends(
     market_hash_name: str,
     days: int = 30,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """获取指定饰品的趋势分析.
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
 
@@ -73,6 +74,7 @@ class MonitorScheduler:
         """启动调度器并注册任务."""
         self._add_monitor_job()
         self._add_extreme_tracker_job()
+        self._add_archive_job()
         self.scheduler.start()
         logger.info("调度器已启动")
 
@@ -108,6 +110,28 @@ class MonitorScheduler:
             replace_existing=True,
         )
         logger.info("极致追踪任务已注册，tick 间隔: 10 秒")
+
+    def _run_archive(self) -> None:
+        """执行价格记录归档."""
+        try:
+            result = self.db.archive_old_price_records(days=90)
+            logger.info(
+                f"定时归档完成: 聚合 {result['aggregated']} 条, "
+                f"归档 {result['archived']} 条, 删除 {result['deleted']} 条"
+            )
+        except Exception:
+            logger.exception("价格记录归档失败")
+
+    def _add_archive_job(self) -> None:
+        """注册每日归档任务（每天凌晨 3 点执行）."""
+        self.scheduler.add_job(
+            self._run_archive,
+            trigger=CronTrigger(hour=3, minute=0),
+            id="archive_prices",
+            name="价格记录归档",
+            replace_existing=True,
+        )
+        logger.info("归档任务已注册，每天凌晨 3:00 执行")
 
     def shutdown(self, wait: bool = True) -> None:
         """优雅关闭调度器."""

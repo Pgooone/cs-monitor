@@ -2,22 +2,19 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 
 from storage.database import Database
+from web.deps import get_db, require_auth
 from web.schemas import LatestPriceItem, PlatformPriceItem, PriceHistoryItem
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 
 
-def get_db(request: Request) -> Database:
-    """依赖注入：数据库实例."""
-    return request.app.state.db
-
-
 @router.get("/latest", response_model=list[LatestPriceItem])
 def get_latest_prices(
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> list[dict]:
     """获取所有监控品的最新价格（每饰品每平台各取最新）."""
     return db.get_latest_prices()
@@ -29,6 +26,7 @@ def get_price_history(
     days: int | None = None,
     platform: str | None = None,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> list[dict]:
     """获取指定饰品的历史价格记录.
 
@@ -47,6 +45,7 @@ def get_price_history(
 def get_price_by_platforms(
     market_hash_name: str,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> list[dict]:
     """获取指定饰品在各平台的最新价格."""
     return db.get_price_by_platforms(market_hash_name)

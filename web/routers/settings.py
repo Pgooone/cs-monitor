@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
 from notify.wecom import WeComChannel
 from storage.database import Database
+from web.deps import get_config, get_db, require_auth
 from web.schemas import NotifySettings, NotifyTestRequest
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -21,20 +22,11 @@ CONFIG_KEYS = {
 }
 
 
-def get_db(request: Request) -> Database:
-    """依赖注入：数据库实例."""
-    return request.app.state.db
-
-
-def get_config(request: Request):
-    """依赖注入：配置实例."""
-    return request.app.state.config
-
-
 @router.get("/notify", response_model=NotifySettings)
 def get_notify_settings(
     db: Database = Depends(get_db),
     config=Depends(get_config),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """获取当前通知配置（DB 优先，fallback 到 .env/config）."""
     return {
@@ -50,6 +42,7 @@ def get_notify_settings(
 def update_notify_settings(
     settings: NotifySettings,
     db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """更新通知配置到 system_config 表."""
     for field in CONFIG_KEYS:
@@ -64,6 +57,7 @@ def test_notify(
     req: NotifyTestRequest,
     db: Database = Depends(get_db),
     config=Depends(get_config),
+    user: dict = Depends(require_auth),
 ) -> dict:
     """发送测试通知."""
     channel = req.channel or (

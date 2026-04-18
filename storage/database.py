@@ -892,3 +892,103 @@ class Database:
             for row in rows:
                 row["price"] = round(row["price"], 2)
             return rows
+
+    # ------------------------------------------------------------------
+    # 归档操作
+    # ------------------------------------------------------------------
+    def archive_old_price_records(
+        self, days: int = 90
+    ) -> dict[str, Any]:
+        """归档 90 天以上的价格记录：按天聚合后写入 archived_prices，然后删除原记录."""
+        with self._cursor() as cursor:
+            # 1. 查询需要归档的 90 天以上数据，按天聚合
+            cursor.execute(
+                f"""
+                SELECT
+                    market_hash_name,
+                    platform,
+                    date(recorded_at) AS date,
+                    AVG(price) AS avg_price,
+                    MIN(price) AS min_price,
+                    MAX(price) AS max_price,
+                    COUNT(*) AS record_count
+                FROM price_records
+                WHERE recorded_at < datetime('now', '-{days} days')
+                GROUP BY market_hash_name, platform, date(recorded_at)
+                ORDER BY date(recorded_at)
+                """
+            )
+            rows = cursor.fetchall()
+            if not rows:
+                return {"archived": 0, "deleted": 0, "aggregated": 0}
+
+            # 2. 插入归档表
+            archived_count = 0
+            for row in rows:
+                try:
+                    cursor.execute(
+                        """
+                        INSERT OR REPLACE INTO archived_prices
+                        (market_hash_name, platform, date, avg_price, min_price, max_price, record_count)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            row["market_hash_name"],
+                            row["platform"],
+                            row["date"],
+                            round(row["avg_price"], 2),
+                            row["min_price"],
+                            row["max_price"],
+                            row["record_count"],
+                        ),
+                    )
+                    archived_count += 1
+                except Exception:
+                    continue
+
+            # 3. 删除已归档的原始记录
+            cursor.execute(
+                f"""
+                DELETE FROM price_records
+                WHERE recorded_at < datetime('now', '-{days} days')
+                """
+            )
+            deleted_count = cursor.rowcount
+
+            logger.info(
+                f"价格记录归档完成：聚合 {len(rows)} 条天级记录，"
+                f"归档 {archived_count} 条，删除 {deleted_count} 条原始记录"
+            )
+            return {
+                "archived": archived_count,
+                "deleted": deleted_count,
+                "aggregated": len(rows),
+            }
+
+    def get_archived_price_history(
+        self,
+        market_hash_name: str,
+        days: int | None = None,
+        platform: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """查询归档价格历史."""
+        conditions = ["market_hash_name = ?"]
+        params: list[Any] = [market_hash_name]
+        if platform:
+            conditions.append("platform = ?")
+            params.append(platform)
+
+        where_clause = " AND ".join(conditions)
+        if days:
+            where_clause += f" AND date >= date('now', '-{days} days')"
+
+        with self._cursor() as cursor:
+            cursor.execute(
+                f"""
+                SELECT * FROM archived_prices
+                WHERE {where_clause}
+                ORDER BY date DESC
+                """,
+                tuple(params),
+            )
+            return [dict(row) for row in cursor.fetchall()]

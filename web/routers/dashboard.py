@@ -2,29 +2,21 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 
 from config import MonitorConfig
 from storage.database import Database
+from web.deps import get_config, get_db, require_auth
 from web.schemas import DashboardSummary
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
-
-
-def get_db(request: Request) -> Database:
-    """依赖注入：数据库实例."""
-    return request.app.state.db
-
-
-def get_config(request: Request) -> MonitorConfig:
-    """依赖注入：配置实例."""
-    return request.app.state.config
 
 
 @router.get("/summary", response_model=DashboardSummary)
 def dashboard_summary(
     db: Database = Depends(get_db),
     config: MonitorConfig = Depends(get_config),
+    user: dict = Depends(require_auth),
 ) -> DashboardSummary:
     """返回 Dashboard 概览数据."""
     today_alert_count = db.get_today_alert_count()

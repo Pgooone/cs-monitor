@@ -10,6 +10,21 @@ class HealthResponse(BaseModel):
 
     status: str = "ok"
     version: str = "1.0.0"
+    database: str = "ok"
+    scheduler: str = "ok"
+
+
+class LoginRequest(BaseModel):
+    """登录请求."""
+
+    password: str = Field(..., min_length=1, description="管理员密码")
+
+
+class LoginResponse(BaseModel):
+    """登录响应."""
+
+    access_token: str
+    token_type: str = "bearer"
 
 
 class DashboardSummary(BaseModel):
