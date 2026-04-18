@@ -39,8 +39,8 @@ def dashboard_summary(
             last_update = str(recorded_at)
 
     return DashboardSummary(
-        active_watchlist=len(config.watchlist),
-        extreme_track_count=len(config.extreme_track_list),
+        active_watchlist=db.get_watchlist_count(enabled_only=True),
+        extreme_track_count=db.get_extreme_track_count(enabled_only=True),
         today_alert_count=today_alert_count,
         latest_price_count=latest_price_count,
         last_update=last_update,

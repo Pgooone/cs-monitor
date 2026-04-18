@@ -280,6 +280,34 @@
 - 新增表结构兼容后续 Web API（Task 13/14）的 CRUD 操作
 - WAL 模式启用，支持并发读写，避免 Web API 和 scheduler 之间的数据库锁冲突
 
+## 2026-04-18 - Task 13: Watchlist API 与 Alerts API
+
+### What was done:
+- 扩展 web/schemas.py：新增 WatchlistItem、WatchlistItemCreate、WatchlistItemUpdate、WatchlistItemWithPrice、AlertRecordFilter、AlertStatsItem、AlertStatsResponse 等 Pydantic 模型
+- 创建 web/routers/watchlist.py：实现监控清单完整 CRUD
+  - GET /api/watchlist：获取全部监控清单（含最新价格，通过 LEFT JOIN 子查询）
+  - POST /api/watchlist：添加监控项（重复返回 409）
+  - PUT /api/watchlist/{market_hash_name}：更新监控项（不存在返回 404）
+  - DELETE /api/watchlist/{market_hash_name}：删除监控项
+- 创建 web/routers/alerts.py：实现告警记录查询和统计
+  - GET /api/alerts：分页查询告警（支持 page/limit、alert_type 过滤、start_date/end_date 时间范围、market_hash_name 模糊搜索）
+  - GET /api/alerts/stats：按天/类型聚合统计，返回 total、by_day、by_type
+- storage/database.py 新增查询方法：get_alerts()、get_alert_stats()、get_watchlist_count()、get_extreme_track_count()、get_watchlist_with_latest_price()
+- 更新 web/routers/dashboard.py：active_watchlist 和 extreme_track_count 改为从 DB 读取（DB 优先策略）
+- 更新 web/app.py：注册 watchlist 和 alerts 路由
+- tests/test_web_api.py 新增 12 个测试覆盖 watchlist CRUD 和 alerts 查询/统计
+
+### Testing:
+- python -m py_compile 所有修改文件无语法错误
+- python -m pytest tests/ -v：51 个测试全部通过（原有 39 + 新增 12）
+- python -m ruff check .：0 errors
+- python main.py：可正常导入和启动
+
+### Notes:
+- DashboardSummary 中 active_watchlist 和 extreme_track_count 已完全从 DB 读取，不再依赖 config.py
+- get_watchlist_with_latest_price 使用关联子查询获取每个饰品最新的价格记录
+- alerts 查询支持完整的时间范围过滤和分页
+
 ---
 
 ### Development Guide:

@@ -198,7 +198,7 @@
         "在 web/schemas.py 定义 WatchlistItem、WatchlistItemWithPrice、AlertRecord 模型",
         "编写对应的 API 测试"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 14,

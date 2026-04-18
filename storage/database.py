@@ -620,3 +620,178 @@ class Database:
             )
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    # ------------------------------------------------------------------
+    # alerts 查询（分页、过滤、统计）
+    # ------------------------------------------------------------------
+    def get_alerts(
+        self,
+        page: int = 1,
+        limit: int = 20,
+        alert_type: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        market_hash_name: str | None = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """分页查询告警记录，返回 (数据列表, 总条数)."""
+        conditions = ["1 = 1"]
+        params: list[Any] = []
+        if alert_type:
+            conditions.append("alert_type = ?")
+            params.append(alert_type)
+        if start_date:
+            conditions.append("notified_at >= ?")
+            params.append(f"{start_date} 00:00:00")
+        if end_date:
+            conditions.append("notified_at <= ?")
+            params.append(f"{end_date} 23:59:59")
+        if market_hash_name:
+            conditions.append("market_hash_name LIKE ?")
+            params.append(f"%{market_hash_name}%")
+
+        where_clause = " AND ".join(conditions)
+
+        with self._cursor() as cursor:
+            # 总条数
+            cursor.execute(
+                f"SELECT COUNT(*) FROM alert_logs WHERE {where_clause}",
+                tuple(params),
+            )
+            total = cursor.fetchone()[0]
+
+            # 分页数据
+            offset = (page - 1) * limit
+            cursor.execute(
+                f"""
+                SELECT * FROM alert_logs
+                WHERE {where_clause}
+                ORDER BY notified_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                tuple(params) + (limit, offset),
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
+            return rows, total
+
+    def get_alert_stats(
+        self,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """返回 (按天统计, 按类型统计)."""
+        conditions = ["1 = 1"]
+        params: list[Any] = []
+        if start_date:
+            conditions.append("notified_at >= ?")
+            params.append(f"{start_date} 00:00:00")
+        if end_date:
+            conditions.append("notified_at <= ?")
+            params.append(f"{end_date} 23:59:59")
+
+        where_clause = " AND ".join(conditions)
+
+        with self._cursor() as cursor:
+            # 按天统计
+            cursor.execute(
+                f"""
+                SELECT date(notified_at) AS date, alert_type, COUNT(*) AS count
+                FROM alert_logs
+                WHERE {where_clause}
+                GROUP BY date(notified_at), alert_type
+                ORDER BY date(notified_at) DESC
+                """,
+                tuple(params),
+            )
+            by_day = [dict(row) for row in cursor.fetchall()]
+
+            # 按类型统计
+            cursor.execute(
+                f"""
+                SELECT 'all' AS date, alert_type, COUNT(*) AS count
+                FROM alert_logs
+                WHERE {where_clause}
+                GROUP BY alert_type
+                ORDER BY count DESC
+                """,
+                tuple(params),
+            )
+            by_type = [dict(row) for row in cursor.fetchall()]
+
+            return by_day, by_type
+
+    # ------------------------------------------------------------------
+    # watchlist 扩展查询
+    # ------------------------------------------------------------------
+    def get_watchlist_count(self, enabled_only: bool = True) -> int:
+        """获取监控清单数量."""
+        with self._cursor() as cursor:
+            if enabled_only:
+                cursor.execute(
+                    "SELECT COUNT(*) FROM watchlist WHERE enabled = 1"
+                )
+            else:
+                cursor.execute("SELECT COUNT(*) FROM watchlist")
+            row = cursor.fetchone()
+            return row[0] if row else 0
+
+    def get_watchlist_with_latest_price(
+        self, enabled_only: bool = True
+    ) -> list[dict[str, Any]]:
+        """获取监控清单及其最新价格."""
+        with self._cursor() as cursor:
+            if enabled_only:
+                cursor.execute(
+                    """
+                    SELECT w.*,
+                           pr.price AS latest_price,
+                           pr.platform,
+                           pr.recorded_at AS price_updated_at
+                    FROM watchlist w
+                    LEFT JOIN (
+                        SELECT market_hash_name, platform, price, recorded_at
+                        FROM price_records p1
+                        WHERE recorded_at = (
+                            SELECT MAX(recorded_at)
+                            FROM price_records p2
+                            WHERE p2.market_hash_name = p1.market_hash_name
+                        )
+                    ) pr ON w.market_hash_name = pr.market_hash_name
+                    WHERE w.enabled = 1
+                    ORDER BY w.created_at
+                    """
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT w.*,
+                           pr.price AS latest_price,
+                           pr.platform,
+                           pr.recorded_at AS price_updated_at
+                    FROM watchlist w
+                    LEFT JOIN (
+                        SELECT market_hash_name, platform, price, recorded_at
+                        FROM price_records p1
+                        WHERE recorded_at = (
+                            SELECT MAX(recorded_at)
+                            FROM price_records p2
+                            WHERE p2.market_hash_name = p1.market_hash_name
+                        )
+                    ) pr ON w.market_hash_name = pr.market_hash_name
+                    ORDER BY w.created_at
+                    """
+                )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_extreme_track_count(self, enabled_only: bool = True) -> int:
+        """获取极致追踪配置数量."""
+        with self._cursor() as cursor:
+            if enabled_only:
+                cursor.execute(
+                    "SELECT COUNT(*) FROM extreme_track_config WHERE enabled = 1"
+                )
+            else:
+                cursor.execute(
+                    "SELECT COUNT(*) FROM extreme_track_config"
+                )
+            row = cursor.fetchone()
+            return row[0] if row else 0
