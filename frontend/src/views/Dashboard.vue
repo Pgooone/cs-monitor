@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref, h } from 'vue'
 import {
   NSpin,
   NGrid,
@@ -80,12 +80,37 @@ import {
   NDataTable,
   NDivider,
   NText,
+  NTag,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { useDashboardStore } from '@/stores/dashboard'
 import type { WatchlistItemWithPrice, AlertRecord } from '@/api'
+import api from '@/api'
 
 const dashboard = useDashboardStore()
+const trendMap = ref<Record<string, string>>({})
+
+async function loadTrends() {
+  const items = dashboard.watchlist
+  for (const item of items) {
+    try {
+      const { data } = await api.trends(item.market_hash_name, 14)
+      trendMap.value[item.market_hash_name] = data.trend
+    } catch {
+      trendMap.value[item.market_hash_name] = 'unknown'
+    }
+  }
+}
+
+function trendLabel(trend: string) {
+  const map: Record<string, { label: string; type: string }> = {
+    surge: { label: '连涨', type: 'error' },
+    drop: { label: '连跌', type: 'success' },
+    oscillate: { label: '震荡', type: 'warning' },
+    unknown: { label: '-', type: 'default' },
+  }
+  return map[trend] || { label: '-', type: 'default' }
+}
 
 const priceColumns: DataTableColumns<WatchlistItemWithPrice> = [
   { title: '饰品名称', key: 'market_hash_name', ellipsis: { tooltip: true } },
@@ -98,6 +123,15 @@ const priceColumns: DataTableColumns<WatchlistItemWithPrice> = [
     },
   },
   { title: '平台', key: 'platform' },
+  {
+    title: '趋势',
+    key: 'trend',
+    render(row) {
+      const trend = trendMap.value[row.market_hash_name] || 'unknown'
+      const { label, type } = trendLabel(trend)
+      return h(NTag, { type: type as any, size: 'small' }, { default: () => label })
+    },
+  },
   { title: '阈值(%)', key: 'threshold_percent' },
   {
     title: '状态',
@@ -145,6 +179,8 @@ const alertColumns: DataTableColumns<AlertRecord> = [
 ]
 
 onMounted(() => {
-  dashboard.loadAll()
+  dashboard.loadAll().then(() => {
+    loadTrends()
+  })
 })
 </script>

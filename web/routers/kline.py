@@ -7,10 +7,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.steamdt import SteamDTClient, SteamDTConfig
+from core.trend_analyzer import TrendAnalyzer
 from storage.database import Database
+from web.schemas import TrendAnalysisResponse
 
 router = APIRouter(prefix="/kline", tags=["kline"])
 arbitrage_router = APIRouter(prefix="/arbitrage", tags=["arbitrage"])
+trends_router = APIRouter(prefix="/trends", tags=["trends"])
 
 
 def get_db(request: Request) -> Database:
@@ -141,3 +144,27 @@ def get_arbitrage_item(
         "spread_percent": round(spread_percent, 2),
         "platforms": platforms,
     }
+
+
+# ------------------------------------------------------------------
+# Trends（趋势分析）
+# ------------------------------------------------------------------
+@trends_router.get("/{market_hash_name}", response_model=TrendAnalysisResponse)
+def get_trends(
+    market_hash_name: str,
+    days: int = 30,
+    db: Database = Depends(get_db),
+) -> dict[str, Any]:
+    """获取指定饰品的趋势分析.
+
+    参数:
+        days: 分析最近 N 天的数据（默认 30）.
+    """
+    analyzer = TrendAnalyzer(db)
+    result = analyzer.analyze(market_hash_name, days)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{market_hash_name} 历史数据不足，无法分析趋势",
+        )
+    return result

@@ -869,3 +869,26 @@ class Database:
                 (market_hash_name, market_hash_name),
             )
             return [dict(row) for row in cursor.fetchall()]
+
+    def get_daily_prices(
+        self, market_hash_name: str, days: int = 30
+    ) -> list[dict[str, Any]]:
+        """按天聚合价格（取每天均价），用于趋势分析."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                f"""
+                SELECT
+                    date(recorded_at) AS date,
+                    AVG(price) AS price
+                FROM price_records
+                WHERE market_hash_name = ?
+                  AND recorded_at >= datetime('now', '-{days} days')
+                GROUP BY date(recorded_at)
+                ORDER BY date(recorded_at) ASC
+                """,
+                (market_hash_name,),
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
+            for row in rows:
+                row["price"] = round(row["price"], 2)
+            return rows

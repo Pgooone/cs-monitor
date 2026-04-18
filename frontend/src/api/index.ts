@@ -179,6 +179,20 @@ export interface ArbitrageItem {
   platforms: PlatformPriceItem[]
 }
 
+export interface DailyPricePoint {
+  date: string
+  price: number
+}
+
+export interface TrendAnalysisResponse {
+  market_hash_name: string
+  trend: string
+  daily_prices: DailyPricePoint[]
+  ma5: (number | null)[]
+  ma10: (number | null)[]
+  ma20: (number | null)[]
+}
+
 export default {
   health() {
     return api.get('/health')
@@ -246,5 +260,10 @@ export default {
   },
   arbitrageItem(marketHashName: string) {
     return api.get<ArbitrageItem>(`/arbitrage/${encodeURIComponent(marketHashName)}`)
+  },
+  trends(marketHashName: string, days?: number) {
+    return api.get<TrendAnalysisResponse>(`/trends/${encodeURIComponent(marketHashName)}`, {
+      params: { days },
+    })
   },
 }

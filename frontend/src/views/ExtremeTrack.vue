@@ -17,6 +17,7 @@
         :pagination="{ pageSize: 10 }"
         size="small"
         striped
+        :row-key="rowKey"
       />
     </n-card>
 
@@ -165,11 +166,16 @@ import type { DataTableColumns, FormRules, FormInst } from 'naive-ui'
 import { useExtremeTrackStore } from '@/stores/extremeTrack'
 import type { ExtremeTrackConfig } from '@/api'
 import { WebSocketClient } from '@/utils/ws'
+import ExtremeTrackTimeline from '@/components/ExtremeTrackTimeline.vue'
 
 const store = useExtremeTrackStore()
 const message = useMessage()
 
 const wsMap = new Map<string, WebSocketClient>()
+
+function rowKey(row: ExtremeTrackConfig) {
+  return `${row.market_hash_name}@${row.platform}`
+}
 
 function buildWsUrl(marketHashName: string, platform: string) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -380,6 +386,12 @@ function formatMode(mode: string, threshold: number, trackEnabled: number) {
 }
 
 const columns: DataTableColumns<ExtremeTrackConfig> = [
+  {
+    type: 'expand',
+    renderExpand(rowData) {
+      return h(ExtremeTrackTimeline, { item: rowData as ExtremeTrackConfig })
+    },
+  },
   {
     title: '饰品名称',
     key: 'market_hash_name',

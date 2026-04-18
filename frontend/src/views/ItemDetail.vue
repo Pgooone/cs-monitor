@@ -55,6 +55,24 @@
         </n-grid>
       </n-card>
 
+          <!-- 趋势标签 -->
+      <n-card class="mt-4">
+        <n-space>
+          <n-tag v-if="trendLabel" :type="trendTagType as any" size="large">
+            {{ trendLabel }}
+          </n-tag>
+          <n-tag v-if="ma5Latest != null" type="default" size="small">
+            MA5: ¥{{ ma5Latest.toFixed(2) }}
+          </n-tag>
+          <n-tag v-if="ma10Latest != null" type="default" size="small">
+            MA10: ¥{{ ma10Latest.toFixed(2) }}
+          </n-tag>
+          <n-tag v-if="ma20Latest != null" type="default" size="small">
+            MA20: ¥{{ ma20Latest.toFixed(2) }}
+          </n-tag>
+        </n-space>
+      </n-card>
+
       <!-- 价格走势图 / K线图 -->
       <n-card :title="chartTitle" class="mt-4">
         <template #header-extra>
@@ -108,10 +126,11 @@ import {
   NRadioGroup,
   NRadioButton,
   NEmpty,
+  NTag,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import * as echarts from 'echarts'
-import api, { type PriceHistoryItem, type PlatformPriceItem, type AlertRecord, type KlineDataItem } from '@/api'
+import api, { type PriceHistoryItem, type PlatformPriceItem, type AlertRecord, type KlineDataItem, type TrendAnalysisResponse } from '@/api'
 
 const route = useRoute()
 const marketHashName = computed(() => decodeURIComponent(route.params.name as string))
@@ -128,9 +147,46 @@ const historyDays = ref(7)
 const chartType = ref<'line' | 'kline'>('line')
 const klinePeriod = ref(2)
 const klineData = ref<KlineDataItem[]>([])
+const trendData = ref<TrendAnalysisResponse | null>(null)
 
 const chartRef = ref<HTMLDivElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
+
+const trendLabel = computed(() => {
+  const map: Record<string, string> = {
+    surge: '📈 连涨趋势',
+    drop: '📉 连跌趋势',
+    oscillate: '🔄 震荡整理',
+  }
+  return trendData.value ? map[trendData.value.trend] || '' : ''
+})
+
+const trendTagType = computed(() => {
+  const map: Record<string, string> = {
+    surge: 'error',
+    drop: 'success',
+    oscillate: 'warning',
+  }
+  return trendData.value ? map[trendData.value.trend] || 'default' : 'default'
+})
+
+const ma5Latest = computed(() => {
+  if (!trendData.value?.ma5) return null
+  const vals = trendData.value.ma5.filter(v => v != null) as number[]
+  return vals.length ? vals[vals.length - 1] : null
+})
+
+const ma10Latest = computed(() => {
+  if (!trendData.value?.ma10) return null
+  const vals = trendData.value.ma10.filter(v => v != null) as number[]
+  return vals.length ? vals[vals.length - 1] : null
+})
+
+const ma20Latest = computed(() => {
+  if (!trendData.value?.ma20) return null
+  const vals = trendData.value.ma20.filter(v => v != null) as number[]
+  return vals.length ? vals[vals.length - 1] : null
+})
 
 const chartTitle = computed(() => chartType.value === 'kline' ? 'K线图' : '价格走势')
 const chartEmpty = computed(() => {
@@ -321,6 +377,7 @@ async function loadData() {
       api.priceHistory(name, historyDays.value),
       api.platformPrices(name),
       api.alerts(1, 50, { market_hash_name: name }),
+      api.trends(name, 30),
     ]
     if (chartType.value === 'kline') {
       reqs.push(api.kline(name, klinePeriod.value))
@@ -330,8 +387,9 @@ async function loadData() {
     priceHistory.value = results[0].data
     platformPrices.value = results[1].data
     alerts.value = results[2].data.items
-    if (chartType.value === 'kline' && results[3]) {
-      klineData.value = results[3].data.data || []
+    trendData.value = results[3].data
+    if (chartType.value === 'kline' && results[4]) {
+      klineData.value = results[4].data.data || []
     }
 
     if (results[1].data.length) {

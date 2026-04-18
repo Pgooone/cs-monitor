@@ -504,5 +504,45 @@
 
 ---
 
+## 2026-04-18 - Task 20: 趋势分析与极致追踪实时面板
+
+### What was done:
+- 后端：创建 core/trend_analyzer.py，实现 TrendAnalyzer 类
+  - 从 DB 按天聚合价格（get_daily_prices），计算 MA5/MA10/MA20 移动平均线
+  - 趋势标签检测：最近连续 3 天上涨 → surge（连涨），连续 3 天下跌 → drop（连跌），否则 → oscillate（震荡）
+  - 数据不足 5 天时返回 None
+- 后端：扩展 storage/database.py，新增 get_daily_prices() 按天均价聚合查询方法
+- 后端：扩展 web/routers/kline.py，新增 trends_router（prefix=/trends）
+  - GET /api/trends/{name}：返回趋势标签、日价格序列、MA5/MA10/MA20 数据
+- 后端：修改 web/app.py，注册 trends_router
+- 后端：扩展 web/schemas.py，新增 DailyPricePoint、TrendAnalysisResponse Pydantic 模型
+- 前端：扩展 frontend/src/api/index.ts，新增 trends() API 和 DailyPricePoint / TrendAnalysisResponse 类型
+- 前端：修改 Dashboard.vue，价格概览表新增「趋势」列
+  - 异步加载每个监控项的趋势标签（连涨/连跌/震荡）
+  - 使用 NTag 展示，颜色区分（连涨红色、连跌绿色、震荡橙色）
+- 前端：修改 ItemDetail.vue，新增趋势标签区域
+  - 显示趋势标签（大尺寸 NTag）
+  - 显示 MA5/MA10/MA20 最新值（小尺寸 NTag）
+  - 趋势数据随页面加载一并请求
+- 前端：修改 ExtremeTrack.vue，新增实时面板展开行
+  - 使用 naive-ui DataTable 的 expand 列，点击展开查看实时变动
+  - 创建组件 ExtremeTrackTimeline.vue，时间线式呈现价格/数量变化
+  - 显示变动类型标签、时间、价格变化（含金额和百分比）、数量变化
+- 前端：修改 stores/extremeTrack.ts，updateRealtimeData() 将 WS 实时数据附加到 item._realtime 数组
+
+### Testing:
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m py_compile 所有修改文件无语法错误
+- python -m pytest tests/ -v：75 个测试全部通过（原有 65 + 新增 10 个趋势分析测试）
+- python -m ruff check .：0 errors
+- python main.py：可正常导入和启动
+
+### Notes:
+- 趋势分析使用按天均价聚合，避免同一天多次采集导致数据噪音
+- 实时面板仅展示最近 10 条变动记录，防止数据过多
+- WebSocket 数据在 ExtremeTrackTimeline 中通过 timeline 组件直观展示变动方向（价格涨红跌绿、数量涨绿跌红）
+
+---
+
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。

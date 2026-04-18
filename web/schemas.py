@@ -225,3 +225,21 @@ class NotifyTestRequest(BaseModel):
 
     channel: str | None = Field(None, description="指定测试渠道")
     extra: dict | None = Field(None, description="额外参数（如 webhook_url）")
+
+
+class DailyPricePoint(BaseModel):
+    """日价格点."""
+
+    date: str
+    price: float
+
+
+class TrendAnalysisResponse(BaseModel):
+    """趋势分析响应."""
+
+    market_hash_name: str
+    trend: str = Field(..., description="趋势标签: surge/drop/oscillate/unknown")
+    daily_prices: list[DailyPricePoint]
+    ma5: list[float | None]
+    ma10: list[float | None]
+    ma20: list[float | None]

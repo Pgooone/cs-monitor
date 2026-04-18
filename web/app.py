@@ -47,6 +47,7 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
     app.include_router(settings.router, prefix="/api")
     app.include_router(kline.router, prefix="/api")
     app.include_router(kline.arbitrage_router, prefix="/api")
+    app.include_router(kline.trends_router, prefix="/api")
 
     @app.get("/api/health")
     def health_check() -> dict[str, str]:
