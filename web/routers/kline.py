@@ -1,0 +1,143 @@
+"""K 线、价差与趋势路由."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+
+from api.steamdt import SteamDTClient, SteamDTConfig
+from storage.database import Database
+
+router = APIRouter(prefix="/kline", tags=["kline"])
+arbitrage_router = APIRouter(prefix="/arbitrage", tags=["arbitrage"])
+
+
+def get_db(request: Request) -> Database:
+    """依赖注入：数据库实例."""
+    return request.app.state.db
+
+
+def get_config(request: Request) -> Any:
+    """依赖注入：配置实例."""
+    return request.app.state.config
+
+
+@router.get("/{market_hash_name}")
+def get_kline(
+    market_hash_name: str,
+    period: int = 2,
+    count: int = 30,
+    config: Any = Depends(get_config),
+) -> dict[str, Any]:
+    """查询饰品 K 线数据.
+
+    参数:
+        period: 1=时K, 2=日K, 3=周K
+        count: 返回条数
+    """
+    client = SteamDTClient(
+        SteamDTConfig(
+            api_key=config.api_key,
+            base_url=config.api_base_url,
+        )
+    )
+    try:
+        resp = client.get_item_kline(
+            market_hash_name=market_hash_name,
+            kline_type=period,
+        )
+    except Exception as e:
+        client.close()
+        raise HTTPException(status_code=502, detail=f"SteamDT API 错误: {e}") from e
+    finally:
+        client.close()
+
+    if not resp.get("success"):
+        raise HTTPException(
+            status_code=502,
+            detail=resp.get("errorMsg", "SteamDT API 返回失败"),
+        )
+
+    data = resp.get("data") or []
+    # 限制返回条数
+    if count and len(data) > count:
+        data = data[-count:]
+
+    return {
+        "market_hash_name": market_hash_name,
+        "period": period,
+        "data": data,
+    }
+
+
+# ------------------------------------------------------------------
+# Arbitrage（跨平台价差）
+# ------------------------------------------------------------------
+@arbitrage_router.get("", response_model=list[dict[str, Any]])
+def get_arbitrage(
+    db: Database = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """获取所有监控品的跨平台价差."""
+    latest = db.get_latest_prices()
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in latest:
+        name = item["market_hash_name"]
+        grouped.setdefault(name, []).append(item)
+
+    results: list[dict[str, Any]] = []
+    for name, platforms in grouped.items():
+        if len(platforms) < 2:
+            continue
+        prices = [p["price"] for p in platforms]
+        min_price = min(prices)
+        max_price = max(prices)
+        min_platform = next(p["platform"] for p in platforms if p["price"] == min_price)
+        max_platform = next(p["platform"] for p in platforms if p["price"] == max_price)
+        spread = max_price - min_price
+        spread_percent = ((spread / min_price) * 100) if min_price > 0 else 0.0
+        results.append({
+            "market_hash_name": name,
+            "min_price": min_price,
+            "min_platform": min_platform,
+            "max_price": max_price,
+            "max_platform": max_platform,
+            "spread": spread,
+            "spread_percent": round(spread_percent, 2),
+            "platforms": platforms,
+        })
+
+    # 按价差百分比降序排列
+    results.sort(key=lambda x: x["spread_percent"], reverse=True)
+    return results
+
+
+@arbitrage_router.get("/{market_hash_name}")
+def get_arbitrage_item(
+    market_hash_name: str,
+    db: Database = Depends(get_db),
+) -> dict[str, Any]:
+    """获取指定饰品的各平台价差明细."""
+    platforms = db.get_price_by_platforms(market_hash_name)
+    if len(platforms) < 2:
+        return {
+            "market_hash_name": market_hash_name,
+            "spread": 0.0,
+            "spread_percent": 0.0,
+            "platforms": platforms,
+        }
+
+    prices = [p["price"] for p in platforms]
+    min_price = min(prices)
+    max_price = max(prices)
+    spread = max_price - min_price
+    spread_percent = ((spread / min_price) * 100) if min_price > 0 else 0.0
+
+    return {
+        "market_hash_name": market_hash_name,
+        "min_price": min_price,
+        "max_price": max_price,
+        "spread": spread,
+        "spread_percent": round(spread_percent, 2),
+        "platforms": platforms,
+    }

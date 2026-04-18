@@ -26,16 +26,16 @@ class PriceMonitor:
         self.config = config
         self.analyzer = PriceAnalyzer(client, db, config)
 
-    def collect_prices(self) -> list[dict[str, Any]]:
+    def collect_prices(self) -> dict[str, Any]:
         """采集 watchlist 中所有饰品的价格并存储.
 
         Returns:
-            采集到的价格记录列表，每条记录包含 market_hash_name、platform、price.
+            {"records": 价格记录列表, "alerts": 触发的告警列表}
         """
         watchlist = self.db.get_watchlist(enabled_only=True)
         if not watchlist:
             logger.info("监控清单为空，跳过本次采集")
-            return []
+            return {"records": [], "alerts": []}
 
         names = [
             item["market_hash_name"]
@@ -44,18 +44,18 @@ class PriceMonitor:
         ]
         if not names:
             logger.warning("监控清单格式异常，无法提取饰品名称")
-            return []
+            return {"records": [], "alerts": []}
 
         logger.info(f"开始批量采集 {len(names)} 个饰品的价格...")
         try:
             response = self.client.get_items_batch(names)
         except Exception as e:
             logger.error(f"批量查询价格失败: {e}")
-            return []
+            return {"records": [], "alerts": []}
 
         if not response.get("success"):
             logger.error(f"SteamDT API 返回失败: {response.get('errorMsg')}")
-            return []
+            return {"records": [], "alerts": []}
 
         data = response.get("data") or []
         records: list[dict[str, Any]] = []
@@ -87,8 +87,9 @@ class PriceMonitor:
         logger.info(f"本次采集完成，共写入 {len(records)} 条价格记录")
 
         # 采集完成后执行波动分析
+        alerts: list[dict[str, Any]] = []
         if records:
             alerts = self.analyzer.analyze(records)
             logger.info(f"本次分析触发 {len(alerts)} 条告警")
 
-        return records
+        return {"records": records, "alerts": alerts}

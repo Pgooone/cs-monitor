@@ -280,7 +280,7 @@
         "前端集成 WebSocket 自动重连和心跳",
         "实现 Alerts.vue 和 ExtremeTrack.vue 实时推送更新"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 20,

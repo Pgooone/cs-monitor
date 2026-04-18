@@ -143,7 +143,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted, onBeforeUnmount, h, watch } from 'vue'
 import {
   NCard,
   NButton,
@@ -164,9 +164,54 @@ import {
 import type { DataTableColumns, FormRules, FormInst } from 'naive-ui'
 import { useExtremeTrackStore } from '@/stores/extremeTrack'
 import type { ExtremeTrackConfig } from '@/api'
+import { WebSocketClient } from '@/utils/ws'
 
 const store = useExtremeTrackStore()
 const message = useMessage()
+
+const wsMap = new Map<string, WebSocketClient>()
+
+function buildWsUrl(marketHashName: string, platform: string) {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.host
+  return `${protocol}//${host}/ws/extreme-track/${encodeURIComponent(marketHashName)}/${encodeURIComponent(platform)}`
+}
+
+function connectWs(item: ExtremeTrackConfig) {
+  const key = `${item.market_hash_name}@${item.platform}`
+  if (wsMap.has(key)) return
+  const url = buildWsUrl(item.market_hash_name, item.platform)
+  const ws = new WebSocketClient({
+    url,
+    onMessage: (msg) => {
+      if (msg.type === 'extreme_track' && msg.data) {
+        store.updateRealtimeData(key, msg.data)
+      }
+    },
+  })
+  ws.connect()
+  wsMap.set(key, ws)
+}
+
+function disconnectWs(item: ExtremeTrackConfig) {
+  const key = `${item.market_hash_name}@${item.platform}`
+  const ws = wsMap.get(key)
+  if (ws) {
+    ws.close()
+    wsMap.delete(key)
+  }
+}
+
+function syncWsConnections() {
+  // 为所有启用的项建立连接，禁用的断开
+  store.items.forEach((item) => {
+    if (item.enabled) {
+      connectWs(item)
+    } else {
+      disconnectWs(item)
+    }
+  })
+}
 
 const modalVisible = ref(false)
 const deleteModalVisible = ref(false)
@@ -416,7 +461,18 @@ const columns: DataTableColumns<ExtremeTrackConfig> = [
   },
 ]
 
+watch(() => store.items, () => {
+  syncWsConnections()
+}, { deep: true })
+
 onMounted(() => {
-  store.fetchItems()
+  store.fetchItems().then(() => {
+    syncWsConnections()
+  })
+})
+
+onBeforeUnmount(() => {
+  wsMap.forEach((ws) => ws.close())
+  wsMap.clear()
 })
 </script>

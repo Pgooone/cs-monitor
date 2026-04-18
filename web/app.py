@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+import asyncio
+
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from loguru import logger
 
 from config import MonitorConfig
 from storage.database import Database
-from web.routers import alerts, dashboard, extreme_track, prices, settings, watchlist
+from web.routers import alerts, dashboard, extreme_track, kline, prices, settings, watchlist
+from web.ws_manager import ws_manager
 
 
 def create_app(db: Database, config: MonitorConfig) -> FastAPI:
@@ -42,11 +45,50 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
     app.include_router(prices.router, prefix="/api")
     app.include_router(extreme_track.router, prefix="/api")
     app.include_router(settings.router, prefix="/api")
+    app.include_router(kline.router, prefix="/api")
+    app.include_router(kline.arbitrage_router, prefix="/api")
 
     @app.get("/api/health")
     def health_check() -> dict[str, str]:
         """健康检查端点."""
         return {"status": "ok"}
+
+    # ------------------------------------------------------------------
+    # WebSocket 端点
+    # ------------------------------------------------------------------
+    @app.websocket("/ws/alerts")
+    async def ws_alerts(websocket: WebSocket) -> None:
+        """实时告警推送 WebSocket."""
+        ws_manager.set_loop(asyncio.get_running_loop())
+        await ws_manager.connect_alert(websocket)
+        try:
+            while True:
+                # 保持连接，等待客户端主动关闭或心跳超时
+                data = await websocket.receive_text()
+                if data == "ping":
+                    await websocket.send_text("pong")
+        except Exception:
+            pass
+        finally:
+            ws_manager.disconnect_alert(websocket)
+
+    @app.websocket("/ws/extreme-track/{market_hash_name}/{platform}")
+    async def ws_extreme_track(
+        websocket: WebSocket, market_hash_name: str, platform: str
+    ) -> None:
+        """极致追踪实时数据流 WebSocket."""
+        ws_manager.set_loop(asyncio.get_running_loop())
+        track_id = f"{market_hash_name}@{platform}"
+        await ws_manager.connect_extreme_track(websocket, track_id)
+        try:
+            while True:
+                data = await websocket.receive_text()
+                if data == "ping":
+                    await websocket.send_text("pong")
+        except Exception:
+            pass
+        finally:
+            ws_manager.disconnect_extreme_track(websocket, track_id)
 
     # 前端静态文件托管 + SPA fallback
     frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"

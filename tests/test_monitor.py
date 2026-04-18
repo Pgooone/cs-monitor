@@ -53,7 +53,8 @@ class TestPriceMonitor:
         }
         monitor.client._client.request = MagicMock(return_value=mock_response)
 
-        records = monitor.collect_prices()
+        result = monitor.collect_prices()
+        records = result["records"]
 
         assert len(records) == 2
         assert records[0]["platform"] == "BUFF"
@@ -71,8 +72,9 @@ class TestPriceMonitor:
         """测试空监控清单."""
         with monitor.db._cursor() as cursor:
             cursor.execute("DELETE FROM watchlist")
-        records = monitor.collect_prices()
-        assert records == []
+        result = monitor.collect_prices()
+        assert result["records"] == []
+        assert result["alerts"] == []
 
     @patch("api.steamdt.time.sleep", return_value=None)
     def test_collect_prices_api_failure(self, mock_sleep, monitor):
@@ -80,8 +82,9 @@ class TestPriceMonitor:
         monitor.client._client.request = MagicMock(
             side_effect=Exception("API Error")
         )
-        records = monitor.collect_prices()
-        assert records == []
+        result = monitor.collect_prices()
+        assert result["records"] == []
+        assert result["alerts"] == []
 
     @patch("api.steamdt.time.sleep", return_value=None)
     def test_collect_prices_api_not_success(self, mock_sleep, monitor):
@@ -93,5 +96,6 @@ class TestPriceMonitor:
             "errorMsg": "参数错误",
         }
         monitor.client._client.request = MagicMock(return_value=mock_response)
-        records = monitor.collect_prices()
-        assert records == []
+        result = monitor.collect_prices()
+        assert result["records"] == []
+        assert result["alerts"] == []

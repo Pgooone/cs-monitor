@@ -50,6 +50,27 @@ export const useExtremeTrackStore = defineStore('extremeTrack', () => {
     await updateItem(item.market_hash_name, item.platform, { enabled })
   }
 
+  function updateRealtimeData(trackId: string, data: any) {
+    const [marketHashName, platform] = trackId.split('@')
+    const idx = items.value.findIndex(
+      i => i.market_hash_name === marketHashName && i.platform === platform,
+    )
+    if (idx >= 0) {
+      // 附加实时数据到项上（通过 Vue 响应式）
+      const item = items.value[idx] as any
+      if (!item._realtime) item._realtime = []
+      item._realtime.unshift({
+        alert_type: data.alert_type,
+        curr_price: data.curr_price,
+        prev_price: data.prev_price,
+        curr_quantity: data.curr_quantity,
+        prev_quantity: data.prev_quantity,
+        timestamp: data.timestamp || new Date().toISOString(),
+      })
+      if (item._realtime.length > 20) item._realtime.pop()
+    }
+  }
+
   return {
     items,
     loading,
@@ -59,5 +80,6 @@ export const useExtremeTrackStore = defineStore('extremeTrack', () => {
     updateItem,
     removeItem,
     toggleEnabled,
+    updateRealtimeData,
   }
 })

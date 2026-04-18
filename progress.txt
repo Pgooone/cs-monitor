@@ -468,5 +468,41 @@
 
 ---
 
+## 2026-04-18 - Task 19: K线图表、价差看板与 WebSocket 推送
+
+### What was done:
+- 后端：创建 web/ws_manager.py，实现 WebSocketManager 全局单例
+  - 支持 /ws/alerts 告警实时推送频道和 /ws/extreme-track/{name}/{platform} 极致追踪实时数据流频道
+  - 提供 sync 版本广播方法（broadcast_alert_sync / broadcast_extreme_track_sync），支持从 APScheduler 后台线程安全地向 FastAPI 事件循环推送消息
+- 后端：创建 web/routers/kline.py，实现 K 线和价差 API
+  - GET /api/kline/{name}：查询饰品 K 线数据，支持 period（1=时K, 2=日K, 3=周K）和 count 参数，调用 SteamDTClient.get_item_kline()
+  - GET /api/arbitrage：所有监控品跨平台价差列表，按价差百分比降序排列
+  - GET /api/arbitrage/{name}：单品各平台价差明细
+  - 为避免 /kline/{name} 与 /kline/arbitrage 路由冲突，将 arbitrage 路由独立为 arbitrage_router（prefix=/arbitrage）
+- 后端：修改 web/app.py，注册 kline/arbitrage 路由，添加两个 WebSocket endpoint
+- 后端：修改 core/monitor.py，collect_prices() 返回 {"records": ..., "alerts": ...}，使告警可被外部获取
+- 后端：修改 core/scheduler.py，新增 _run_monitor() 和 _run_extreme_tracker() 包装方法，在任务执行后通过 ws_manager 广播实时消息
+- 前端：扩展 frontend/src/api/index.ts，新增 kline、arbitrage、arbitrageItem API 方法和 KlineResponse / ArbitrageItem 类型
+- 前端：创建 frontend/src/utils/ws.ts，实现 WebSocketClient 类（自动重连、指数退避、心跳 ping/pong）
+- 前端：修改 ItemDetail.vue，集成 ECharts K 线图（OHLC + MA5/MA10/MA20 均线 + 成交量柱状图），支持价格走势/K线图切换，支持时K/日K/周K切换
+- 前端：修改 Alerts.vue，集成 WebSocket 连接 /ws/alerts，收到实时告警后通过 store.prependAlert() 插入列表顶部
+- 前端：修改 stores/alerts.ts，新增 prependAlert() 方法支持实时插入
+- 前端：修改 ExtremeTrack.vue，为每个启用的追踪项建立 WebSocket 连接（连接池管理），收到实时数据后更新到 store
+- 前端：修改 stores/extremeTrack.ts，新增 updateRealtimeData() 方法存储实时数据
+
+### Testing:
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m py_compile 所有修改文件无语法错误
+- python -m pytest tests/ -v：65 个测试全部通过（修复 test_monitor.py 适配新的 collect_prices 返回格式）
+- python -m ruff check .：0 errors
+- FastAPI 应用初始化测试通过
+
+### Notes:
+- WebSocket 的 sync 广播通过 asyncio.run_coroutine_threadsafe() 实现，首次 WS 连接时自动捕获事件循环
+- K 线图红绿配色采用国内习惯（涨红跌绿）
+- 前端 WS 客户端支持指数退避重连（初始 3 秒，最大 30 秒）
+
+---
+
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。

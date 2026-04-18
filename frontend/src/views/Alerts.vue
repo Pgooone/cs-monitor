@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick, h } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, h } from 'vue'
 import {
   NCard,
   NSpace,
@@ -69,10 +69,12 @@ import type { DataTableColumns, PaginationProps } from 'naive-ui'
 import { useAlertsStore } from '@/stores/alerts'
 import type { AlertRecord } from '@/api'
 import * as echarts from 'echarts'
+import { WebSocketClient } from '@/utils/ws'
 
 const store = useAlertsStore()
 const chartRef = ref<HTMLDivElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
+let ws: WebSocketClient | null = null
 
 const filterType = ref<string | null>(null)
 const filterStart = ref<string | null>(null)
@@ -221,5 +223,30 @@ onMounted(() => {
   store.fetchStats()
   nextTick(initChart)
   window.addEventListener('resize', () => chartInstance?.resize())
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.host
+  ws = new WebSocketClient({
+    url: `${protocol}//${host}/ws/alerts`,
+    onMessage: (msg) => {
+      if (msg.type === 'alert' && msg.data) {
+        const alert: AlertRecord = {
+          id: Date.now(),
+          market_hash_name: msg.data.market_hash_name,
+          alert_type: msg.data.alert_type,
+          current_price: msg.data.current_price,
+          baseline_price: msg.data.baseline_price,
+          change_percent: msg.data.change_percent,
+          notified_at: msg.data.timestamp || new Date().toISOString(),
+        }
+        store.prependAlert(alert)
+      }
+    },
+  })
+  ws.connect()
+})
+
+onBeforeUnmount(() => {
+  ws?.close()
 })
 </script>

@@ -55,16 +55,27 @@
         </n-grid>
       </n-card>
 
-      <!-- 价格走势图 -->
-      <n-card title="价格走势" class="mt-4">
+      <!-- 价格走势图 / K线图 -->
+      <n-card :title="chartTitle" class="mt-4">
         <template #header-extra>
-          <n-radio-group v-model:value="historyDays" size="small">
-            <n-radio-button :value="7">7天</n-radio-button>
-            <n-radio-button :value="30">30天</n-radio-button>
-          </n-radio-group>
+          <n-space>
+            <n-radio-group v-model:value="chartType" size="small">
+              <n-radio-button value="line">价格走势</n-radio-button>
+              <n-radio-button value="kline">K线图</n-radio-button>
+            </n-radio-group>
+            <n-radio-group v-if="chartType === 'line'" v-model:value="historyDays" size="small">
+              <n-radio-button :value="7">7天</n-radio-button>
+              <n-radio-button :value="30">30天</n-radio-button>
+            </n-radio-group>
+            <n-radio-group v-if="chartType === 'kline'" v-model:value="klinePeriod" size="small">
+              <n-radio-button :value="1">时K</n-radio-button>
+              <n-radio-button :value="2">日K</n-radio-button>
+              <n-radio-button :value="3">周K</n-radio-button>
+            </n-radio-group>
+          </n-space>
         </template>
-        <div ref="chartRef" style="width: 100%; height: 360px;" />
-        <n-empty v-if="!priceHistory.length" description="暂无历史价格数据" />
+        <div ref="chartRef" style="width: 100%; height: 400px;" />
+        <n-empty v-if="chartEmpty" description="暂无数据" />
       </n-card>
 
       <!-- 告警历史 -->
@@ -100,7 +111,7 @@ import {
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import * as echarts from 'echarts'
-import api, { type PriceHistoryItem, type PlatformPriceItem, type AlertRecord } from '@/api'
+import api, { type PriceHistoryItem, type PlatformPriceItem, type AlertRecord, type KlineDataItem } from '@/api'
 
 const route = useRoute()
 const marketHashName = computed(() => decodeURIComponent(route.params.name as string))
@@ -114,9 +125,18 @@ const platformPrices = ref<PlatformPriceItem[]>([])
 const priceHistory = ref<PriceHistoryItem[]>([])
 const alerts = ref<AlertRecord[]>([])
 const historyDays = ref(7)
+const chartType = ref<'line' | 'kline'>('line')
+const klinePeriod = ref(2)
+const klineData = ref<KlineDataItem[]>([])
 
 const chartRef = ref<HTMLDivElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
+
+const chartTitle = computed(() => chartType.value === 'kline' ? 'K线图' : '价格走势')
+const chartEmpty = computed(() => {
+  if (chartType.value === 'kline') return !klineData.value.length
+  return !priceHistory.value.length
+})
 
 const changeText = computed(() => {
   if (changePercent.value == null) return '—'
@@ -135,12 +155,21 @@ function formatDate(dateStr: string | null) {
 }
 
 function initChart() {
-  if (!chartRef.value || !priceHistory.value.length) return
+  if (!chartRef.value || chartEmpty.value) return
   if (chartInstance) {
     chartInstance.dispose()
   }
   chartInstance = echarts.init(chartRef.value)
 
+  if (chartType.value === 'kline') {
+    initKlineChart()
+  } else {
+    initLineChart()
+  }
+}
+
+function initLineChart() {
+  if (!chartInstance) return
   const sorted = [...priceHistory.value].sort(
     (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
   )
@@ -151,25 +180,12 @@ function initChart() {
   const prices = sorted.map((item) => item.price)
 
   const option: echarts.EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true,
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: dates,
-    },
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: dates },
     yAxis: {
       type: 'value',
-      axisLabel: {
-        formatter: (value: number) => `¥${value.toFixed(0)}`,
-      },
+      axisLabel: { formatter: (value: number) => `¥${value.toFixed(0)}` },
     },
     series: [
       {
@@ -177,14 +193,118 @@ function initChart() {
         type: 'line',
         data: prices,
         smooth: true,
-        areaStyle: {
-          opacity: 0.1,
-        },
+        areaStyle: { opacity: 0.1 },
       },
     ],
   }
 
   chartInstance.setOption(option)
+}
+
+function initKlineChart() {
+  if (!chartInstance) return
+  const raw = klineData.value
+  const dates = raw.map((d) => d.date)
+  const data = raw.map((d) => [d.open, d.close, d.low, d.high])
+  const volumes = raw.map((d, i) => [i, d.volume, d.close > d.open ? 1 : -1])
+
+  // 计算 MA
+  const calcMA = (dayCount: number) => {
+    const result: (number | string)[] = []
+    for (let i = 0; i < data.length; i++) {
+      if (i < dayCount - 1) {
+        result.push('-')
+        continue
+      }
+      let sum = 0
+      for (let j = 0; j < dayCount; j++) {
+        sum += data[i - j][1]
+      }
+      result.push(+(sum / dayCount).toFixed(2))
+    }
+    return result
+  }
+
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+    },
+    grid: [
+      { left: '3%', right: '4%', top: '10%', height: '55%' },
+      { left: '3%', right: '4%', top: '70%', height: '20%' },
+    ],
+    xAxis: [
+      { type: 'category', data: dates, gridIndex: 0 },
+      { type: 'category', data: dates, gridIndex: 1, axisLabel: { show: false } },
+    ],
+    yAxis: [
+      {
+        scale: true,
+        gridIndex: 0,
+        axisLabel: { formatter: (v: number) => `¥${v.toFixed(0)}` },
+      },
+      {
+        scale: true,
+        gridIndex: 1,
+        splitNumber: 2,
+        axisLabel: { show: false },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { show: false },
+      },
+    ],
+    dataZoom: [{ type: 'inside', xAxisIndex: [0, 1] }],
+    series: [
+      {
+        name: 'K线',
+        type: 'candlestick',
+        data,
+        itemStyle: {
+          color: '#ef232a',
+          color0: '#14b143',
+          borderColor: '#ef232a',
+          borderColor0: '#14b143',
+        },
+      },
+      {
+        name: 'MA5',
+        type: 'line',
+        data: calcMA(5),
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { opacity: 0.8, width: 1 },
+      },
+      {
+        name: 'MA10',
+        type: 'line',
+        data: calcMA(10),
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { opacity: 0.8, width: 1 },
+      },
+      {
+        name: 'MA20',
+        type: 'line',
+        data: calcMA(20),
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { opacity: 0.8, width: 1 },
+      },
+      {
+        name: '成交量',
+        type: 'bar',
+        xAxisIndex: 1,
+        yAxisIndex: 1,
+        data: volumes,
+        itemStyle: {
+          color: (params: any) => (params.value[2] > 0 ? '#ef232a' : '#14b143'),
+        },
+      },
+    ],
+  }
+
+  chartInstance!.setOption(option)
 }
 
 function handleResize() {
@@ -197,27 +317,34 @@ async function loadData() {
 
   loading.value = true
   try {
-    const [historyRes, platformRes, alertsRes] = await Promise.all([
+    const reqs: any[] = [
       api.priceHistory(name, historyDays.value),
       api.platformPrices(name),
       api.alerts(1, 50, { market_hash_name: name }),
-    ])
+    ]
+    if (chartType.value === 'kline') {
+      reqs.push(api.kline(name, klinePeriod.value))
+    }
+    const results = await Promise.all(reqs)
 
-    priceHistory.value = historyRes.data
-    platformPrices.value = platformRes.data
-    alerts.value = alertsRes.data.items
+    priceHistory.value = results[0].data
+    platformPrices.value = results[1].data
+    alerts.value = results[2].data.items
+    if (chartType.value === 'kline' && results[3]) {
+      klineData.value = results[3].data.data || []
+    }
 
-    if (platformRes.data.length) {
-      currentPrice.value = platformRes.data[0].price
-    } else if (historyRes.data.length) {
-      currentPrice.value = historyRes.data[0].price
+    if (results[1].data.length) {
+      currentPrice.value = results[1].data[0].price
+    } else if (results[0].data.length) {
+      currentPrice.value = results[0].data[0].price
     } else {
       currentPrice.value = null
     }
 
-    if (historyRes.data.length) {
-      const total = historyRes.data.reduce((sum, item) => sum + item.price, 0)
-      avgPrice.value = total / historyRes.data.length
+    if (results[0].data.length) {
+      const total = results[0].data.reduce((sum: number, item: PriceHistoryItem) => sum + item.price, 0)
+      avgPrice.value = total / results[0].data.length
       if (currentPrice.value != null) {
         changePercent.value = ((currentPrice.value - avgPrice.value) / avgPrice.value) * 100
       }
@@ -279,6 +406,16 @@ const alertColumns: DataTableColumns<AlertRecord> = [
 
 watch(historyDays, () => {
   loadData()
+})
+
+watch(chartType, () => {
+  loadData()
+})
+
+watch(klinePeriod, () => {
+  if (chartType.value === 'kline') {
+    loadData()
+  }
 })
 
 onMounted(() => {

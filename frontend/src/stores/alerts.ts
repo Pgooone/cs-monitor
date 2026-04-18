@@ -47,6 +47,11 @@ export const useAlertsStore = defineStore('alerts', () => {
     page.value = p
   }
 
+  function prependAlert(alert: AlertRecord) {
+    items.value.unshift(alert)
+    total.value += 1
+  }
+
   return {
     items,
     total,
@@ -58,5 +63,6 @@ export const useAlertsStore = defineStore('alerts', () => {
     fetchAlerts,
     fetchStats,
     setPage,
+    prependAlert,
   }
 })

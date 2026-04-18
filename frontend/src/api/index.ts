@@ -153,6 +153,32 @@ export interface NotifySettings {
   serverchan_sendkey: string
 }
 
+export interface KlineDataItem {
+  date: string
+  open: number
+  close: number
+  high: number
+  low: number
+  volume: number
+}
+
+export interface KlineResponse {
+  market_hash_name: string
+  period: number
+  data: KlineDataItem[]
+}
+
+export interface ArbitrageItem {
+  market_hash_name: string
+  min_price: number
+  min_platform: string
+  max_price: number
+  max_platform: string
+  spread: number
+  spread_percent: number
+  platforms: PlatformPriceItem[]
+}
+
 export default {
   health() {
     return api.get('/health')
@@ -209,5 +235,16 @@ export default {
   },
   testNotify(channel?: string, extra?: Record<string, any>) {
     return api.post('/settings/notify/test', { channel, extra })
+  },
+  kline(marketHashName: string, period?: number, count?: number) {
+    return api.get<KlineResponse>(`/kline/${encodeURIComponent(marketHashName)}`, {
+      params: { period, count },
+    })
+  },
+  arbitrage() {
+    return api.get<ArbitrageItem[]>('/arbitrage')
+  },
+  arbitrageItem(marketHashName: string) {
+    return api.get<ArbitrageItem>(`/arbitrage/${encodeURIComponent(marketHashName)}`)
   },
 }
