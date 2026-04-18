@@ -186,3 +186,68 @@
 - 项目核心功能已全部开发完成
 - 用户只需在 .env 中配置真实的 Webhook URL 即可接收通知
 - 企微通知在测试中出现 93000 错误是因为使用了占位符 Webhook URL
+
+---
+
+## 2026-04-18 - Task 11: Web API 骨架（FastAPI）
+
+### What was done:
+- 安装 fastapi、uvicorn 并更新 requirements.txt
+- 创建 web/app.py：FastAPI 应用入口，含 CORS 配置（允许 localhost:5173）
+- 创建 web/schemas.py：定义 HealthResponse、DashboardSummary、AlertRecord、PriceRecord Pydantic 模型
+- 创建 web/routers/dashboard.py：实现 /api/dashboard/summary 概览端点
+- 修改 main.py：同时启动 APScheduler（后台线程）+ FastAPI/uvicorn（主线程 8080 端口）
+- 修改 config.py：新增 web_host、web_port 配置，支持从环境变量读取
+- 给 storage/database.py 新增统计查询方法：get_today_alert_count、get_latest_price_records_count、get_latest_price_record_any
+- 创建 tests/test_web_api.py：3 个测试覆盖 health、dashboard summary、CORS preflight
+
+### Testing:
+- python -m py_compile main.py config.py web/*.py web/routers/*.py storage/database.py 无错误
+- python -m pytest tests/ -v：39 个测试全部通过（原有 36 + 新增 3）
+- python -m ruff check .：0 errors
+- python main.py：正常启动，调度器 + Web 服务同时运行，首次价格采集成
+
+### Notes:
+- 依赖注入通过 request.app.state 传递 db 和 config，避免循环导入
+- CLI 监控功能未被破坏，scheduler 仍在后台线程正常运行
+
+---
+
+## 2026-04-18 - PRD Update: v2.0 Web 仪表盘
+
+### Update Description:
+基于《CS2 饰品监控 Web 仪表盘 — 后续开发 PRD》更新 agent workspace，追加 Web 仪表盘功能开发任务。
+
+### New Tasks Added (12):
+- Task 11: Web API 骨架（FastAPI）
+- Task 12: 数据库迁移：监控清单持久化
+- Task 13: Watchlist API 与 Alerts API
+- Task 14: 价格数据 API 与极致追踪 API
+- Task 15: Vue 3 前端初始化与 Dashboard 首页
+- Task 16: 监控清单页与饰品详情页
+- Task 17: 极致追踪页、告警页与设置页
+- Task 18: 前端打包与静态文件托管
+- Task 19: K线图表、价差看板与 WebSocket 推送
+- Task 20: 趋势分析与极致追踪实时面板
+- Task 21: 用户认证与数据归档
+- Task 22: Docker 容器化与性能优化
+
+### Files Updated:
+- task.json：追加 12 个新任务（id 11-22），passes 初始化为 false
+- architecture.md：新增 Web 层、前端层、新数据模型、API 设计、Docker 方案
+- CLAUDE.md：更新项目结构、命令列表、编码规范（增加前端规范）、阻塞场景
+- init.sh：增加 Node.js 检查、前端 npm install
+- .env.example：增加 WEB_HOST、WEB_PORT 配置
+- README.md：增加 Web 仪表盘功能说明、开发模式、技术栈
+- QUICKSTART.md：更新任务清单数量、常用命令
+- progress.txt：追加 PRD 更新记录
+
+### Architecture Changes:
+- 新增 web/ 目录（FastAPI 应用、路由、Pydantic 模型、WebSocket）
+- 新增 frontend/ 目录（Vue 3 + Vite + TypeScript + Naive UI）
+- main.py 改造：同时启动 APScheduler + FastAPI uvicorn
+- storage/models.py 新增 watchlist、extreme_track_config、system_config 表
+- 采用 DB 优先策略：config.py 仅作初始默认值
+
+### Development Guide:
+按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。

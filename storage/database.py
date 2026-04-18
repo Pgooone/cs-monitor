@@ -287,3 +287,46 @@ class Database:
             """
             cursor.execute(sql, (market_hash_name, platform, alert_type))
             return [dict(row) for row in cursor.fetchall()]
+
+    # ------------------------------------------------------------------
+    # 统计查询（Dashboard 用）
+    # ------------------------------------------------------------------
+    def get_today_alert_count(self) -> int:
+        """查询今日告警数量."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM alert_logs
+                WHERE notified_at >= date('now')
+                """
+            )
+            row = cursor.fetchone()
+            return row[0] if row else 0
+
+    def get_latest_price_records_count(self) -> int:
+        """查询最新价格记录数（每饰品每平台各取最新）."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM (
+                    SELECT market_hash_name, platform
+                    FROM price_records
+                    GROUP BY market_hash_name, platform
+                )
+                """
+            )
+            row = cursor.fetchone()
+            return row[0] if row else 0
+
+    def get_latest_price_record_any(self) -> dict[str, Any] | None:
+        """获取任意最新一条价格记录."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT * FROM price_records
+                ORDER BY recorded_at DESC
+                LIMIT 1
+                """
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None

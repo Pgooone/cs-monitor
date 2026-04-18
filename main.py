@@ -1,18 +1,23 @@
 """CS2 饰品价格波动监控系统主入口."""
 
+from __future__ import annotations
+
 import signal
 import sys
+import threading
 
+import uvicorn
 from loguru import logger
 
 from api.steamdt import SteamDTClient, SteamDTConfig
 from config import MonitorConfig
 from core.scheduler import MonitorScheduler
 from storage.database import Database
+from web.app import create_app
 
 
 def main() -> None:
-    """主函数."""
+    """主函数：同时启动 APScheduler + FastAPI."""
     logger.info("🚀 CS2 Monitor 启动中...")
 
     # 加载配置
@@ -40,29 +45,55 @@ def main() -> None:
     # 初始化调度器
     scheduler = MonitorScheduler(client, db, config)
 
-    # 注册 Ctrl+C 信号处理
-    def signal_handler(signum, frame):
+    # 创建 FastAPI 应用
+    app = create_app(db, config)
+
+    # 在后台线程启动调度器
+    def run_scheduler() -> None:
+        try:
+            scheduler.start()
+            logger.info("✅ 调度器已启动，系统运行中...")
+        except Exception:
+            logger.exception("调度器启动失败")
+
+    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+    scheduler_thread.start()
+
+    # 配置 uvicorn
+    web_host = config.web_host
+    web_port = config.web_port
+    uvicorn_config = uvicorn.Config(
+        app,
+        host=web_host,
+        port=web_port,
+        log_level="info",
+    )
+    server = uvicorn.Server(uvicorn_config)
+
+    # 注册信号处理：优雅退出
+    def signal_handler(signum: int | None, frame: object | None) -> None:
         logger.info("🛑 收到中断信号，正在优雅退出...")
         scheduler.shutdown(wait=True)
         client.close()
+        server.should_exit = True
         logger.info("👋 已安全退出")
         sys.exit(0)
 
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    # uvicorn 会覆盖信号处理，所以我们在启动前设置
+    # 同时使用 atexit 确保退出时清理
+    original_sigint = signal.signal(signal.SIGINT, signal_handler)
+    original_sigterm = signal.signal(signal.SIGTERM, signal_handler)
 
-    # 启动调度器
-    scheduler.start()
-    logger.info("✅ 调度器已启动，系统运行中...")
+    logger.info(f"🌐 Web 服务启动中: http://{web_host}:{web_port}")
 
-    # 主循环：保持程序运行
     try:
-        while True:
-            import time
-
-            time.sleep(1)
+        server.run()
     except KeyboardInterrupt:
         signal_handler(None, None)
+    finally:
+        # 恢复原始信号处理
+        signal.signal(signal.SIGINT, original_sigint)
+        signal.signal(signal.SIGTERM, original_sigterm)
 
 
 if __name__ == "__main__":

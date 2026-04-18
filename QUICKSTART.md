@@ -1,12 +1,13 @@
 # 快速开始指南（换机迁移版）
 
-本指南帮助你在另一台电脑上快速启动 CS2 饰品价格波动监控系统的 AI Agent 开发。
+本指南帮助你在另一台电脑上快速启动 CS2 饰品价格监控系统的 AI Agent 开发。
 
 ---
 
 ## 1. 环境要求
 
 - **Python 3.12+**
+- **Node.js 18+**（用于前端开发）
 - **Claude Code CLI**（安装方式：https://claude.ai/code）
 - **Git**（用于 Agent 提交进度）
 - **Bash**（Windows 上可用 Git Bash、MSYS2 或 WSL）
@@ -37,7 +38,8 @@ cd ~/Projects/cs-monitor
 这个脚本会：
 - 检查 Python 版本（要求 3.12+）
 - 创建 `.venv` 虚拟环境
-- 安装 `requirements.txt` 中的所有依赖
+- 安装 `requirements.txt` 中的所有 Python 依赖
+- 检查 Node.js 并安装前端 npm 依赖（如 frontend/ 目录存在）
 - 创建 `data/` 目录
 - 检查 `.env` 文件是否存在
 
@@ -128,8 +130,9 @@ cat automation-logs/automation-YYYYmmdd_HHMMSS.log
 
 ## 7. 开发任务清单
 
-当前 `task.json` 中定义了 10 个任务，按顺序开发：
+当前 `task.json` 中定义了 22 个任务，按顺序开发：
 
+**v1.0（已完成）：**
 1. 项目脚手架与基础配置
 2. SteamDT API 封装模块
 3. 数据存储模块（SQLite）
@@ -140,6 +143,20 @@ cat automation-logs/automation-YYYYmmdd_HHMMSS.log
 8. 主程序入口与优雅退出
 9. 单元测试
 10. 最终集成测试与优化
+
+**v2.0 Web 仪表盘（进行中）：**
+11. Web API 骨架（FastAPI）
+12. 数据库迁移：监控清单持久化
+13. Watchlist API 与 Alerts API
+14. 价格数据 API 与极致追踪 API
+15. Vue 3 前端初始化与 Dashboard 首页
+16. 监控清单页与饰品详情页
+17. 极致追踪页、告警页与设置页
+18. 前端打包与静态文件托管
+19. K线图表、价差看板与 WebSocket 推送
+20. 趋势分析与极致追踪实时面板
+21. 用户认证与数据归档
+22. Docker 容器化与性能优化
 
 每个任务完成后，Agent 会自动：
 - 更新 `task.json` 将该任务标记为 `passes: true`
@@ -181,7 +198,7 @@ cat task.json | python -m json.tool
 - 输出阻塞信息并停止
 
 这时你需要：
-1. 根据阻塞信息解决问题（如填写 `.env`、开通 API 套餐）
+1. 根据阻塞信息解决问题（如填写 `.env`、开通 API 套餐、安装 Node.js）
 2. 重新运行 Claude Code，让 Agent 继续同一个任务
 
 ---
@@ -190,7 +207,8 @@ cat task.json | python -m json.tool
 
 | 文档 | 说明 |
 |------|------|
-| `PRD.md` | 原始产品需求文档 |
+| `PRD.md` | 原始产品需求文档（v1.0） |
+| `CS2 饰品监控 Web 仪表盘 — 后续开发 PRD.md` | v2.0 后续开发 PRD |
 | `architecture.md` | 技术架构设计文档 |
 | `CLAUDE.md` | **AI Agent 工作流规范（必读）** |
 | `task.json` | 开发任务清单 |
@@ -205,19 +223,25 @@ cat task.json | python -m json.tool
 # 初始化环境
 ./init.sh
 
-# 运行主程序
+# 运行主程序（调度器 + Web 服务）
 .venv/Scripts/python.exe main.py        # Windows
 # 或
 .venv/bin/python main.py                # macOS/Linux
 
-# 运行测试
+# 运行后端测试
 .venv/Scripts/python.exe -m pytest tests/    # Windows
 # 或
 .venv/bin/python -m pytest tests/            # macOS/Linux
 
+# 前端开发服务器
+cd frontend && npm run dev              # http://localhost:5173
+
+# 前端构建
+cd frontend && npm run build           # output to frontend/dist
+
 # 代码检查
 ruff check .
-mypy main.py config.py api/ core/ notify/ storage/ utils/
+mypy main.py config.py api/ core/ notify/ storage/ web/
 ```
 
 ---

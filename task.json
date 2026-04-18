@@ -1,6 +1,6 @@
 {
   "project": "CS2 饰品价格波动监控系统",
-  "description": "基于 SteamDT API 的轻量级 CS2 饰品价格监控工具，支持普通批量监控和极致追踪两种模式",
+  "description": "基于 SteamDT API 的 CS2 饰品价格监控工具，支持 CLI 监控 + Web 仪表盘双模式",
   "tasks": [
     {
       "id": 1,
@@ -71,7 +71,7 @@
         "创建 core/analyzer.py，实现 PriceAnalyzer 类",
         "实现波动率计算：(当前价 - 基准价) / 基准价 × 100%",
         "基准价优先使用 7 天均价，缺失时使用上一次采集价格",
-        "实现告警判断：涨幅 ≥ 阈值% 或 跌幅 ≤ -阈值%",
+        "实现告警判断：涨幅 >= 阈值% 或 跌幅 <= -阈值%",
         "实现告警冷却：同一饰品同一方向 4 小时内只告警 1 次",
         "将触发的告警写入 alert_logs 表",
         "集成到 monitor.py 的采集流程中，每次采集后执行分析"
@@ -155,6 +155,170 @@
         "代码格式统一、注释完善"
       ],
       "passes": true
+    },
+    {
+      "id": 11,
+      "title": "Web API 骨架（FastAPI）",
+      "description": "新增 FastAPI Web 层，提供 RESTful API 基础，同时启动调度器和 Web 服务",
+      "steps": [
+        "新增 web/ 目录，创建 web/app.py（FastAPI 应用入口）",
+        "新增 web/schemas.py，定义 Pydantic 数据模型",
+        "安装 fastapi、uvicorn 并更新 requirements.txt",
+        "实现 /api/health 健康检查端点",
+        "实现 /api/dashboard/summary Dashboard 概览端点",
+        "配置 CORS 允许 localhost:5173（Vite 开发端口）",
+        "修改 main.py：同时启动 APScheduler（后台线程）+ FastAPI（主线程 uvicorn 8080）",
+        "确保不破坏已有 CLI 监控功能"
+      ],
+      "passes": true
+    },
+    {
+      "id": 12,
+      "title": "数据库迁移：监控清单持久化",
+      "description": "将 config.py 中的 watchlist 和 extreme_track_list 迁移到 SQLite，新增系统配置表",
+      "steps": [
+        "在 storage/models.py 新增 watchlist 表（id, market_hash_name, display_name, threshold_percent, enabled, created_at, updated_at）",
+        "在 storage/models.py 新增 extreme_track_config 表（完整追踪配置字段）",
+        "在 storage/models.py 新增 system_config 表（key, value, updated_at）",
+        "在 database.py 新增对应 CRUD 方法",
+        "首次启动时如果表为空，自动从 config.py 默认值导入",
+        "修改 core/monitor.py 和 core/extreme_tracker.py，从 DB 读取清单而非 config",
+        "保持 config.py 作为默认值兜底，DB 优先"
+      ],
+      "passes": false
+    },
+    {
+      "id": 13,
+      "title": "Watchlist API 与 Alerts API",
+      "description": "实现监控清单完整 CRUD 和告警记录查询接口",
+      "steps": [
+        "创建 web/routers/watchlist.py：GET/POST/PUT/DELETE /api/watchlist",
+        "创建 web/routers/alerts.py：GET /api/alerts（支持分页、类型过滤、时间范围）",
+        "创建 web/routers/alerts.py：GET /api/alerts/stats（按天/类型聚合）",
+        "在 web/schemas.py 定义 WatchlistItem、WatchlistItemWithPrice、AlertRecord 模型",
+        "编写对应的 API 测试"
+      ],
+      "passes": false
+    },
+    {
+      "id": 14,
+      "title": "价格数据 API 与极致追踪 API",
+      "description": "实现价格查询和极致追踪管理接口",
+      "steps": [
+        "创建 web/routers/prices.py：GET /api/prices/latest（所有监控品最新价）",
+        "创建 web/routers/prices.py：GET /api/prices/{name}/history（历史价格，支持 days/platform 过滤）",
+        "创建 web/routers/prices.py：GET /api/prices/{name}/platforms（各平台当前价）",
+        "创建 web/routers/extreme_track.py：完整 CRUD + toggle 启停",
+        "完善 web/routers/dashboard.py 返回完整统计（active_watchlist、extreme_track_count 等）",
+        "编写对应的 API 测试"
+      ],
+      "passes": false
+    },
+    {
+      "id": 15,
+      "title": "Vue 3 前端初始化与 Dashboard 首页",
+      "description": "初始化 Vue 3 + Vite 项目，实现 Dashboard 首页和基础布局",
+      "steps": [
+        "在 frontend/ 下创建 Vue 3 + Vite + TypeScript 项目（package.json、vite.config.ts）",
+        "安装依赖：naive-ui、echarts、axios、vue-router、pinia、unocss",
+        "配置 vite.config.ts 代理 /api 到 localhost:8080",
+        "创建基础布局：侧边栏导航 + 主内容区",
+        "创建 axios 封装（frontend/src/api/index.ts）和 Pinia store（dashboard.ts）",
+        "实现 Dashboard 首页：4 个统计卡片 + 价格概览表 + 最近告警列表"
+      ],
+      "passes": false
+    },
+    {
+      "id": 16,
+      "title": "监控清单页与饰品详情页",
+      "description": "实现监控清单管理和饰品详情查看页面",
+      "steps": [
+        "实现 Watchlist.vue：表格展示、添加/编辑弹窗、启停开关、删除确认",
+        "实现 Pinia store（watchlist.ts）管理监控清单状态",
+        "实现 ItemDetail.vue：顶部统计卡片（当前价/均价/波动率）",
+        "实现 ItemDetail.vue：各平台价格对比卡片",
+        "实现 ItemDetail.vue：ECharts 价格走势折线图（7天/30天切换）",
+        "实现 ItemDetail.vue：该饰品的告警历史表格"
+      ],
+      "passes": false
+    },
+    {
+      "id": 17,
+      "title": "极致追踪页、告警页与设置页",
+      "description": "完成 Phase 1 剩余前端页面",
+      "steps": [
+        "实现 ExtremeTrack.vue：追踪项列表、添加/编辑弹窗、启停开关",
+        "实现 Alerts.vue：可筛选告警列表（类型、时间范围、搜索）",
+        "实现 Alerts.vue：按天的告警数量柱状图",
+        "实现 Settings.vue：通知渠道配置表单",
+        "实现 Settings.vue：测试通知按钮"
+      ],
+      "passes": false
+    },
+    {
+      "id": 18,
+      "title": "前端打包与静态文件托管",
+      "description": "实现前后端一体化部署，单端口提供服务",
+      "steps": [
+        "配置 frontend npm run build 输出到 frontend/dist",
+        "FastAPI 添加 StaticFiles 挂载 /static → frontend/dist",
+        "添加 fallback 路由支持 SPA history 模式",
+        "访问 http://localhost:8080 直接打开仪表盘",
+        "更新 README.md 添加 Web 仪表盘使用说明"
+      ],
+      "passes": false
+    },
+    {
+      "id": 19,
+      "title": "K线图表、价差看板与 WebSocket 推送",
+      "description": "Phase 2：高级可视化与实时推送",
+      "steps": [
+        "实现 /api/kline/{name} 端点（支持 period/count 参数）",
+        "实现 /api/arbitrage 和 /api/arbitrage/{name} 端点",
+        "前端 ItemDetail.vue 集成 ECharts K 线图（OHLC + MA 均线 + 成交量）",
+        "实现 WebSocket 管理器（web/ws_manager.py）和 WS 路由 /ws/alerts、/ws/extreme-track/{id}",
+        "前端集成 WebSocket 自动重连和心跳",
+        "实现 Alerts.vue 和 ExtremeTrack.vue 实时推送更新"
+      ],
+      "passes": false
+    },
+    {
+      "id": 20,
+      "title": "趋势分析与极致追踪实时面板",
+      "description": "Phase 2：智能趋势标签和实时数据流展示",
+      "steps": [
+        "实现 /api/trends/{name} 端点（连涨/连跌/震荡标签 + MA 均线）",
+        "实现趋势分析核心逻辑（core/trend_analyzer.py）",
+        "前端集成趋势标签到价格概览表和详情页",
+        "实现极致追踪实时面板（时间线式呈现价格/数量变化）"
+      ],
+      "passes": false
+    },
+    {
+      "id": 21,
+      "title": "用户认证与数据归档",
+      "description": "Phase 3：JWT 登录保护、数据归档、健康检查",
+      "steps": [
+        "实现 JWT 认证中间件（单用户模式）",
+        "为所有 API 路由添加登录保护",
+        "实现 90 天以上价格记录自动归档/压缩逻辑",
+        "完善 /api/health 端点，供 Docker / 运维监控系统调用"
+      ],
+      "passes": false
+    },
+    {
+      "id": 22,
+      "title": "Docker 容器化与性能优化",
+      "description": "Phase 3：生产就绪部署",
+      "steps": [
+        "编写 Dockerfile（多阶段构建：Node 前端 + Python 后端）",
+        "编写 docker-compose.yml（含健康检查、数据卷挂载）",
+        "配置 SQLite WAL 模式 + 写入重试 + 连接池优化",
+        "前端 gzip 压缩 + 路由懒加载",
+        "端到端测试：docker-compose up 一键启动",
+        "最终验收：所有 Phase 1/2/3 验收标准通过"
+      ],
+      "passes": false
     }
   ]
 }

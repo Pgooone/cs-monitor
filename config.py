@@ -36,6 +36,10 @@ class MonitorConfig:
         {"name": "AWP | Asiimov (Field-Tested)", "threshold": 5.0},
     ])
 
+    # === Web 服务配置 ===
+    web_host: str = "0.0.0.0"
+    web_port: int = 8080
+
     # === 极致追踪配置 ===
     extreme_track_list: list = field(default_factory=list)
 
@@ -50,6 +54,8 @@ class MonitorConfig:
             check_interval_minutes=int(getenv("CHECK_INTERVAL_MINUTES", "30")),
             default_threshold_percent=float(getenv("DEFAULT_THRESHOLD_PERCENT", "5.0")),
             alert_cooldown_hours=int(getenv("ALERT_COOLDOWN_HOURS", "4")),
+            web_host=getenv("WEB_HOST", "0.0.0.0"),
+            web_port=int(getenv("WEB_PORT", "8080")),
             notify_channel=getenv("NOTIFY_CHANNEL", "wecom"),
             wecom_webhook_url=getenv("WECOM_WEBHOOK_URL", ""),
             telegram_bot_token=getenv("TELEGRAM_BOT_TOKEN", ""),
