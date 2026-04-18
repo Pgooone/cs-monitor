@@ -16,6 +16,16 @@ export interface DashboardSummary {
   last_update: string | null
 }
 
+export interface WatchlistItem {
+  id: number
+  market_hash_name: string
+  display_name: string | null
+  threshold_percent: number
+  enabled: number
+  created_at: string | null
+  updated_at: string | null
+}
+
 export interface WatchlistItemWithPrice {
   id: number
   market_hash_name: string
@@ -46,6 +56,34 @@ export interface AlertListResponse {
   limit: number
 }
 
+export interface PriceHistoryItem {
+  id: number
+  market_hash_name: string
+  platform: string
+  price: number
+  recorded_at: string
+}
+
+export interface PlatformPriceItem {
+  market_hash_name: string
+  platform: string
+  price: number
+  recorded_at: string
+}
+
+export interface CreateWatchlistPayload {
+  market_hash_name: string
+  display_name?: string | null
+  threshold_percent?: number
+  enabled?: boolean
+}
+
+export interface UpdateWatchlistPayload {
+  display_name?: string | null
+  threshold_percent?: number
+  enabled?: boolean
+}
+
 export default {
   health() {
     return api.get('/health')
@@ -56,7 +94,24 @@ export default {
   watchlist() {
     return api.get<WatchlistItemWithPrice[]>('/watchlist')
   },
-  alerts(page = 1, limit = 10) {
-    return api.get<AlertListResponse>('/alerts', { params: { page, limit } })
+  createWatchlistItem(payload: CreateWatchlistPayload) {
+    return api.post<WatchlistItem>('/watchlist', payload)
+  },
+  updateWatchlistItem(marketHashName: string, payload: UpdateWatchlistPayload) {
+    return api.put<WatchlistItem>(`/watchlist/${encodeURIComponent(marketHashName)}`, payload)
+  },
+  deleteWatchlistItem(marketHashName: string) {
+    return api.delete(`/watchlist/${encodeURIComponent(marketHashName)}`)
+  },
+  alerts(page = 1, limit = 10, params?: { alert_type?: string; start_date?: string; end_date?: string; market_hash_name?: string }) {
+    return api.get<AlertListResponse>('/alerts', { params: { page, limit, ...params } })
+  },
+  priceHistory(marketHashName: string, days?: number, platform?: string) {
+    return api.get<PriceHistoryItem[]>(`/prices/${encodeURIComponent(marketHashName)}/history`, {
+      params: { days, platform },
+    })
+  },
+  platformPrices(marketHashName: string) {
+    return api.get<PlatformPriceItem[]>(`/prices/${encodeURIComponent(marketHashName)}/platforms`)
   },
 }

@@ -48,6 +48,7 @@ const pageTitle = computed(() => {
   const titles: Record<string, string> = {
     Dashboard: 'Dashboard',
     Watchlist: '监控清单',
+    ItemDetail: '饰品详情',
     ExtremeTrack: '极致追踪',
     Alerts: '告警记录',
     Settings: '系统设置',

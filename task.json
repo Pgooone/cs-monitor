@@ -240,7 +240,7 @@
         "实现 ItemDetail.vue：ECharts 价格走势折线图（7天/30天切换）",
         "实现 ItemDetail.vue：该饰品的告警历史表格"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 17,

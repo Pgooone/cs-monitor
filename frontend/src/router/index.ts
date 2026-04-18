@@ -20,6 +20,11 @@ const router = createRouter({
           component: () => import('@/views/Watchlist.vue'),
         },
         {
+          path: 'item/:name',
+          name: 'ItemDetail',
+          component: () => import('@/views/ItemDetail.vue'),
+        },
+        {
           path: 'extreme-track',
           name: 'ExtremeTrack',
           component: () => import('@/views/ExtremeTrack.vue'),

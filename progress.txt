@@ -134,7 +134,7 @@
 - 首次启动立即执行一次价格采集（已在 scheduler.start() 中实现）
 - 实现 Ctrl+C (SIGINT) 和 SIGTERM 优雅退出处理，关闭调度器和 HTTP 客户端
 - 添加主循环保持程序常驻运行
-- 修正 .env 中 STEAMDT_API_BASE_URL 为 https://open.steamdt.com
+- 修正 .env 中 STEAMDT_BASE_URL 为 https://open.steamdt.com
 
 ### Testing:
 - python -m py_compile main.py 无错误
@@ -362,6 +362,40 @@
 - 统计卡片使用 naive-ui NStatistic + NCard 组件
 - 表格使用 NDataTable，支持分页和溢出提示
 - 构建产物输出到 frontend/dist（为 Task 18 静态文件托管做准备）
+
+## 2026-04-18 - Task 16: 监控清单页与饰品详情页
+
+### What was done:
+- 扩展 frontend/src/api/index.ts：
+  - 新增 WatchlistItem、PriceHistoryItem、PlatformPriceItem、CreateWatchlistPayload、UpdateWatchlistPayload 类型
+  - 新增 createWatchlistItem、updateWatchlistItem、deleteWatchlistItem、priceHistory、platformPrices API 方法
+- 创建 Pinia store stores/watchlist.ts：
+  - 管理监控清单状态（items、loading、error）
+  - 实现 fetchItems、addItem、updateItem、removeItem、toggleEnabled 方法
+- 实现 Watchlist.vue 完整功能：
+  - 表格展示监控清单（名称、当前价格、平台、阈值、状态、操作）
+  - 点击饰品名称跳转 ItemDetail 详情页
+  - 添加/编辑弹窗（表单验证、名称不可重复）
+  - 启停开关（表格内切换启用/禁用状态）
+  - 删除确认（对话框二次确认）
+- 实现 ItemDetail.vue 饰品详情页：
+  - 顶部 3 个统计卡片（当前价格、均价、波动率）
+  - 各平台价格对比卡片（grid 布局）
+  - ECharts 价格走势折线图（支持 7天/30天切换，面积图）
+  - 该饰品的告警历史表格（类型、当前价、基准价、波动、时间）
+- 更新 src/router/index.ts：新增 /item/:name 路由
+- 更新 AppLayout.vue 页面标题映射：新增 ItemDetail → 饰品详情
+
+### Testing:
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m pytest tests/ -v：65 个后端测试全部通过，无回归
+- python -m ruff check .：0 errors
+
+### Notes:
+- ECharts 按需全量引入（当前仅折线图），后续 K 线图（Task 19）可复用图表初始化逻辑
+- 详情页通过 route.params.name 获取饰品名称，使用 encodeURIComponent/解码处理特殊字符
+- 价格走势图按 recorded_at 升序排列，x 轴显示月日格式
+- 告警历史调用 /api/alerts?market_hash_name=xxx 接口过滤
 
 ---
 
