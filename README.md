@@ -129,6 +129,10 @@ cp .env.example .env
 ### 3. 运行主程序
 
 ```bash
+# 先构建前端（仅需执行一次，或前端代码更新后重新构建）
+cd frontend && npm run build && cd ..
+
+# 启动主程序
 python main.py
 ```
 
@@ -136,9 +140,13 @@ python main.py
 - **后台调度器**按设定间隔运行 CLI 监控
 - **FastAPI Web 服务**在 `http://localhost:8080` 提供 Web 仪表盘
 
+构建完成后，直接在浏览器打开 **`http://localhost:8080`** 即可访问 Web 仪表盘，无需额外启动前端服务器。
+
 按 `Ctrl+C` 可优雅退出。
 
 ### 4. 开发模式（前端热更新）
+
+如需修改前端代码并实时预览：
 
 ```bash
 # 终端 1：启动后端
@@ -149,7 +157,7 @@ cd frontend
 npm run dev
 ```
 
-前端开发服务器运行在 `http://localhost:5173`，通过 Vite 代理访问后端 API。
+前端开发服务器运行在 `http://localhost:5173`，通过 Vite 代理访问后端 API。开发完成后记得运行 `npm run build` 重新构建，使生产环境生效。
 
 ### 5. 运行测试
 

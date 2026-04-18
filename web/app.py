@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from loguru import logger
 
 from config import MonitorConfig
 from storage.database import Database
@@ -43,5 +47,35 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
     def health_check() -> dict[str, str]:
         """健康检查端点."""
         return {"status": "ok"}
+
+    # 前端静态文件托管 + SPA fallback
+    frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str) -> FileResponse:
+        """提供前端静态文件，对不存在的路径回退到 index.html（SPA 支持）."""
+        # API 路径交给上面的路由处理，这里不拦截
+        if full_path.startswith("api/") or full_path == "api":
+            raise HTTPException(status_code=404, detail="Not found")
+
+        # 如果请求的是存在的静态文件，直接返回
+        file_path = frontend_dist / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+
+        # 否则返回 index.html，由 Vue Router 处理前端路由
+        index_file = frontend_dist / "index.html"
+        if not index_file.exists():
+            raise HTTPException(
+                status_code=500,
+                detail="Frontend not built. Run: cd frontend && npm run build",
+            )
+        return FileResponse(str(index_file))
+
+    if not frontend_dist.exists():
+        logger.warning(
+            f"前端构建产物不存在: {frontend_dist}，"
+            "访问 http://localhost:8080/ 将看到 500 错误而非仪表盘"
+        )
 
     return app

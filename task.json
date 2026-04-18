@@ -266,7 +266,7 @@
         "访问 http://localhost:8080 直接打开仪表盘",
         "更新 README.md 添加 Web 仪表盘使用说明"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 19,

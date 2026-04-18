@@ -439,5 +439,34 @@
 
 ---
 
+## 2026-04-18 - Task 18: 前端打包与静态文件托管
+
+### What was done:
+- 运行 `cd frontend && npm run build` 生成生产构建产物到 frontend/dist
+- 修改 web/app.py：
+  - 引入 `FileResponse`、`HTTPException` 和 `Path`
+  - 添加 catch-all 路由 `/{full_path:path}`，实现 SPA fallback
+  - 对存在的静态文件（CSS/JS/图片）直接返回文件内容
+  - 对不存在的路径回退到 index.html，由 Vue Router 处理前端路由
+  - API 路径（/api/*）正常抛出 404，不干扰已有 API 路由
+- 更新 README.md「快速开始」章节：
+  - 步骤 3 增加 `npm run build` 构建说明
+  - 明确说明构建后访问 `http://localhost:8080` 即可直接打开仪表盘
+  - 步骤 4 开发模式增加提醒：开发完成后需重新构建使生产环境生效
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无编译错误
+- TestClient 测试：GET / 返回 index.html，GET /watchlist 返回 index.html（SPA fallback），GET /assets/... 返回静态文件，GET /api/health 返回 JSON，GET /docs 正常可用
+- 实际启动服务测试：curl 验证 /、/watchlist、/assets/、/api/health 均正常
+- `python -m pytest tests/ -v`：65 个测试全部通过，无回归
+- `python -m ruff check .`：0 errors
+- `python -m py_compile web/app.py main.py`：无语法错误
+
+### Notes:
+- SPA fallback 使用 catch-all route 而非 `StaticFiles(html=True)`，后者对非根路径不会自动回退到 index.html
+- 前端构建产物（frontend/dist）不提交到 git，由 CI/CD 或部署时构建
+
+---
+
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。
