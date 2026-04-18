@@ -308,6 +308,35 @@
 - get_watchlist_with_latest_price 使用关联子查询获取每个饰品最新的价格记录
 - alerts 查询支持完整的时间范围过滤和分页
 
+## 2026-04-18 - Task 14: 价格数据 API 与极致追踪 API
+
+### What was done:
+- 扩展 web/schemas.py：新增 LatestPriceItem、PriceHistoryItem、PlatformPriceItem、ExtremeTrackConfig、ExtremeTrackConfigCreate、ExtremeTrackConfigUpdate Pydantic 模型
+- 创建 web/routers/prices.py：实现价格数据查询接口
+  - GET /api/prices/latest：获取所有监控品最新价格（每饰品每平台各取最新）
+  - GET /api/prices/{name}/history：获取历史价格，支持 days 和 platform 过滤
+  - GET /api/prices/{name}/platforms：获取指定饰品在各平台的最新价格
+- 创建 web/routers/extreme_track.py：实现极致追踪完整 CRUD + toggle 启停
+  - GET /api/extreme-track：获取全部追踪配置
+  - POST /api/extreme-track：添加追踪配置（重复返回 409）
+  - PUT /api/extreme-track/{name}/{platform}：更新追踪配置（不存在返回 404）
+  - DELETE /api/extreme-track/{name}/{platform}：删除追踪配置
+  - POST /api/extreme-track/{name}/{platform}/toggle：切换启停状态
+- storage/database.py 新增查询方法：get_latest_prices()、get_price_history()、get_price_by_platforms()
+- 更新 web/app.py：注册 prices 和 extreme_track 路由
+- tests/test_web_api.py 新增 12 个测试覆盖 prices 查询和 extreme_track CRUD/toggle
+
+### Testing:
+- python -m py_compile 所有修改文件无语法错误
+- python -m pytest tests/ -v：65 个测试全部通过（原有 51 + 新增 14）
+- python -m ruff check .：0 errors
+- python main.py：可正常导入和启动
+
+### Notes:
+- prices 路由中的 {market_hash_name} 支持 URL 编码的特殊字符（如空格、|）
+- get_price_history 的 days 参数使用 SQLite datetime 字符串拼接（参数绑定不支持间隔值）
+- extreme_track 的 toggle 端点返回布尔值 enabled，便于前端直接更新状态
+
 ---
 
 ### Development Guide:

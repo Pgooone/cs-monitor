@@ -121,3 +121,90 @@ class PriceRecord(BaseModel):
     platform: str
     price: float
     recorded_at: datetime
+
+
+class LatestPriceItem(BaseModel):
+    """最新价格项."""
+
+    market_hash_name: str
+    platform: str
+    price: float
+    recorded_at: datetime
+
+
+class PriceHistoryItem(BaseModel):
+    """历史价格项."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    market_hash_name: str
+    platform: str
+    price: float
+    recorded_at: datetime
+
+
+class PlatformPriceItem(BaseModel):
+    """各平台当前价格项."""
+
+    market_hash_name: str
+    platform: str
+    price: float
+    recorded_at: datetime
+
+
+class ExtremeTrackConfig(BaseModel):
+    """极致追踪配置模型."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    market_hash_name: str
+    platform: str
+    interval_seconds: int = 60
+    enabled: int = 1
+    price_track_enabled: int = 1
+    price_change_mode: str = "any"
+    price_threshold_percent: float = 0.0
+    quantity_track_enabled: int = 1
+    quantity_change_mode: str = "any"
+    quantity_threshold_percent: float = 0.0
+    alert_cooldown_seconds: int = 0
+    quiet_hours_start: str | None = None
+    quiet_hours_end: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ExtremeTrackConfigCreate(BaseModel):
+    """创建极致追踪配置请求."""
+
+    market_hash_name: str = Field(..., min_length=1, description="饰品市场名称")
+    platform: str = Field(..., min_length=1, description="平台名称")
+    interval_seconds: int = Field(60, ge=5, description="轮询间隔秒数")
+    enabled: bool = Field(True, description="是否启用")
+    price_track_enabled: bool = Field(True, description="是否追踪价格")
+    price_change_mode: str = Field("any", description="价格变动模式: any/percent")
+    price_threshold_percent: float = Field(0.0, ge=0.0, description="价格变动阈值")
+    quantity_track_enabled: bool = Field(True, description="是否追踪数量")
+    quantity_change_mode: str = Field("any", description="数量变动模式: any/percent")
+    quantity_threshold_percent: float = Field(0.0, ge=0.0, description="数量变动阈值")
+    alert_cooldown_seconds: int = Field(0, ge=0, description="告警冷却秒数")
+    quiet_hours_start: str | None = Field(None, description="免打扰开始时间 (HH:MM)")
+    quiet_hours_end: str | None = Field(None, description="免打扰结束时间 (HH:MM)")
+
+
+class ExtremeTrackConfigUpdate(BaseModel):
+    """更新极致追踪配置请求."""
+
+    interval_seconds: int | None = Field(None, ge=5, description="轮询间隔秒数")
+    enabled: bool | None = Field(None, description="是否启用")
+    price_track_enabled: bool | None = Field(None, description="是否追踪价格")
+    price_change_mode: str | None = Field(None, description="价格变动模式: any/percent")
+    price_threshold_percent: float | None = Field(None, ge=0.0, description="价格变动阈值")
+    quantity_track_enabled: bool | None = Field(None, description="是否追踪数量")
+    quantity_change_mode: str | None = Field(None, description="数量变动模式: any/percent")
+    quantity_threshold_percent: float | None = Field(None, ge=0.0, description="数量变动阈值")
+    alert_cooldown_seconds: int | None = Field(None, ge=0, description="告警冷却秒数")
+    quiet_hours_start: str | None = Field(None, description="免打扰开始时间 (HH:MM)")
+    quiet_hours_end: str | None = Field(None, description="免打扰结束时间 (HH:MM)")

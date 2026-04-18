@@ -795,3 +795,77 @@ class Database:
                 )
             row = cursor.fetchone()
             return row[0] if row else 0
+
+    # ------------------------------------------------------------------
+    # prices 查询（价格数据 API 用）
+    # ------------------------------------------------------------------
+    def get_latest_prices(self) -> list[dict[str, Any]]:
+        """获取所有监控项的最新价格（每饰品每平台各取最新）."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT pr.market_hash_name, pr.platform, pr.price, pr.recorded_at
+                FROM price_records pr
+                INNER JOIN (
+                    SELECT market_hash_name, platform, MAX(recorded_at) AS max_at
+                    FROM price_records
+                    GROUP BY market_hash_name, platform
+                ) latest ON pr.market_hash_name = latest.market_hash_name
+                    AND pr.platform = latest.platform
+                    AND pr.recorded_at = latest.max_at
+                ORDER BY pr.market_hash_name, pr.platform
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_price_history(
+        self,
+        market_hash_name: str,
+        days: int | None = None,
+        platform: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """获取指定饰品的历史价格记录."""
+        conditions = ["market_hash_name = ?"]
+        params: list[Any] = [market_hash_name]
+        if platform:
+            conditions.append("platform = ?")
+            params.append(platform)
+
+        where_clause = " AND ".join(conditions)
+        # SQLite datetime 表达式不支持参数绑定间隔值，需字符串拼接
+        if days:
+            where_clause += f" AND recorded_at >= datetime('now', '-{days} days')"
+
+        with self._cursor() as cursor:
+            cursor.execute(
+                f"""
+                SELECT * FROM price_records
+                WHERE {where_clause}
+                ORDER BY recorded_at DESC
+                """,
+                tuple(params),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_price_by_platforms(
+        self, market_hash_name: str
+    ) -> list[dict[str, Any]]:
+        """获取指定饰品在各平台的最新价格."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT pr.market_hash_name, pr.platform, pr.price, pr.recorded_at
+                FROM price_records pr
+                INNER JOIN (
+                    SELECT platform, MAX(recorded_at) AS max_at
+                    FROM price_records
+                    WHERE market_hash_name = ?
+                    GROUP BY platform
+                ) latest ON pr.platform = latest.platform
+                    AND pr.recorded_at = latest.max_at
+                WHERE pr.market_hash_name = ?
+                ORDER BY pr.platform
+                """,
+                (market_hash_name, market_hash_name),
+            )
+            return [dict(row) for row in cursor.fetchall()]

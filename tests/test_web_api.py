@@ -244,3 +244,186 @@ class TestAlertsEndpoint:
         assert "by_day" in data
         assert "by_type" in data
         assert data["total"] == 3
+
+
+class TestPricesEndpoint:
+    """价格数据端点测试."""
+
+    def test_get_latest_prices_empty(self, client: TestClient) -> None:
+        """测试空价格记录返回空列表."""
+        response = client.get("/api/prices/latest")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_get_latest_prices(self, client: TestClient) -> None:
+        """测试获取最新价格."""
+        db = client.app.state.db
+        db.insert_item("AK-47 | Redline")
+        db.insert_item("AWP | Asiimov")
+        db.insert_price_record("AK-47 | Redline", "buff", 100.0)
+        db.insert_price_record("AK-47 | Redline", "uu", 98.0)
+        db.insert_price_record("AWP | Asiimov", "buff", 200.0)
+
+        response = client.get("/api/prices/latest")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 3
+        names = {item["market_hash_name"] for item in data}
+        assert "AK-47 | Redline" in names
+        assert "AWP | Asiimov" in names
+
+    def test_get_price_history(self, client: TestClient) -> None:
+        """测试获取历史价格."""
+        db = client.app.state.db
+        db.insert_item("AK-47 | Redline")
+        db.insert_price_record("AK-47 | Redline", "buff", 100.0)
+        db.insert_price_record("AK-47 | Redline", "buff", 105.0)
+        db.insert_price_record("AK-47 | Redline", "uu", 98.0)
+
+        response = client.get("/api/prices/AK-47%20%7C%20Redline/history")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 3
+
+    def test_get_price_history_with_platform_filter(self, client: TestClient) -> None:
+        """测试历史价格按平台过滤."""
+        db = client.app.state.db
+        db.insert_item("AK-47 | Redline")
+        db.insert_price_record("AK-47 | Redline", "buff", 100.0)
+        db.insert_price_record("AK-47 | Redline", "uu", 98.0)
+
+        response = client.get(
+            "/api/prices/AK-47%20%7C%20Redline/history?platform=buff"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["platform"] == "buff"
+
+    def test_get_price_by_platforms(self, client: TestClient) -> None:
+        """测试获取各平台当前价."""
+        db = client.app.state.db
+        db.insert_item("AK-47 | Redline")
+        db.insert_price_record("AK-47 | Redline", "buff", 100.0)
+        db.insert_price_record("AK-47 | Redline", "uu", 98.0)
+
+        response = client.get(
+            "/api/prices/AK-47%20%7C%20Redline/platforms"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        platforms = {item["platform"] for item in data}
+        assert platforms == {"buff", "uu"}
+
+
+class TestExtremeTrackEndpoint:
+    """极致追踪端点测试."""
+
+    def test_get_extreme_track_empty(self, client: TestClient) -> None:
+        """测试空极致追踪配置返回空列表."""
+        response = client.get("/api/extreme-track")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_create_extreme_track_config(self, client: TestClient) -> None:
+        """测试创建极致追踪配置."""
+        payload = {
+            "market_hash_name": "AK-47 | Redline",
+            "platform": "buff",
+            "interval_seconds": 30,
+            "enabled": True,
+            "price_change_mode": "percent",
+            "price_threshold_percent": 1.0,
+        }
+        response = client.post("/api/extreme-track", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["market_hash_name"] == payload["market_hash_name"]
+        assert data["platform"] == payload["platform"]
+        assert data["interval_seconds"] == 30
+        assert data["enabled"] == 1
+        assert data["price_change_mode"] == "percent"
+        assert data["price_threshold_percent"] == 1.0
+
+    def test_create_duplicate_extreme_track(self, client: TestClient) -> None:
+        """测试重复创建返回 409."""
+        payload = {
+            "market_hash_name": "Duplicate Item",
+            "platform": "buff",
+        }
+        r1 = client.post("/api/extreme-track", json=payload)
+        assert r1.status_code == 200
+        r2 = client.post("/api/extreme-track", json=payload)
+        assert r2.status_code == 409
+
+    def test_update_extreme_track_config(self, client: TestClient) -> None:
+        """测试更新极致追踪配置."""
+        payload = {
+            "market_hash_name": "Update Item",
+            "platform": "buff",
+            "interval_seconds": 60,
+        }
+        client.post("/api/extreme-track", json=payload)
+        update = {"interval_seconds": 120, "enabled": False}
+        response = client.put(
+            "/api/extreme-track/Update%20Item/buff", json=update
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["interval_seconds"] == 120
+        assert data["enabled"] == 0
+
+    def test_update_nonexistent_extreme_track(self, client: TestClient) -> None:
+        """测试更新不存在的配置返回 404."""
+        response = client.put(
+            "/api/extreme-track/Nonexistent/buff",
+            json={"interval_seconds": 120},
+        )
+        assert response.status_code == 404
+
+    def test_delete_extreme_track_config(self, client: TestClient) -> None:
+        """测试删除极致追踪配置."""
+        payload = {
+            "market_hash_name": "Delete Item",
+            "platform": "buff",
+        }
+        client.post("/api/extreme-track", json=payload)
+        response = client.delete("/api/extreme-track/Delete%20Item/buff")
+        assert response.status_code == 200
+        get_resp = client.get("/api/extreme-track")
+        assert all(
+            item["market_hash_name"] != "Delete Item"
+            for item in get_resp.json()
+        )
+
+    def test_delete_nonexistent_extreme_track(self, client: TestClient) -> None:
+        """测试删除不存在的配置返回 404."""
+        response = client.delete("/api/extreme-track/Nonexistent/buff")
+        assert response.status_code == 404
+
+    def test_toggle_extreme_track_config(self, client: TestClient) -> None:
+        """测试切换极致追踪启停状态."""
+        payload = {
+            "market_hash_name": "Toggle Item",
+            "platform": "buff",
+            "enabled": True,
+        }
+        client.post("/api/extreme-track", json=payload)
+
+        # 切换为禁用
+        response = client.post("/api/extreme-track/Toggle%20Item/buff/toggle")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["enabled"] is False
+
+        # 再次切换为启用
+        response = client.post("/api/extreme-track/Toggle%20Item/buff/toggle")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["enabled"] is True
+
+    def test_toggle_nonexistent_extreme_track(self, client: TestClient) -> None:
+        """测试切换不存在的配置返回 404."""
+        response = client.post("/api/extreme-track/Nonexistent/buff/toggle")
+        assert response.status_code == 404

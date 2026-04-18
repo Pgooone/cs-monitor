@@ -212,7 +212,7 @@
         "完善 web/routers/dashboard.py 返回完整统计（active_watchlist、extreme_track_count 等）",
         "编写对应的 API 测试"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 15,
