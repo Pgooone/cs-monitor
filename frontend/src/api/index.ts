@@ -8,6 +8,32 @@ const api = axios.create({
   },
 })
 
+// Request 拦截器：自动注入 Authorization header
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('cs_monitor_token')
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error),
+)
+
+// Response 拦截器：401 自动清除 token 并跳转登录
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('cs_monitor_token')
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  },
+)
+
 export interface DashboardSummary {
   active_watchlist: number
   extreme_track_count: number
@@ -194,6 +220,9 @@ export interface TrendAnalysisResponse {
 }
 
 export default {
+  login(password: string) {
+    return api.post('/auth/login', { password })
+  },
   health() {
     return api.get('/health')
   },

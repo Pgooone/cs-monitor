@@ -5,6 +5,12 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/Login.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/',
       component: AppLayout,
       children: [
@@ -41,6 +47,18 @@ const router = createRouter({
       ],
     },
   ],
+})
+
+// 路由守卫：未登录且非公开页面则重定向到登录页
+router.beforeEach((to, _from, next) => {
+  const token = localStorage.getItem('cs_monitor_token')
+  if (!token && !to.meta.public) {
+    next('/login')
+  } else if (token && to.path === '/login') {
+    next('/')
+  } else {
+    next()
+  }
 })
 
 export default router
