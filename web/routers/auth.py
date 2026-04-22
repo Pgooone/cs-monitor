@@ -29,7 +29,7 @@ def login(
 
 @router.get("/me")
 def me(
-    payload: dict = Depends(lambda r: None),  # 占位，实际由路由保护处理
+    payload: dict = Depends(require_auth),
 ) -> dict:
     """获取当前登录用户信息."""
-    return {"username": "admin", "role": "admin"}
+    return {"username": payload.get("sub", "admin"), "role": "admin"}
