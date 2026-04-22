@@ -26,6 +26,12 @@ def main() -> None:
         logger.error("❌ 未配置 STEAMDT_API_KEY，请在 .env 中设置后重试")
         sys.exit(1)
 
+    # 安全检查：默认密码警告
+    if config.is_default_credentials():
+        logger.warning("🚨 【安全警告】正在使用默认密码或 JWT secret！")
+        logger.warning("🚨 请立即修改 ADMIN_PASSWORD 和 JWT_SECRET 环境变量")
+        logger.warning("🚨 在生产环境中使用默认值会导致严重的安全隐患")
+
     logger.info(f"✅ 配置加载完成，通知渠道: {config.notify_channel}")
 
     # 初始化数据库

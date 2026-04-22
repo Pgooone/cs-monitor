@@ -14,7 +14,7 @@ class MonitorConfig:
 
     # === API 配置 ===
     api_key: str = ""
-    api_base_url: str = "https://api.steamdt.com"
+    api_base_url: str = "https://open.steamdt.com"
     request_timeout: int = 30
     request_retry: int = 3
 
@@ -47,6 +47,10 @@ class MonitorConfig:
 
     # === 极致追踪配置 ===
     extreme_track_list: list = field(default_factory=list)
+
+    def is_default_credentials(self) -> bool:
+        """检查是否使用了默认的弱密码或 JWT secret."""
+        return self.admin_password == "admin" or self.jwt_secret == "change-me-in-production"
 
     @classmethod
     def from_env(cls) -> "MonitorConfig":
