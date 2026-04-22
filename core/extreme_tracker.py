@@ -304,7 +304,6 @@ class ExtremeTracker:
             self._handle_success(track_config)
             return None
 
-        # 写入告警
         prev_price = last.get("price")
         curr_price = current.get("price")
         prev_qty = last.get("quantity")
@@ -314,25 +313,6 @@ class ExtremeTracker:
         price_change_pct = changes.get("price_change_percent", 0)
         qty_change = changes.get("quantity_change", 0)
         qty_change_pct = changes.get("quantity_change_percent", 0)
-
-        self.db.insert_extreme_alert(
-            market_hash_name=market_hash_name,
-            platform=platform,
-            alert_type=alert_type,
-            prev_price=prev_price,
-            curr_price=curr_price,
-            price_change_percent=price_change_pct,
-            prev_quantity=prev_qty,
-            curr_quantity=curr_qty,
-            quantity_change_percent=qty_change_pct,
-        )
-
-        self._handle_success(track_config)
-
-        logger.warning(
-            f"极致追踪 [{tid}] 触发 {alert_type} 告警: "
-            f"价格 {prev_price}→{curr_price}, 数量 {prev_qty}→{curr_qty}"
-        )
 
         result = {
             "track_id": tid,
@@ -346,8 +326,32 @@ class ExtremeTracker:
             "quantity_change": qty_change,
             "quantity_change_percent": qty_change_pct,
         }
-        self.notifier.send_extreme_alert(result, market_hash_name, platform)
-        return result
+        sent = self.notifier.send_extreme_alert(result, market_hash_name, platform)
+        if sent:
+            self.db.insert_extreme_alert(
+                market_hash_name=market_hash_name,
+                platform=platform,
+                alert_type=alert_type,
+                prev_price=prev_price,
+                curr_price=curr_price,
+                price_change_percent=price_change_pct,
+                prev_quantity=prev_qty,
+                curr_quantity=curr_qty,
+                quantity_change_percent=qty_change_pct,
+            )
+            self._handle_success(track_config)
+            logger.warning(
+                f"极致追踪 [{tid}] 触发 {alert_type} 告警: "
+                f"价格 {prev_price}→{curr_price}, 数量 {prev_qty}→{curr_qty}"
+            )
+            return result
+        else:
+            self._handle_success(track_config)
+            logger.error(
+                f"极致追踪 [{tid}] {alert_type} 告警通知发送失败，"
+                f"未记录冷却，下次将重试"
+            )
+            return None
 
     def tick(self) -> list[dict[str, Any]]:
         """执行一轮极致追踪检查."""

@@ -122,25 +122,32 @@ class PriceAnalyzer:
                 if self._check_alert_cooldown(
                     market_hash_name, "price_surge"
                 ):
-                    self.db.insert_alert_log(
-                        market_hash_name,
-                        "price_surge",
-                        current_price=current_price,
-                        baseline_price=baseline_price,
-                        change_percent=change_percent,
-                    )
-                    alerts.append({
+                    alert_data = {
                         "market_hash_name": market_hash_name,
                         "alert_type": "price_surge",
                         "current_price": current_price,
                         "baseline_price": baseline_price,
                         "change_percent": change_percent,
-                    })
-                    logger.warning(
-                        f"🚨 {market_hash_name} 涨价告警: "
-                        f"+{change_percent:.2f}%"
-                    )
-                    self.notifier.send_normal_alert(alerts[-1])
+                    }
+                    sent = self.notifier.send_normal_alert(alert_data)
+                    if sent:
+                        self.db.insert_alert_log(
+                            market_hash_name,
+                            "price_surge",
+                            current_price=current_price,
+                            baseline_price=baseline_price,
+                            change_percent=change_percent,
+                        )
+                        alerts.append(alert_data)
+                        logger.warning(
+                            f"🚨 {market_hash_name} 涨价告警: "
+                            f"+{change_percent:.2f}%"
+                        )
+                    else:
+                        logger.error(
+                            f"🚨 {market_hash_name} 涨价告警通知发送失败，"
+                            f"未记录冷却，下次将重试"
+                        )
                 else:
                     logger.info(
                         f"{market_hash_name} 涨价告警在冷却期内，跳过"
@@ -151,25 +158,32 @@ class PriceAnalyzer:
                 if self._check_alert_cooldown(
                     market_hash_name, "price_drop"
                 ):
-                    self.db.insert_alert_log(
-                        market_hash_name,
-                        "price_drop",
-                        current_price=current_price,
-                        baseline_price=baseline_price,
-                        change_percent=change_percent,
-                    )
-                    alerts.append({
+                    alert_data = {
                         "market_hash_name": market_hash_name,
                         "alert_type": "price_drop",
                         "current_price": current_price,
                         "baseline_price": baseline_price,
                         "change_percent": change_percent,
-                    })
-                    logger.warning(
-                        f"🚨 {market_hash_name} 跌价告警: "
-                        f"{change_percent:.2f}%"
-                    )
-                    self.notifier.send_normal_alert(alerts[-1])
+                    }
+                    sent = self.notifier.send_normal_alert(alert_data)
+                    if sent:
+                        self.db.insert_alert_log(
+                            market_hash_name,
+                            "price_drop",
+                            current_price=current_price,
+                            baseline_price=baseline_price,
+                            change_percent=change_percent,
+                        )
+                        alerts.append(alert_data)
+                        logger.warning(
+                            f"🚨 {market_hash_name} 跌价告警: "
+                            f"{change_percent:.2f}%"
+                        )
+                    else:
+                        logger.error(
+                            f"🚨 {market_hash_name} 跌价告警通知发送失败，"
+                            f"未记录冷却，下次将重试"
+                        )
                 else:
                     logger.info(
                         f"{market_hash_name} 跌价告警在冷却期内，跳过"
