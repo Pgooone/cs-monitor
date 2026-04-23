@@ -21,12 +21,14 @@
 | 定时调度 | APScheduler | 支持 cron/interval 多种模式 |
 | 数据存储 | SQLite (WAL 模式) | 零配置，文件级数据库，支持并发写入 |
 | 前端框架 | Vue 3 + Vite + TypeScript | 轻量、组件化、响应式 |
-| UI 组件库 | Naive UI | 中文文档完善，组件丰富 |
-| 图表库 | ECharts 5 | K线/折线/柱状图全覆盖 |
-| 状态管理 | Pinia | 轻量替代 Vuex |
+| UI 组件库 | Naive UI 2.38 | 中文文档完善，组件丰富 |
+| 图表库 | ECharts 5.5 | K线/折线/柱状图全覆盖，支持自定义主题 |
+| 状态管理 | Pinia 2.1 | 轻量替代 Vuex |
 | 路由 | Vue Router 4 | 官方路由方案 |
 | CSS | UnoCSS | 原子化 CSS，快速开发 |
 | HTTP 客户端 | axios | 拦截器、请求取消 |
+| 动效 | @vueuse/motion | 数字滚动、页面过渡 |
+| 国际化 | vue-i18n | zh-CN / en-US 骨架 |
 | 日志 | loguru | 开箱即用 |
 | 配置管理 | python-dotenv + dataclass | 环境变量管理敏感信息 |
 
@@ -423,7 +425,7 @@ cs-monitor/
 │       ├── alerts.py            # /api/alerts/*
 │       ├── settings.py          # /api/settings/*
 │       └── kline.py             # /api/kline/*、/api/arbitrage/*、/api/trends/*
-├── frontend/                    # 🆕 Vue 3 前端（v2.0）
+├── frontend/                    # 🆕 Vue 3 前端（v2.0 → v2.1 重设计）
 │   ├── package.json
 │   ├── vite.config.ts
 │   ├── index.html
@@ -436,24 +438,64 @@ cs-monitor/
 │   │   │   ├── dashboard.ts
 │   │   │   ├── watchlist.ts
 │   │   │   ├── alerts.ts
-│   │   │   └── extremeTrack.ts
-│   │   ├── api/                 # axios 封装
+│   │   │   ├── extremeTrack.ts
+│   │   │   ├── auth.ts          # 登录状态 + JWT
+│   │   │   ├── websocket.ts     # WS 连接状态
+│   │   │   └── theme.ts         # 主题状态
+│   │   ├── api/                 # axios 封装（含拦截器）
 │   │   │   └── index.ts
 │   │   ├── views/
-│   │   │   ├── Dashboard.vue
-│   │   │   ├── Watchlist.vue
-│   │   │   ├── ItemDetail.vue
-│   │   │   ├── ExtremeTrack.vue
-│   │   │   ├── Alerts.vue
-│   │   │   └── Settings.vue
-│   │   └── components/
-│   │       ├── StatCard.vue
-│   │       ├── PriceTable.vue
-│   │       ├── AlertList.vue
-│   │       ├── PriceChart.vue
-│   │       ├── KlineChart.vue
-│   │       ├── PlatformCompare.vue
-│   │       └── ArbitrageTable.vue
+│   │   │   ├── Login.vue        # 登录页（v2.1 新增）
+│   │   │   ├── Setup.vue        # 首次启动向导（v2.1 新增）
+│   │   │   ├── Dashboard.vue    # 仪表盘（v2.1 重设计）
+│   │   │   ├── Watchlist.vue    # 自选清单（v2.1 重设计）
+│   │   │   ├── ItemDetail.vue   # 饰品详情（v2.1 重设计）
+│   │   │   ├── ExtremeTrack.vue # 极致追踪（v2.1 重设计）
+│   │   │   ├── Alerts.vue       # 告警页（v2.1 重设计）
+│   │   │   └── Settings.vue     # 设置页（v2.1 重设计）
+│   │   ├── components/
+│   │   │   ├── base/            # 基础组件（v2.1 新增）
+│   │   │   │   ├── PriceText.vue
+│   │   │   │   ├── TrendBadge.vue
+│   │   │   │   ├── Sparkline.vue
+│   │   │   │   ├── StatCard.vue
+│   │   │   │   ├── EmptyState.vue
+│   │   │   │   ├── PageHeader.vue
+│   │   │   │   ├── ItemAvatar.vue
+│   │   │   │   ├── SkeletonTable.vue
+│   │   │   │   ├── SkeletonCard.vue
+│   │   │   │   └── SkeletonChart.vue
+│   │   │   ├── layout/          # 布局组件（v2.1 新增）
+│   │   │   │   ├── Sidebar.vue
+│   │   │   │   ├── TopBar.vue
+│   │   │   │   └── AppLayout.vue
+│   │   │   └── business/        # 业务组件（v2.1 新增）
+│   │   │       ├── AlertCard.vue
+│   │   │       ├── WatchlistRow.vue
+│   │   │       ├── WatchlistCard.vue
+│   │   │       ├── KlineToolbar.vue
+│   │   │       └── ExtremeTrackCard.vue
+│   │   ├── composables/         # 组合式函数（v2.1 新增/扩展）
+│   │   │   ├── useToast.ts
+│   │   │   ├── useTheme.ts
+│   │   │   ├── useWebSocket.ts
+│   │   │   ├── useBreakpoint.ts
+│   │   │   └── useShortcut.ts
+│   │   ├── charts/              # ECharts 主题（v2.1 新增）
+│   │   │   ├── theme.ts
+│   │   │   └── kline.ts
+│   │   ├── styles/              # 设计系统（v2.1 新增）
+│   │   │   ├── tokens.ts
+│   │   │   ├── theme.ts
+│   │   │   └── global.css
+│   │   ├── platform/            # 平台抽象（v2.1 新增）
+│   │   │   ├── index.ts
+│   │   │   ├── web.ts
+│   │   │   └── desktop.ts
+│   │   └── i18n/                # 国际化（v2.1 新增）
+│   │       ├── index.ts
+│   │       ├── zh-CN.ts
+│   │       └── en-US.ts
 │   └── public/
 ├── utils/
 │   ├── __init__.py
@@ -788,3 +830,166 @@ COPY . .
 COPY --from=frontend-builder /app/frontend/dist /app/static
 CMD ["python", "main.py"]
 ```
+
+---
+
+## 11. 前端设计系统（v2.1 前端专项）
+
+### 11.1 Design Tokens
+
+统一在 `frontend/src/styles/tokens.ts` 定义，同步注入 Naive UI `themeOverrides` 和 UnoCSS `theme` 配置。
+
+| Token | Light | Dark | 用途 |
+|-------|-------|------|------|
+| `--color-brand-primary` | `#2E5BFF` | `#4F7BFF` | 主按钮、链接、焦点环 |
+| `--color-brand-accent` | `#FF6B35` | `#FF8C5A` | 强调、CTA、徽章 |
+| `--color-bg-page` | `#F5F7FB` | `#0E1420` | 页面底色 |
+| `--color-bg-card` | `#FFFFFF` | `#161D2E` | 卡片背景 |
+| `--color-bg-elevated` | `#FFFFFF` | `#1D2538` | 弹窗、菜单 |
+| `--color-border` | `#E5E9F2` | `#272F44` | 分割线 |
+| `--color-text-primary` | `#1A202C` | `#E8ECF4` | 标题 |
+| `--color-text-secondary` | `#4A5568` | `#A0AEC8` | 正文 |
+| `--color-text-muted` | `#8A94A6` | `#6B7590` | 辅助文字 |
+| `--color-up`（涨） | `#EF4444` | `#F87171` | 中国式涨红 |
+| `--color-down`（跌） | `#10B981` | `#34D399` | 中国式跌绿 |
+| `--color-warn` | `#F59E0B` | `#FBBF24` | 警告、429 降级 |
+| `--color-info` | `#3B82F6` | `#60A5FA` | 信息提示 |
+
+**字体**：
+- 正文：`-apple-system, "PingFang SC", "Microsoft YaHei", "HarmonyOS Sans", sans-serif`
+- 数字/价格：`"JetBrains Mono", "SF Mono", Consolas, monospace`
+
+**圆角**：`sm=4` `md=8` `lg=12` `xl=16` `pill=9999`
+
+**动效时长**：`fast=120ms` `base=200ms` `slow=320ms`
+**缓动**：`ease-out-quart = cubic-bezier(.25,1,.5,1)`
+
+### 11.2 前端目录结构（v2.1 更新）
+
+```
+frontend/src/
+├── assets/              # 图片、插画、Lottie、Logo SVG（深浅两套）
+├── styles/
+│   ├── tokens.ts        # Design Tokens（颜色、字体、间距、圆角、阴影、动效）
+│   ├── theme.ts         # Naive UI themeOverrides（light/dark）
+│   └── global.css       # CSS 变量定义 + 全局样式
+├── components/
+│   ├── base/            # 基础组件
+│   │   ├── PriceText.vue      # 等宽字体 + 涨跌色 + 平台 icon
+│   │   ├── TrendBadge.vue     # 百分比徽章，自动箭头 + 颜色
+│   │   ├── Sparkline.vue      # 40x16 迷你折线图（SVG）
+│   │   ├── StatCard.vue       # KPI 卡，支持 loading 骨架
+│   │   ├── EmptyState.vue     # 空态统一组件
+│   │   ├── PageHeader.vue     # 页头统一
+│   │   ├── ItemAvatar.vue     # 饰品图标 + 品相色边框
+│   │   ├── SkeletonTable.vue  # 表格骨架屏
+│   │   ├── SkeletonCard.vue   # 卡片骨架屏
+│   │   └── SkeletonChart.vue  # 图表骨架屏
+│   ├── layout/          # 布局组件
+│   │   ├── Sidebar.vue        # 侧边栏（分组导航 + 折叠）
+│   │   ├── TopBar.vue         # 顶部栏（搜索 + 主题 + 告警 + 用户）
+│   │   └── AppLayout.vue      # 整体布局包裹
+│   └── business/        # 业务组件
+│       ├── AlertCard.vue      # 告警卡片
+│       ├── WatchlistRow.vue   # 自选清单行（表格模式）
+│       ├── WatchlistCard.vue  # 自选清单卡片（网格模式）
+│       ├── KlineToolbar.vue   # K 线工具栏
+│       └── ExtremeTrackCard.vue # 极致追踪卡片
+├── charts/
+│   ├── theme.ts         # ECharts 自定义主题（cs-monitor）
+│   └── kline.ts         # K 线图配置封装
+├── composables/
+│   ├── useToast.ts      # 全局 Toast
+│   ├── useTheme.ts      # 主题切换（light/dark/system）
+│   ├── useWebSocket.ts  # WebSocket 自动重连 + 心跳
+│   ├── useBreakpoint.ts # 响应式断点
+│   └── useShortcut.ts   # 键盘快捷键（? 帮助、gd 跳仪表盘等）
+├── stores/
+│   ├── dashboard.ts
+│   ├── watchlist.ts
+│   ├── alerts.ts
+│   ├── extremeTrack.ts
+│   ├── auth.ts          # 登录状态 + JWT
+│   ├── websocket.ts     # WS 连接状态
+│   └── theme.ts         # 主题状态
+├── api/
+│   └── index.ts         # axios 封装（拦截器 + 错误处理）
+├── views/
+│   ├── Login.vue        # 登录页（新增）
+│   ├── Setup.vue        # 首次启动强制改密（新增）
+│   ├── Dashboard.vue    # 仪表盘（重设计）
+│   ├── Watchlist.vue    # 自选清单（重设计）
+│   ├── ItemDetail.vue   # 饰品详情（重设计）
+│   ├── ExtremeTrack.vue # 极致追踪（重设计）
+│   ├── Alerts.vue       # 告警页（重设计）
+│   └── Settings.vue     # 设置页（重设计）
+├── router/
+│   └── index.ts         # 路由配置 + beforeEach 守卫
+├── platform/            # 平台抽象（新增）
+│   ├── index.ts         # isDesktop() / openDataDir() / showNotification()
+│   ├── web.ts           # Web 版实现
+│   └── desktop.ts       # 桌面版实现（预留）
+├── i18n/                # 国际化（新增）
+│   ├── index.ts
+│   ├── zh-CN.ts
+│   └── en-US.ts
+├── App.vue
+└── main.ts
+```
+
+### 11.3 布局框架
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Logo + 名称    [搜索]                  🌗  🔔  👤 admin   │  ← TopBar 56px
+├────────┬────────────────────────────────────────────────────┤
+│        │                                                    │
+│ 侧栏   │                   主内容区                         │
+│ 220px  │              max-width 1440px 居中                 │
+│        │                                                    │
+│ 可折叠 │                                                    │
+│ 到 64  │                                                    │
+│        │                                                    │
+└────────┴────────────────────────────────────────────────────┘
+```
+
+**响应式断点**：
+| 断点 | 宽度 | 行为 |
+|------|------|------|
+| xs | <640 | 侧栏变抽屉；卡片单列；表格改卡片列表 |
+| sm | 640-1024 | 侧栏折叠；2 列卡片 |
+| md | 1024-1280 | 侧栏展开；3 列卡片 |
+| lg | 1280-1536 | 4 列卡片，K 线图占 2/3 宽 |
+| xl | >1536 | 最大宽度 1440 居中 |
+
+### 11.4 关键交互规范
+
+- **全局搜索**：`Cmd/Ctrl + K` 唤起，支持按饰品名跳 K 线
+- **主题切换**：顶部 3-state toggle（light / dark / system），持久化到 `localStorage.cs_monitor_theme`
+- **实时告警铃铛**：未读数徽章，点击展开抽屉显示最近 20 条告警
+- **WebSocket 状态**：右下角 pill，绿=connected，黄=reconnecting，红=disconnected
+- **快捷键**：`?` 显示帮助；`g d` 跳仪表盘；`g w` 跳 watchlist；`/` 聚焦搜索
+- **涨跌颜色**：Settings 可切换中国/国际习惯
+
+### 11.5 ECharts 主题规范
+
+全局注册 `echarts.registerTheme('cs-monitor', ...)`，所有图表 `init(el, 'cs-monitor')`。
+
+- **颜色序列**：品牌蓝 `#2E5BFF` → 品牌橙 `#FF6B35` → 青 `#06B6D4` → 紫 `#8B5CF6` → 粉 `#EC4899`（6 色）
+- **背景**：透明，由外层卡片提供
+- **grid**：`left: 48, right: 24, top: 24, bottom: 32`
+- **axis**：轴线淡灰，labels 次要文字色
+- **tooltip**：玻璃拟态（半透明 + blur + 圆角 12 + 阴影 md）
+- **splitLine**：dashed + 极淡
+
+### 11.6 性能优化清单
+
+- ECharts **按需引入**（`echarts/core` + `echarts/charts` + `echarts/components`），预计减少 400KB+
+- `vite.config.ts` `manualChunks`：
+  - `echarts-core`（核心）
+  - `echarts-charts`（line/bar/candlestick）
+  - `naive-ui`（单独 chunk）
+  - `vendor`（其余 node_modules）
+- 开启 `vite-plugin-compression` brotli
+- Logo 用 SVG；饰品缩略图懒加载 + WebP
+- 路由懒加载

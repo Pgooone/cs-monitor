@@ -696,3 +696,83 @@ docker compose up -d
 
 ### Development Guide:
 按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。
+
+---
+
+## 2026-04-22 - PRD Update: 前端 UI/UX 优化与美化方案 v2.1
+
+### 更新内容：
+- 新增 PRD：`doc/notion指导文档/CS2 Monitor — 前端 UI UX 优化与美化方案 0c0ceb4559cb459d93e078c21e9fdade.md`
+- 目标：在不更换技术栈前提下，通过设计系统 + 统一交互语言 + 优化信息密度，将「能用」的界面升级为「好看好用」的专业监控仪表盘
+
+### 新增任务（Task 23-30）：
+| ID | 任务 | 说明 |
+|----|------|------|
+| 23 | 前端设计系统奠基 | Design Tokens、Naive UI themeOverrides、深色模式、ECharts 主题 |
+| 24 | 全局反馈层与 axios 改造 | Toast、NProgress、骨架屏、WS 状态 pill、axios 拦截器 |
+| 25 | 布局框架升级 | Sidebar 分组+折叠、TopBar（搜索/主题/告警/用户）、响应式断点 |
+| 26 | 登录页与路由守卫 | 登录页 UI、JWT 拦截器、router.beforeEach、首次启动强制改密 |
+| 27 | 仪表盘重设计 | KPI 卡、组合价值曲线、告警流、热度榜、采集状态 |
+| 28 | Watchlist 与 K 线图重设计 | 双视图切换、sparkline、平台对比、技术指标、导出 |
+| 29 | 告警页、极致追踪页、设置页重设计 | 卡片化、进度条、步骤条、详情抽屉 |
+| 30 | 前端打磨与工程化收尾 | 骨架屏集成、动效、vue-i18n、a11y、ECharts 按需引入、Lighthouse |
+
+### 设计系统要点：
+- 配色：深空蓝 `#2E5BFF` + 电光橙 `#FF6B35`，涨红 `#EF4444` 跌绿 `#10B981`
+- 字体：正文 PingFang SC / Microsoft YaHei，数字 JetBrains Mono
+- 深色模式：3-state toggle（light/dark/system），localStorage 持久化
+- 动效：fast=120ms base=200ms slow=320ms，ease-out-quart
+
+### 文件变更：
+- `task.json`：追加 Task 23-30（passes: false）
+- `architecture.md`：追加第 11 章「前端设计系统」，更新技术栈表和目录结构
+- `CLAUDE.md`：更新前端规范
+- `progress.txt`：本记录
+
+## 2026-04-23 - Task 23: 前端设计系统奠基
+
+### What was done:
+- 创建 frontend/src/styles/tokens.ts：集中定义 Design Tokens
+  - 品牌色 brand（50-950 色阶）
+  - 功能色 semantic（success/warning/error/info，各含 light/dark 变体）
+  - 中性色阶 neutral（light/dark 两套，互为反转）
+  - 涨跌颜色 riseFall（china: 红涨绿跌 / international: 绿涨红跌）
+  - 字体 fontFamily（sans / mono）、字号 fontSize、间距 spacing
+  - 圆角 radius、阴影 shadow/shadowDark、动效 transition
+  - ECharts 颜色序列 chartColors、zIndex 层级
+- 扩展 uno.config.ts：
+  - theme.colors 同步 brand 色阶和 up/down CSS 变量
+  - theme.fontFamily、borderRadius、boxShadow 同步 tokens
+  - preflights 注入 CSS 变量 --color-up / --color-down，支持 dark 模式和 data-rise-fall 切换
+- 创建 frontend/src/styles/theme.ts：Naive UI themeOverrides
+  - lightThemeOverrides / darkThemeOverrides 两套完整配置
+  - 覆盖 primary/info/success/warning/error 的 hover/pressed/suppl 状态
+  - 覆盖文本色、背景色、卡片色、分割线、边框、表格头等全部 common tokens
+- 创建 frontend/src/composables/useTheme.ts：全局主题管理 composable
+  - 支持 light/dark/system 三种主题模式，localStorage 持久化
+  - 监听 prefers-color-scheme 系统偏好
+  - 自动同步 html.dark class 和 html[data-rise-fall] 属性
+  - 提供 colorUp / colorDown computed，根据涨跌习惯动态切换
+- 创建 frontend/src/charts/theme.ts：ECharts 自定义主题
+  - 注册 cs-monitor-light / cs-monitor-dark 两套主题
+  - 包含颜色序列、grid、tooltip 玻璃拟态样式、坐标轴样式、legend、dataZoom 等
+  - 提供 getChartTheme(isDark) 辅助函数
+- 改造 App.vue：
+  - 引入 NConfigProvider，绑定 naiveTheme 和 themeOverrides
+  - 注册 ECharts 自定义主题
+  - 注入全局字体样式
+- 改造 Settings.vue：
+  - 新增「外观设置」卡片
+  - 主题模式单选：浅色 / 深色 / 跟随系统
+  - 涨跌颜色单选：中国（红涨绿跌）/ 国际（绿涨红跌）
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- vendor chunk gzip 后 56KB，符合 <200KB 性能底线
+- 确认 UnoCSS CSS 变量在 light/dark 和国际/中国模式下正确切换
+
+### Notes:
+- useTheme() 状态为模块级单例，多个组件调用共享同一状态
+- 涨跌颜色通过 html data-rise-fall 属性 + CSS 变量实现，UnoCSS 和组件均可消费
+- ECharts 主题需在初始化图表前注册，已在 App.vue 全局注册
+- 当前 echarts 仍为全量引入，Task 30 将改为按需引入以减小包体积

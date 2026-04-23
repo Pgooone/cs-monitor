@@ -1,5 +1,30 @@
 <template>
   <div>
+    <!-- 外观设置 -->
+    <n-card title="外观设置" style="margin-bottom: 16px">
+      <n-form label-placement="left" label-width="140" style="max-width: 600px">
+        <n-form-item label="主题模式">
+          <n-radio-group :value="themeMode" @update:value="setTheme">
+            <n-space>
+              <n-radio value="light">浅色</n-radio>
+              <n-radio value="dark">深色</n-radio>
+              <n-radio value="system">跟随系统</n-radio>
+            </n-space>
+          </n-radio-group>
+        </n-form-item>
+
+        <n-form-item label="涨跌颜色">
+          <n-radio-group :value="riseFallMode" @update:value="setRiseFall">
+            <n-space>
+              <n-radio value="china">中国（红涨绿跌）</n-radio>
+              <n-radio value="international">国际（绿涨红跌）</n-radio>
+            </n-space>
+          </n-radio-group>
+        </n-form-item>
+      </n-form>
+    </n-card>
+
+    <!-- 通知设置 -->
     <n-card title="通知设置">
       <n-spin :show="loading">
         <n-form
@@ -83,8 +108,11 @@ import {
   useMessage,
 } from 'naive-ui'
 import api from '@/api'
+import { useTheme } from '@/composables/useTheme'
 
 const message = useMessage()
+const { themeMode, riseFallMode, setTheme, setRiseFall } = useTheme()
+
 const loading = ref(false)
 const saving = ref(false)
 const testing = ref(false)

@@ -63,6 +63,12 @@ After implementation, verify ALL steps in the task:
 3. **前端任务**（Task 15+ 涉及 frontend/ 目录）：
    - 运行 `cd frontend && npm run build` 检查编译
    - 运行 `cd frontend && npm run lint` 检查代码规范（如有配置）
+   - **v2.1 前端优化任务（Task 23-30）额外要求**：
+     - 验证 light / dark 两种主题下视觉正常（切换后无闪烁、无硬编码色值泄露）
+     - 验证骨架屏在数据加载时正确显示，数据到达后平滑切换
+     - 验证响应式：375px（移动端抽屉）、1024px（桌面展开）、1440px+（最大宽度居中）
+     - 验证所有新字符串已走 `vue-i18n` `$t()`（如已实现 i18n）
+     - 验证 aria-label、tab 导航、焦点环等无障碍属性已添加
 
 4. **小幅度代码修改**（修复 bug、调整日志、添加辅助函数）：
    - 可以使用 `python -m py_compile` 检查语法
@@ -239,6 +245,12 @@ python -m py_compile main.py config.py api/*.py core/*.py notify/*.py storage/*.
 # Check frontend build
 cd frontend && npm run build
 
+# Check frontend TypeScript
+cd frontend && npx vue-tsc --noEmit
+
+# Check frontend with ESLint (if configured)
+cd frontend && npm run lint
+
 # Code linting
 ruff check .
 mypy main.py config.py api/ core/ notify/ storage/ web/
@@ -257,7 +269,7 @@ mypy main.py config.py api/ core/ notify/ storage/ web/
 - Use `pathlib` instead of `os.path`
 - Prefer `async`/`await` only where it provides clear benefit
 
-### TypeScript/Vue (Frontend)
+### TypeScript/Vue (Frontend v2.1)
 - Vue 3 Composition API with `<script setup>`
 - TypeScript strict mode
 - Use Pinia for state management
@@ -265,6 +277,21 @@ mypy main.py config.py api/ core/ notify/ storage/ web/
 - Use UnoCSS for utility-first CSS
 - ECharts charts wrapped in reusable components
 - API calls centralized in `frontend/src/api/index.ts`
+
+**v2.1 前端优化专项规范：**
+- **Design Tokens 优先**：所有颜色、间距、圆角、阴影必须来自 `styles/tokens.ts`，禁止硬编码任何色值（如 `#fff`、`#333`）
+- **主题一致性**：所有样式必须同时支持 light/dark 模式，使用 `useTheme()` composable 获取当前主题
+- **涨跌颜色配置化**：价格变化颜色不直接写死红/绿，必须通过 `tokens.ts` 中的 `colorUp`/`colorDown`，支持中国/国际习惯切换
+- **数字等宽显示**：所有价格、百分比使用 `font-family: 'JetBrains Mono', monospace`，确保数字跳动不抖
+- **组件分层**：
+  - `components/base/`：纯展示组件，无业务逻辑（PriceText, TrendBadge, Sparkline, StatCard, EmptyState, Skeleton*）
+  - `components/layout/`：布局组件（Sidebar, TopBar, AppLayout, PageHeader）
+  - `components/business/`：业务组件（AlertCard, WatchlistRow, ExtremeTrackCard）
+- **骨架屏规范**：所有列表/表格/图表在首次加载时显示对应骨架屏，数据到达后淡入切换（200ms）
+- **动效克制**：页面切换 240ms 淡入 + 上移 4px；数字变化 100ms 高亮闪烁；不使用无意义的大面积动画
+- **无障碍**：所有图标按钮必须有 `aria-label`；表单必须有 `label-for`；焦点环必须可见（`outline: 2px solid brand-primary`）
+- **国际化**：所有用户可见字符串使用 `vue-i18n` `$t()`，中英双语骨架优先覆盖菜单、按钮、表单标签
+- **ECharts 按需引入**：禁止 `import * as echarts from 'echarts'`，必须使用 `echarts/core` + `echarts/charts` + `echarts/components` 按需组合
 
 ## Key Rules
 
@@ -278,3 +305,8 @@ mypy main.py config.py api/ core/ notify/ storage/ web/
 8. **DB优先策略** - watchlist 和 extreme_track_config 从 config.py 迁移到 DB 后，DB 数据优先，config.py 仅作初始默认值
 9. **不破坏 CLI** - 新增 Web 功能时不得破坏已有的 CLI 监控能力
 10. **SQLite WAL 模式** - 新数据库连接启用 WAL 模式以支持并发读写
+11. **Tokens 优先** - v2.1 前端任务中，任何颜色/间距/圆角/阴影必须来自 `styles/tokens.ts`，禁止硬编码
+12. **深色模式必测** - 前端修改后必须同时验证 light 和 dark 模式下的视觉效果
+13. **组件分层** - 基础组件放 `components/base/`，布局组件放 `components/layout/`，业务组件放 `components/business/`，禁止混放
+14. **骨架屏必加** - 所有列表/表格/图表页面必须有对应的骨架屏，数据加载时自动显示
+15. **性能底线** - `npm run build` 后 vendor chunk 不超过 200KB（gzip），ECharts 必须按需引入
