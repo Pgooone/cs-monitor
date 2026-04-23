@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
 import { useNProgress } from '@/composables/useNProgress'
 import { toastError } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 
 const { start, done } = useNProgress()
 
@@ -15,8 +16,15 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/setup',
+      name: 'Setup',
+      component: () => import('@/views/Setup.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/',
       component: AppLayout,
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
@@ -53,17 +61,31 @@ const router = createRouter({
   ],
 })
 
-// 路由切换时自动显示/隐藏 NProgress 加载条
+// 路由守卫：认证检查 + 默认密码跳转
 router.beforeEach((to, _from, next) => {
   start()
-  const token = localStorage.getItem('cs_monitor_token')
-  if (!token && !to.meta.public) {
+  const authStore = useAuthStore()
+  const isLoggedIn = authStore.isLoggedIn
+
+  // 未登录且访问非公开页面 -> 跳转登录
+  if (!isLoggedIn && !to.meta.public) {
     next('/login')
-  } else if (token && to.path === '/login') {
-    next('/')
-  } else {
-    next()
+    return
   }
+
+  // 已登录且访问登录页 -> 跳转首页
+  if (isLoggedIn && to.path === '/login') {
+    next('/')
+    return
+  }
+
+  // 已登录且使用默认密码 -> 强制跳转 setup（除非是已经在 setup 页面）
+  if (isLoggedIn && authStore.requiresPasswordChange && to.path !== '/setup') {
+    next('/setup')
+    return
+  }
+
+  next()
 })
 
 router.afterEach(() => {

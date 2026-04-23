@@ -43,11 +43,39 @@ class TestAuthEndpoint:
         data = response.json()
         assert "access_token" in data
         assert data["token_type"] == "bearer"
+        assert "requires_password_change" in data
+        assert data["requires_password_change"] is False
+
+    def test_login_default_password(self, client: TestClient) -> None:
+        """测试默认密码登录返回 requires_password_change=True."""
+        # 使用默认密码创建新客户端
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db = Database(tmp.name)
+        from web.app import create_app
+        config = MonitorConfig(
+            admin_password="admin",
+            jwt_secret="test-secret",
+        )
+        app = create_app(db, config)
+        with TestClient(app) as c:
+            response = c.post("/api/auth/login", json={"password": "admin"})
+            assert response.status_code == 200
+            data = response.json()
+            assert data["requires_password_change"] is True
 
     def test_login_failure(self, client: TestClient) -> None:
         """测试错误密码登录失败."""
         response = client.post("/api/auth/login", json={"password": "wrongpass"})
         assert response.status_code == 401
+
+    def test_me_endpoint(self, client: TestClient) -> None:
+        """测试 /api/auth/me 返回用户信息."""
+        response = client.get("/api/auth/me")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == "admin"
+        assert data["role"] == "admin"
 
     def test_access_protected_without_token(self, client: TestClient) -> None:
         """测试未携带 Token 访问受保护接口返回 401."""
@@ -69,6 +97,32 @@ class TestAuthEndpoint:
             assert response.status_code == 401
         finally:
             client.headers["Authorization"] = original
+
+    def test_change_password_success(self, client: TestClient) -> None:
+        """测试修改密码成功."""
+        response = client.post(
+            "/api/auth/change-password",
+            json={"current_password": "testpass", "new_password": "newpass123"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+
+    def test_change_password_wrong_current(self, client: TestClient) -> None:
+        """测试修改密码时当前密码错误."""
+        response = client.post(
+            "/api/auth/change-password",
+            json={"current_password": "wrongpass", "new_password": "newpass123"},
+        )
+        assert response.status_code == 401
+
+    def test_change_password_too_short(self, client: TestClient) -> None:
+        """测试修改密码时新密码太短（Pydantic 校验返回 422）."""
+        response = client.post(
+            "/api/auth/change-password",
+            json={"current_password": "testpass", "new_password": "123"},
+        )
+        assert response.status_code == 422
 
 
 class TestHealthEndpoint:

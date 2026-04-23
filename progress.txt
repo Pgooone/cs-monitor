@@ -860,3 +860,44 @@ docker compose up -d
 ### Notes:
 - SidebarContent 中的 showTooltip prop 目前由 Naive UI NMenu 内置处理，无需额外逻辑
 - 搜索模态框当前只支持页面跳转，后续可扩展为饰品搜索
+
+## 2026-04-23 - Task 26: 登录页与路由守卫
+
+### What was done:
+- 修复 web/routers/auth.py：补全 require_auth 导入，修复 /auth/me 端点
+- 增强后端 login 接口：返回 `requires_password_change` 字段（检测是否使用默认密码 admin）
+- 新增后端 /auth/change-password 接口：验证当前密码 + 新密码长度校验，持久化到 system_config 表
+- 新增 web/schemas.py 模型：ChangePasswordRequest
+- 创建 frontend/src/stores/auth.ts（Pinia auth store）：
+  - token / username / isLoading / error / requiresPasswordChange 状态
+  - login()：调用 API，持久化 token，获取用户信息
+  - changePassword()：调用后端修改密码接口，成功后自动登出
+  - logout()：清除所有状态并移除 localStorage
+  - initFromStorage()：应用启动时从 localStorage 恢复 token
+- 升级 frontend/src/views/Login.vue：
+  - 左侧品牌宣传区：渐变背景 + Logo + 标语 "CS2 饰品价格智能监控平台" + 功能特性列表
+  - 右侧登录表单：用户名（只读 admin）+ 密码 + 记住我复选框 + 登录按钮
+  - 响应式：lg 以下隐藏品牌区，表单居中
+  - 使用 auth store，登录成功后根据 requiresPasswordChange 跳转 /setup 或 /
+- 创建 frontend/src/views/Setup.vue：
+  - 安全提示卡片：当前使用默认密码的警告
+  - 表单：当前密码 + 新密码 + 确认新密码
+  - 支持跳过（暂不修改，进入系统）
+  - 修改成功后自动跳转到登录页
+- 更新 frontend/src/router/index.ts：
+  - 添加 /setup 路由（requiresAuth: true）
+  - 完善 beforeEach 守卫：未登录跳登录页、已登录跳首页、默认密码强制跳 setup
+- 更新 frontend/src/api/index.ts：添加 LoginResponse / MeResponse 类型，login / me / changePassword 方法
+- 更新 frontend/src/main.ts：挂载前调用 authStore.initFromStorage()
+- 更新 frontend/src/components/layout/TopBar.vue：退出登录改用 authStore.logout()
+- 更新 tests/test_web_api.py：新增 5 个认证相关测试（默认密码检测、/me、修改密码成功/失败/太短）
+
+### Testing:
+- `python -m py_compile web/routers/auth.py web/schemas.py` 无语法错误
+- `python -m pytest tests/test_web_api.py -v`：38 个测试全部通过
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- TestClient 验证：默认密码登录返回 requires_password_change=true，非默认密码返回 false
+
+### Notes:
+- change-password 后端同时更新 jwt_secret，强制用户重新登录以使用新 secret
+- TopBar 用户菜单中的退出登录现在统一走 auth store，避免状态不一致

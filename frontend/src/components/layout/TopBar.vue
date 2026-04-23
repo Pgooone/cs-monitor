@@ -194,6 +194,7 @@ import {
 import type { DropdownOption } from 'naive-ui'
 import { useTheme } from '@/composables/useTheme'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useAuthStore } from '@/stores/auth'
 
 defineProps<{
   collapsed: boolean
@@ -208,6 +209,7 @@ defineEmits<{
 const router = useRouter()
 const { themeMode, toggleTheme } = useTheme()
 const dashboardStore = useDashboardStore()
+const authStore = useAuthStore()
 
 // ===== 主题 =====
 const themeIcon = computed(() => {
@@ -327,7 +329,7 @@ function handleUserMenu(key: string) {
   if (key === 'settings') {
     router.push({ name: 'Settings' })
   } else if (key === 'logout') {
-    localStorage.removeItem('cs_monitor_token')
+    authStore.logout()
     window.location.href = '/login'
   }
 }

@@ -25,6 +25,14 @@ class LoginResponse(BaseModel):
 
     access_token: str
     token_type: str = "bearer"
+    requires_password_change: bool = False
+
+
+class ChangePasswordRequest(BaseModel):
+    """修改密码请求."""
+
+    current_password: str = Field(..., min_length=1, description="当前密码")
+    new_password: str = Field(..., min_length=6, description="新密码")
 
 
 class DashboardSummary(BaseModel):

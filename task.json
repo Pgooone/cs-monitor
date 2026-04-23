@@ -374,7 +374,7 @@
         "首次启动检测：若使用默认密码 admin，登录后强制跳转 /setup 修改密码",
         "登录状态持久化：localStorage token + Pinia auth store"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 27,

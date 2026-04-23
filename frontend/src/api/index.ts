@@ -247,9 +247,26 @@ export interface TrendAnalysisResponse {
   ma20: (number | null)[]
 }
 
+export interface LoginResponse {
+  access_token: string
+  token_type: string
+  requires_password_change: boolean
+}
+
+export interface MeResponse {
+  username: string
+  role: string
+}
+
 export default {
   login(password: string) {
-    return api.post('/auth/login', { password })
+    return api.post<LoginResponse>('/auth/login', { password })
+  },
+  me() {
+    return api.get<MeResponse>('/auth/me')
+  },
+  changePassword(currentPassword: string, newPassword: string) {
+    return api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })
   },
   health() {
     return api.get('/health')
