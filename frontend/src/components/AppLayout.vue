@@ -1,97 +1,101 @@
 <template>
   <n-layout has-sider style="height: 100vh">
-    <n-layout-sider
-      bordered
-      collapse-mode="width"
-      :collapsed-width="64"
-      :width="200"
+    <Sidebar
       :collapsed="collapsed"
-      show-trigger
-      @collapse="collapsed = true"
-      @expand="collapsed = false"
-    >
-      <div class="flex items-center justify-center h-16 font-bold text-lg">
-        <span v-if="!collapsed">CS2监控</span>
-        <span v-else>CS2</span>
-      </div>
-      <n-menu
-        :collapsed="collapsed"
-        :collapsed-width="64"
-        :collapsed-icon-size="22"
-        :options="menuOptions"
-        :value="activeKey"
-      />
-    </n-layout-sider>
+      :is-mobile="isMobile"
+      :mobile-drawer-open="mobileDrawerOpen"
+      @update:mobile-drawer-open="mobileDrawerOpen = $event"
+    />
     <n-layout>
-      <n-layout-header bordered class="h-16 flex items-center px-6">
-        <h2 class="m-0 text-lg">{{ pageTitle }}</h2>
-      </n-layout-header>
-      <n-layout-content class="p-6 bg-gray-50">
-        <router-view />
+      <TopBar
+        :collapsed="collapsed"
+        :is-mobile="isMobile"
+        @toggle-collapse="toggleCollapse"
+        @toggle-mobile-drawer="mobileDrawerOpen = !mobileDrawerOpen"
+      />
+      <n-layout-content
+        class="app-layout__content"
+        :native-scrollbar="false"
+      >
+        <div class="app-layout__main">
+          <router-view />
+        </div>
       </n-layout-content>
     </n-layout>
-    <ws-status-pill class="app-layout__ws-pill" />
+    <ws-status-pill v-if="!isMobile" class="app-layout__ws-pill" />
   </n-layout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h } from 'vue'
-import { useRoute } from 'vue-router'
-import { NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu } from 'naive-ui'
-import type { MenuOption } from 'naive-ui'
-import { RouterLink } from 'vue-router'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { NLayout, NLayoutContent } from 'naive-ui'
+import Sidebar from '@/components/layout/Sidebar.vue'
+import TopBar from '@/components/layout/TopBar.vue'
 import WsStatusPill from '@/components/base/WsStatusPill.vue'
 
+// 响应式断点
+// xs(<640): 侧栏变抽屉
+// sm(640-1024): 折叠
+// md(1024-1280): 展开
+// lg(1280-1536): 4 列
+// xl(>1536): 最大 1440 居中
+const isMobile = ref(false)
 const collapsed = ref(false)
-const route = useRoute()
+const mobileDrawerOpen = ref(false)
 
-const activeKey = computed(() => route.name as string)
-const pageTitle = computed(() => {
-  const titles: Record<string, string> = {
-    Dashboard: 'Dashboard',
-    Watchlist: '监控清单',
-    ItemDetail: '饰品详情',
-    ExtremeTrack: '极致追踪',
-    Alerts: '告警记录',
-    Settings: '系统设置',
+function updateLayout() {
+  const w = window.innerWidth
+  if (w < 640) {
+    isMobile.value = true
+    collapsed.value = false
+  } else if (w < 1024) {
+    isMobile.value = false
+    collapsed.value = true
+  } else {
+    isMobile.value = false
+    collapsed.value = false
   }
-  return titles[route.name as string] || 'Dashboard'
-})
-
-function renderIcon(_icon: string) {
-  return () => h('span', { class: 'text-base' }, _icon)
 }
 
-const menuOptions: MenuOption[] = [
-  {
-    label: () => h(RouterLink, { to: { name: 'Dashboard' } }, { default: () => 'Dashboard' }),
-    key: 'Dashboard',
-    icon: renderIcon('📊'),
-  },
-  {
-    label: () => h(RouterLink, { to: { name: 'Watchlist' } }, { default: () => '监控清单' }),
-    key: 'Watchlist',
-    icon: renderIcon('📋'),
-  },
-  {
-    label: () => h(RouterLink, { to: { name: 'ExtremeTrack' } }, { default: () => '极致追踪' }),
-    key: 'ExtremeTrack',
-    icon: renderIcon('🎯'),
-  },
-  {
-    label: () => h(RouterLink, { to: { name: 'Alerts' } }, { default: () => '告警记录' }),
-    key: 'Alerts',
-    icon: renderIcon('🔔'),
-  },
-  {
-    label: () => h(RouterLink, { to: { name: 'Settings' } }, { default: () => '系统设置' }),
-    key: 'Settings',
-    icon: renderIcon('⚙️'),
-  },
-]
+function toggleCollapse() {
+  collapsed.value = !collapsed.value
+}
+
+onMounted(() => {
+  updateLayout()
+  window.addEventListener('resize', updateLayout)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateLayout)
+})
 </script>
 
 <style>
+.app-layout__content {
+  background: var(--n-body-color);
+}
+
+.app-layout__main {
+  padding: 1.5rem;
+  min-height: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  transition: padding 200ms ease;
+}
+
+@media (max-width: 639px) {
+  .app-layout__main {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .app-layout__main {
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+}
+
 .app-layout__ws-pill {
   position: fixed;
   right: 1rem;

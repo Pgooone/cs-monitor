@@ -1,9 +1,16 @@
 <template>
   <div>
-    <n-space align="center" class="mb-4">
-      <n-button size="small" @click="$router.back()">返回</n-button>
-      <h2 class="m-0 text-xl">{{ displayName }}</h2>
-    </n-space>
+    <page-header
+      :title="displayName"
+      :breadcrumbs="[
+        { label: '监控清单', routeName: 'Watchlist' },
+        { label: displayName },
+      ]"
+    >
+      <template #actions>
+        <n-button size="small" @click="$router.back()">返回</n-button>
+      </template>
+    </page-header>
 
     <n-spin :show="loading">
       <!-- 统计卡片 -->
@@ -131,6 +138,7 @@ import {
 import type { DataTableColumns } from 'naive-ui'
 import * as echarts from 'echarts'
 import api, { type PriceHistoryItem, type PlatformPriceItem, type AlertRecord, type KlineDataItem, type TrendAnalysisResponse } from '@/api'
+import PageHeader from '@/components/layout/PageHeader.vue'
 
 const route = useRoute()
 const marketHashName = computed(() => decodeURIComponent(route.params.name as string))

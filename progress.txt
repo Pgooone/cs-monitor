@@ -823,3 +823,40 @@ docker compose up -d
 - useToast 使用 createDiscreteApi 创建全局 message 实例，避免 Provider 嵌套
 - 骨架屏使用 CSS gradient + animation 实现 shimmer，无需额外依赖
 - WebSocket 连接使用 token query param 认证，与后端 _ws_auth 匹配
+
+## 2026-04-23 - Task 25: 布局框架升级
+
+### What was done:
+- 创建 frontend/src/components/layout/Sidebar.vue：
+  - 封装 Naive UI NLayoutSider，支持桌面端折叠/展开
+  - xs(<640px) 自动切换为 NDrawer 抽屉模式
+  - 底部集成 WsStatusPill 连接状态
+- 创建 frontend/src/components/layout/SidebarContent.vue：
+  - Logo 区：渐变 SVG 图标 + "CS2 Monitor" wordmark（渐变文字）
+  - 导航分组：监控（Dashboard/监控清单/极致追踪）、告警（告警记录）、系统（系统设置）
+  - 折叠到 64px，hover tooltip 由 Naive UI NMenu 自动处理
+  - 底部：版本号 v1.0.0 + GitHub 图标链接 + WS 状态点（折叠时显示纯色圆点）
+- 创建 frontend/src/components/layout/TopBar.vue：
+  - 左侧：移动端汉堡菜单按钮、桌面端折叠切换按钮、全局搜索触发器（显示 Cmd/Ctrl+K 快捷键）
+  - 右侧：主题 3-state toggle（☀️/🌙/🖥️ 循环切换 light/dark/system）
+  - 右侧：实时告警铃铛（NBadge 未读徽章 + NPopover 最近 20 条告警抽屉）
+  - 右侧：用户菜单（NDropdown）含系统设置入口和退出登录
+  - 全局搜索模态框：NModal + NInput，支持 5 个页面快捷跳转，Esc 关闭，Cmd/Ctrl+K 唤起
+- 创建 frontend/src/components/layout/PageHeader.vue：
+  - 统一页面头部：可选面包屑导航 + 大标题 + 操作区插槽
+  - 响应式：xs 下 actions 自动换行到底部右对齐
+  - 所有子页面（Dashboard/Watchlist/Alerts/ExtremeTrack/Settings/ItemDetail）已集成
+- 重构 frontend/src/components/AppLayout.vue：
+  - 整合 Sidebar + TopBar + NLayoutContent
+  - 响应式断点逻辑：xs→drawer、sm→折叠、md+→展开
+  - 主内容区最大宽度 1440px 居中（xl >1536px）
+  - 内容区 padding 响应式：xs 1rem / 其他 1.5rem
+- 各页面更新：移除旧标题，统一使用 PageHeader，保留原有操作按钮
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- vendor chunk gzip 56.25KB，符合 <200KB 要求
+
+### Notes:
+- SidebarContent 中的 showTooltip prop 目前由 Naive UI NMenu 内置处理，无需额外逻辑
+- 搜索模态框当前只支持页面跳转，后续可扩展为饰品搜索

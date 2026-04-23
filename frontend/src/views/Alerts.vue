@@ -1,7 +1,9 @@
 <template>
   <div>
+    <page-header title="告警记录" />
+
     <!-- 筛选区 -->
-    <n-card title="告警记录" class="mb-4">
+    <n-card class="mb-4">
       <n-space align="center" wrap>
         <n-select
           v-model:value="filterType"
@@ -70,6 +72,7 @@ import { useAlertsStore } from '@/stores/alerts'
 import type { AlertRecord } from '@/api'
 import * as echarts from 'echarts'
 import { WebSocketClient } from '@/utils/ws'
+import PageHeader from '@/components/layout/PageHeader.vue'
 
 const store = useAlertsStore()
 const chartRef = ref<HTMLDivElement | null>(null)

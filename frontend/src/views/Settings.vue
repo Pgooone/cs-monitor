@@ -1,7 +1,9 @@
 <template>
   <div>
+    <page-header title="系统设置" />
+
     <!-- 外观设置 -->
-    <n-card title="外观设置" style="margin-bottom: 16px">
+    <n-card style="margin-bottom: 16px">
       <n-form label-placement="left" label-width="140" style="max-width: 600px">
         <n-form-item label="主题模式">
           <n-radio-group :value="themeMode" @update:value="setTheme">
@@ -109,6 +111,7 @@ import {
 } from 'naive-ui'
 import api from '@/api'
 import { useTheme } from '@/composables/useTheme'
+import PageHeader from '@/components/layout/PageHeader.vue'
 
 const message = useMessage()
 const { themeMode, riseFallMode, setTheme, setRiseFall } = useTheme()

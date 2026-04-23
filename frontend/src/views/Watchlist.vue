@@ -1,7 +1,7 @@
 <template>
   <div>
-    <n-card title="监控清单">
-      <template #header-extra>
+    <page-header title="监控清单">
+      <template #actions>
         <n-button type="primary" @click="openCreateModal">
           <template #icon>
             <span>+</span>
@@ -9,7 +9,9 @@
           添加饰品
         </n-button>
       </template>
+    </page-header>
 
+    <n-card>
       <n-data-table
         :columns="columns"
         :data="store.items"
@@ -106,6 +108,7 @@ import {
 import type { DataTableColumns, FormRules, FormInst } from 'naive-ui'
 import { useWatchlistStore } from '@/stores/watchlist'
 import type { WatchlistItemWithPrice } from '@/api'
+import PageHeader from '@/components/layout/PageHeader.vue'
 
 const router = useRouter()
 const store = useWatchlistStore()

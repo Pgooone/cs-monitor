@@ -1,5 +1,6 @@
 <template>
   <div>
+    <page-header title="Dashboard" />
     <n-spin :show="dashboard.loading">
       <!-- 统计卡片 -->
       <n-grid :x-gap="16" :y-gap="16" :cols="4">
@@ -86,6 +87,7 @@ import type { DataTableColumns } from 'naive-ui'
 import { useDashboardStore } from '@/stores/dashboard'
 import type { WatchlistItemWithPrice, AlertRecord } from '@/api'
 import api from '@/api'
+import PageHeader from '@/components/layout/PageHeader.vue'
 
 const dashboard = useDashboardStore()
 const trendMap = ref<Record<string, string>>({})

@@ -1,7 +1,7 @@
 <template>
   <div>
-    <n-card title="极致追踪">
-      <template #header-extra>
+    <page-header title="极致追踪">
+      <template #actions>
         <n-button type="primary" @click="openCreateModal">
           <template #icon>
             <span>+</span>
@@ -9,7 +9,9 @@
           添加追踪
         </n-button>
       </template>
+    </page-header>
 
+    <n-card>
       <n-data-table
         :columns="columns"
         :data="store.items"
@@ -167,6 +169,7 @@ import { useExtremeTrackStore } from '@/stores/extremeTrack'
 import type { ExtremeTrackConfig } from '@/api'
 import { WebSocketClient } from '@/utils/ws'
 import ExtremeTrackTimeline from '@/components/ExtremeTrackTimeline.vue'
+import PageHeader from '@/components/layout/PageHeader.vue'
 
 const store = useExtremeTrackStore()
 const message = useMessage()
