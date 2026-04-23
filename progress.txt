@@ -776,3 +776,50 @@ docker compose up -d
 - 涨跌颜色通过 html data-rise-fall 属性 + CSS 变量实现，UnoCSS 和组件均可消费
 - ECharts 主题需在初始化图表前注册，已在 App.vue 全局注册
 - 当前 echarts 仍为全量引入，Task 30 将改为按需引入以减小包体积
+
+## 2026-04-23 - Task 24: 全局反馈层与 axios 改造
+
+### What was done:
+- 创建 frontend/src/composables/useToast.ts：
+  - 基于 naive-ui createDiscreteApi 封装全局消息反馈
+  - 支持 toastSuccess / toastError / toastWarning / toastInfo 四种级别
+  - 无需 NMessageProvider 包裹，可在拦截器、store 等任意位置调用
+- 创建 frontend/src/composables/useNProgress.ts：
+  - 封装 nprogress 顶部加载条
+  - 自定义品牌色（light: #3b82f6 / dark: #60a5fa）
+  - 隐藏 spinner，细条 2px
+- 改造 frontend/src/api/index.ts（axios 拦截器）：
+  - Request 拦截器：自动注入 Authorization Bearer token
+  - Request/Response DEV 环境下打印日志
+  - Response 拦截器：401 清除 token 并跳转登录页
+  - Response 拦截器：>=500 自动 Toast 提示服务器错误
+  - Response 拦截器：429 请求过于频繁 Toast 提示
+- 改造 frontend/src/router/index.ts：
+  - 集成 useNProgress，路由切换自动 start/done
+  - router.onError 捕获导航异常，自动 Toast 提示并结束加载条
+- 创建三种骨架屏组件：
+  - components/base/SkeletonTable.vue：表格骨架，支持自定义行列数
+  - components/base/SkeletonCard.vue：卡片网格骨架，支持自定义数量
+  - components/base/SkeletonChart.vue：图表骨架，含 shimmer 动画和 SVG 面积图占位
+  - 均支持 light/dark 模式 shimmer 颜色自动适配
+- 创建 frontend/src/stores/websocket.ts：
+  - Pinia store 管理全局 WebSocket 连接状态
+  - 支持 /ws/alerts 告警频道和 /ws/extreme-track/{name}/{platform} 极致追踪频道
+  - 自动重连机制（最大 5 次，间隔 3 秒）
+  - 心跳保活（30 秒 ping/pong）
+  - 提供 overallStatus / activeConnectionCount computed
+- 创建 frontend/src/components/base/WsStatusPill.vue：
+  - 右下角固定 pill 组件，显示实时推送连接状态
+  - 状态色：connecting(黄)/connected(绿)/disconnected(灰)/error(红)
+  - 脉冲动画（connecting 状态）、活跃连接数徽章
+  - 已集成到 AppLayout.vue 右下角
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- `python -m py_compile main.py config.py api/*.py core/*.py notify/*.py storage/*.py web/*.py web/routers/*.py`：后端语法检查通过
+- `python -m pytest tests/ --ignore=tests/test_web_api.py`：41 passed（7 个已有失败与通知模块配置相关，非本任务引入）
+
+### Notes:
+- useToast 使用 createDiscreteApi 创建全局 message 实例，避免 Provider 嵌套
+- 骨架屏使用 CSS gradient + animation 实现 shimmer，无需额外依赖
+- WebSocket 连接使用 token query param 认证，与后端 _ws_auth 匹配

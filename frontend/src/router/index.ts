@@ -1,5 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
+import { useNProgress } from '@/composables/useNProgress'
+import { toastError } from '@/composables/useToast'
+
+const { start, done } = useNProgress()
 
 const router = createRouter({
   history: createWebHistory(),
@@ -49,8 +53,9 @@ const router = createRouter({
   ],
 })
 
-// 路由守卫：未登录且非公开页面则重定向到登录页
+// 路由切换时自动显示/隐藏 NProgress 加载条
 router.beforeEach((to, _from, next) => {
+  start()
   const token = localStorage.getItem('cs_monitor_token')
   if (!token && !to.meta.public) {
     next('/login')
@@ -59,6 +64,16 @@ router.beforeEach((to, _from, next) => {
   } else {
     next()
   }
+})
+
+router.afterEach(() => {
+  done()
+})
+
+router.onError((err) => {
+  done()
+  toastError(`页面加载失败：${err.message}`)
+  console.error('[Router] 导航错误:', err)
 })
 
 export default router

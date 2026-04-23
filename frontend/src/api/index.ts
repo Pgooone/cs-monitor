@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toastError, toastWarning } from '@/composables/useToast'
 
 const api = axios.create({
   baseURL: '/api',
@@ -8,28 +9,55 @@ const api = axios.create({
   },
 })
 
-// Request 拦截器：自动注入 Authorization header
+// Request 拦截器：自动注入 Authorization header + 请求日志
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('cs_monitor_token')
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.params || config.data || '')
+    }
     return config
   },
   (error) => Promise.reject(error),
 )
 
-// Response 拦截器：401 自动清除 token 并跳转登录
+// Response 拦截器：401 自动清除 token 并跳转登录、5xx 自动 Toast、响应日志
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`[API] ${response.config.method?.toUpperCase()} ${response.config.url} -> ${response.status}`)
+    }
+    return response
+  },
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const detail = error.response?.data?.detail || error.message || '未知错误'
+    const url = error.config?.url || ''
+
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.error(`[API] ${error.config?.method?.toUpperCase()} ${url} -> ${status}:`, detail)
+    }
+
+    if (status === 401) {
       localStorage.removeItem('cs_monitor_token')
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }
+    } else if (status >= 500) {
+      toastError(`服务器错误 (${status})：${detail}`)
+    } else if (status === 429) {
+      toastWarning('请求过于频繁，请稍后再试')
+    } else if (status >= 400) {
+      // 4xx 错误通常由调用方处理（如表单验证），这里不弹全局 Toast
+      // 但可在控制台记录
     }
+
     return Promise.reject(error)
   },
 )

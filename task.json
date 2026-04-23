@@ -347,7 +347,7 @@
         "创建全局 WebSocket 状态管理（stores/websocket.ts）：连接/断开/重连状态 + 右下角 pill 组件",
         "在 axios 和 router 中集成 useToast，确保所有异常有用户可见反馈"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 25,

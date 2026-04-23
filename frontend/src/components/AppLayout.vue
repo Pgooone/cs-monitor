@@ -30,6 +30,7 @@
         <router-view />
       </n-layout-content>
     </n-layout>
+    <ws-status-pill class="app-layout__ws-pill" />
   </n-layout>
 </template>
 
@@ -39,6 +40,7 @@ import { useRoute } from 'vue-router'
 import { NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import { RouterLink } from 'vue-router'
+import WsStatusPill from '@/components/base/WsStatusPill.vue'
 
 const collapsed = ref(false)
 const route = useRoute()
@@ -88,3 +90,12 @@ const menuOptions: MenuOption[] = [
   },
 ]
 </script>
+
+<style>
+.app-layout__ws-pill {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1030;
+}
+</style>
