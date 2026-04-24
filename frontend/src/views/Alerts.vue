@@ -226,8 +226,15 @@ import {
 } from 'naive-ui'
 import { SearchOutline, RefreshOutline, NotificationsOffOutline } from '@vicons/ionicons5'
 import type { DataTableColumns } from 'naive-ui'
-import * as echarts from 'echarts'
+import { init } from 'echarts/core'
+import { BarChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+import { use as echartsUse } from 'echarts/core'
+import type { ECharts } from 'echarts/core'
 import api, { type AlertRecord, type ExtremeAlertRecord } from '@/api'
+
+echartsUse([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 import { useTheme } from '@/composables/useTheme'
 import { toastError } from '@/composables/useToast'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -253,7 +260,7 @@ const filterEnd = ref<string | null>(null)
 const filterName = ref('')
 
 const chartRef = ref<HTMLDivElement | null>(null)
-let chartInstance: echarts.ECharts | null = null
+let chartInstance: ECharts | null = null
 
 const alertTypeOptions = [
   { label: '价格暴涨', value: 'price_surge' },
@@ -392,7 +399,7 @@ const groupedAlerts = computed(() => {
 function initChart() {
   if (!chartRef.value) return
   if (chartInstance) chartInstance.dispose()
-  chartInstance = echarts.init(chartRef.value)
+  chartInstance = init(chartRef.value)
   updateChart()
 }
 

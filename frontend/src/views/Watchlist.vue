@@ -36,14 +36,17 @@
 
     <!-- 空态 -->
     <template v-else-if="!store.items.length">
-      <div class="empty-state">
-        <div class="empty-state__icon">📋</div>
-        <div class="empty-state__title">监控清单为空</div>
-        <div class="empty-state__desc">添加 CS2 饰品，开启价格监控之旅</div>
-        <n-button type="primary" @click="openCreateModal">
-          + 添加第一个饰品
-        </n-button>
-      </div>
+      <EmptyState
+        :title="t('watchlist.emptyTitle')"
+        :description="t('watchlist.emptyDesc')"
+        emoji="📋"
+      >
+        <template #action>
+          <n-button type="primary" @click="openCreateModal">
+            + {{ t('watchlist.addFirstItem') }}
+          </n-button>
+        </template>
+      </EmptyState>
     </template>
 
     <!-- 表格视图 -->
@@ -82,7 +85,15 @@
           </div>
           <div class="watchlist-card__name">{{ item.display_name || item.market_hash_name }}</div>
           <div class="watchlist-card__price">
-            <span class="font-mono-num">{{ item.latest_price != null ? `¥${item.latest_price.toFixed(2)}` : '—' }}</span>
+            <span class="font-mono-num">
+              <AnimatedNumber
+                v-if="item.latest_price != null"
+                :value="item.latest_price"
+                :precision="2"
+                prefix="¥"
+              />
+              <span v-else>—</span>
+            </span>
             <span
               v-if="item.change_24h != null"
               class="watchlist-card__change"
@@ -228,12 +239,16 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import MiniSparkline from '@/components/business/MiniSparkline.vue'
 import SkeletonTable from '@/components/base/SkeletonTable.vue'
 import SkeletonCard from '@/components/base/SkeletonCard.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
+import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
 import { useTheme } from '@/composables/useTheme'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const store = useWatchlistStore()
 const message = useMessage()
 const { colorUp, colorDown } = useTheme()
+const { t } = useI18n()
 
 const viewMode = ref<'table' | 'card'>('table')
 const checkedKeys = ref<string[]>([])

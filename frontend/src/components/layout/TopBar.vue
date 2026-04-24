@@ -31,6 +31,7 @@
       <n-button
         quaternary
         class="topbar-search-trigger"
+        aria-label="打开搜索"
         @click="searchModalOpen = true"
       >
         <template #icon>

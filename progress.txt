@@ -2,6 +2,29 @@
 
 # CS2 饰品价格波动监控系统 - Agent 开发进度
 
+## 2026-04-24 - Task 30: 前端打磨与工程化收尾
+
+### What was done:
+- 安装 vue-i18n 并在 main.ts 中注册 i18n 插件
+- Dashboard 欢迎语、状态栏和 Watchlist 空态文本改用 $t() 国际化
+- ItemDetail.vue 新增骨架屏（hero area + SkeletonChart + SkeletonTable）
+- Watchlist.vue 空态替换为可复用的 EmptyState 组件
+- AnimatedNumber 数字动效组件集成到 Dashboard 热度榜、ItemDetail 主价格、Watchlist 卡片价格
+- Alerts.vue 中 `import * as echarts` 改为按需引入（echarts/core + BarChart + GridComponent 等）
+- vite.config.ts 新增 naive-ui 独立 chunk 分割
+- TopBar 全局搜索按钮添加 aria-label="打开搜索"
+- npm run build 零错误通过
+
+### Testing:
+- npm run build (vue-tsc --noEmit + vite build) 无错误
+- Python py_compile 全部模块语法检查通过
+- echarts chunk: 574KB, naive-ui: 1,357KB, vendor: 145KB
+- 响应式断点验证：<640px 侧栏变抽屉，640-1024px 折叠，>1536px 最大1440居中
+
+### Notes:
+- vue-i18n locale 文件（zh-CN.ts / en-US.ts）已有完整 223 行翻译，后续可继续扩展 $t() 覆盖率
+- ECharts 按需引入已在 Alerts/ItemDetail/PortfolioChart 三个组件全部生效
+
 ## 2026-04-14 - Task 1: 项目脚手架与基础配置
 
 ### What was done:

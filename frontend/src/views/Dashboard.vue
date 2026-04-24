@@ -31,19 +31,19 @@
     <template v-else>
       <!-- 欢迎语 + 状态栏 -->
       <div class="dashboard__welcome">
-        <h1 class="dashboard__greeting">{{ greeting }}，指挥官</h1>
+        <h1 class="dashboard__greeting">{{ greeting }}，{{ t('dashboard.greeting') }}</h1>
         <div class="dashboard__status-bar">
           <span class="dashboard__status-item">
             <span class="dashboard__status-icon">🔄</span>
-            今日采集 <strong class="font-mono-num">{{ dashboard.todayCollectionCount }}</strong> 次
+            {{ t('dashboard.todayCollections') }} <strong class="font-mono-num">{{ dashboard.todayCollectionCount }}</strong> {{ t('dashboard.times') }}
           </span>
           <span class="dashboard__status-item">
             <span class="dashboard__status-icon">🔔</span>
-            今日告警 <strong class="font-mono-num">{{ dashboard.todayAlertCount }}</strong> 条
+            {{ t('dashboard.todayAlerts') }} <strong class="font-mono-num">{{ dashboard.todayAlertCount }}</strong> {{ t('dashboard.items') }}
           </span>
           <span class="dashboard__status-item">
             <span class="dashboard__status-icon">🕐</span>
-            最后更新 {{ formattedLastUpdate }}
+            {{ t('dashboard.lastUpdate') }} {{ formattedLastUpdate }}
           </span>
         </div>
       </div>
@@ -207,7 +207,13 @@
             <div class="heatmap-item__info">
               <div class="heatmap-item__name">{{ item.market_hash_name }}</div>
               <div class="heatmap-item__price font-mono-num">
-                {{ item.current_price != null ? `¥${item.current_price.toFixed(2)}` : '—' }}
+                <AnimatedNumber
+                  v-if="item.current_price != null"
+                  :value="item.current_price"
+                  :precision="2"
+                  prefix="¥"
+                />
+                <span v-else>—</span>
               </div>
             </div>
             <div class="heatmap-item__chart">
@@ -247,6 +253,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NGrid, NGi, NCard, NBadge } from 'naive-ui'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useWebsocketStore } from '@/stores/websocket'
@@ -258,17 +265,19 @@ import PortfolioChart from '@/components/business/PortfolioChart.vue'
 import AlertFeed from '@/components/business/AlertFeed.vue'
 import CollectionStatus from '@/components/business/CollectionStatus.vue'
 import SkeletonChart from '@/components/base/SkeletonChart.vue'
+import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
 
 const dashboard = useDashboardStore()
 const wsStore = useWebsocketStore()
 const { isDark, colorUp, colorDown } = useTheme()
+const { t } = useI18n()
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
-  if (hour < 6) return '夜深了'
-  if (hour < 12) return '早上好'
-  if (hour < 18) return '下午好'
-  return '晚上好'
+  if (hour < 6) return t('dashboard.night')
+  if (hour < 12) return t('dashboard.morning')
+  if (hour < 18) return t('dashboard.afternoon')
+  return t('dashboard.evening')
 })
 
 const formattedLastUpdate = computed(() => {

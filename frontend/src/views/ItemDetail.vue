@@ -12,7 +12,21 @@
       </template>
     </page-header>
 
+    <!-- 骨架屏 -->
+    <template v-if="loading">
+      <div class="item-hero skeleton-hero">
+        <div class="skeleton-line" style="width: 60%; height: 2rem;" />
+        <div class="skeleton-line" style="width: 40%; height: 1rem; margin-top: 0.75rem;" />
+        <div class="skeleton-line" style="width: 30%; height: 3rem; margin-top: 1rem;" />
+      </div>
+      <SkeletonChart />
+      <div class="mt-4">
+        <SkeletonTable :rows="5" :columns="5" />
+      </div>
+    </template>
+
     <!-- 顶部信息栏 -->
+    <template v-else>
     <div class="item-hero">
       <div class="item-hero__left">
         <div class="item-hero__title-row">
@@ -40,7 +54,13 @@
       </div>
       <div class="item-hero__right">
         <div class="item-hero__price font-mono-num">
-          {{ currentPrice != null ? `¥${currentPrice.toFixed(2)}` : '—' }}
+          <AnimatedNumber
+            v-if="currentPrice != null"
+            :value="currentPrice"
+            :precision="2"
+            prefix="¥"
+          />
+          <span v-else>—</span>
         </div>
         <div class="item-hero__badges">
           <span
@@ -146,6 +166,7 @@
         striped
       />
     </n-card>
+    </template>
   </div>
 </template>
 
@@ -185,6 +206,9 @@ import api, {
   type TrendAnalysisResponse,
 } from '@/api'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import SkeletonChart from '@/components/base/SkeletonChart.vue'
+import SkeletonTable from '@/components/base/SkeletonTable.vue'
+import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
 import { getChartTheme } from '@/charts/theme'
 import { useTheme } from '@/composables/useTheme'
 
@@ -933,5 +957,42 @@ html.dark .item-hero__badge {
 
 .mt-4 {
   margin-top: 1rem;
+}
+
+/* 骨架屏 */
+.skeleton-hero {
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: var(--n-card-color, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 1rem;
+}
+html.dark .skeleton-hero {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.skeleton-line {
+  height: 0.875rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 25%,
+    rgba(0, 0, 0, 0.10) 50%,
+    rgba(0, 0, 0, 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+html.dark .skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.08) 25%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.08) 75%
+  );
+  background-size: 200% 100%;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 </style>

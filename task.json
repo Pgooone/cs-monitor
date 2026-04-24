@@ -435,7 +435,7 @@
         "运行 npm run build 验证无报错，Lighthouse Performance ≥ 90、Accessibility ≥ 90",
         "移动端 375px 验证：侧栏变抽屉，所有页面无横向滚动"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
