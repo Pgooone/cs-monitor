@@ -46,7 +46,11 @@ class TestExtremeTracker:
                 quantity_change_mode="any",
                 alert_cooldown_seconds=0,
             )
-            yield ExtremeTracker(client, db, monitor_config)
+            tracker = ExtremeTracker(client, db, monitor_config)
+            # Mock notifier 避免测试依赖外部通知配置
+            tracker.notifier = MagicMock()
+            tracker.notifier.send_extreme_alert = MagicMock(return_value=True)
+            yield tracker
 
     @patch("api.steamdt.time.sleep", return_value=None)
     def test_tick_first_run_no_alert(self, mock_sleep, tracker):

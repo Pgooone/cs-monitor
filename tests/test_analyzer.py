@@ -31,7 +31,11 @@ class TestPriceAnalyzer:
             db = Database(Path(tmpdir) / "test.db")
             # 预先插入饰品
             db.insert_item("AK-47 | Redline (Field-Tested)")
-            yield PriceAnalyzer(client, db, monitor_config)
+            analyzer = PriceAnalyzer(client, db, monitor_config)
+            # Mock notifier 避免测试依赖外部通知配置
+            analyzer.notifier = MagicMock()
+            analyzer.notifier.send_normal_alert = MagicMock(return_value=True)
+            yield analyzer
 
     @patch("api.steamdt.time.sleep", return_value=None)
     def test_analyze_price_surge(self, mock_sleep, analyzer):

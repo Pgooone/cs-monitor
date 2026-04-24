@@ -12,8 +12,25 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const activeWatchlistCount = computed(() => summary.value?.active_watchlist ?? 0)
   const extremeTrackCount = computed(() => summary.value?.extreme_track_count ?? 0)
   const todayAlertCount = computed(() => summary.value?.today_alert_count ?? 0)
+  const yesterdayAlertCount = computed(() => summary.value?.yesterday_alert_count ?? 0)
   const latestPriceCount = computed(() => summary.value?.latest_price_count ?? 0)
   const lastUpdate = computed(() => summary.value?.last_update ?? '-')
+  const todayCollectionCount = computed(() => summary.value?.today_collection_count ?? 0)
+  const checkIntervalMinutes = computed(() => summary.value?.check_interval_minutes ?? 30)
+  const portfolioHistory = computed(() => summary.value?.portfolio_history ?? [])
+  const topVolatile = computed(() => summary.value?.top_volatile ?? [])
+  const apiQuotaPercent = computed(() => summary.value?.api_quota_percent ?? 0)
+  const watchlistSparkline = computed(() => summary.value?.watchlist_sparkline ?? [])
+
+  const alertDiff = computed(() => {
+    const today = todayAlertCount.value
+    const yesterday = yesterdayAlertCount.value
+    return {
+      diff: today - yesterday,
+      percent: yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : (today > 0 ? 100 : 0),
+      up: today >= yesterday,
+    }
+  })
 
   async function fetchSummary() {
     try {
@@ -37,7 +54,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function fetchAlerts() {
     try {
-      const { data } = await api.alerts(1, 10)
+      const { data } = await api.alerts(1, 20)
       alerts.value = data.items
     } catch (e) {
       error.value = '获取告警记录失败'
@@ -52,6 +69,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loading.value = false
   }
 
+  function incrementTodayAlertCount() {
+    if (summary.value) {
+      summary.value.today_alert_count++
+    }
+  }
+
   return {
     summary,
     watchlist,
@@ -61,11 +84,20 @@ export const useDashboardStore = defineStore('dashboard', () => {
     activeWatchlistCount,
     extremeTrackCount,
     todayAlertCount,
+    yesterdayAlertCount,
     latestPriceCount,
     lastUpdate,
+    todayCollectionCount,
+    checkIntervalMinutes,
+    portfolioHistory,
+    topVolatile,
+    apiQuotaPercent,
+    watchlistSparkline,
+    alertDiff,
     fetchSummary,
     fetchWatchlist,
     fetchAlerts,
     loadAll,
+    incrementTodayAlertCount,
   }
 })

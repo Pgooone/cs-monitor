@@ -1,188 +1,577 @@
 <template>
-  <div>
-    <page-header title="Dashboard" />
-    <n-spin :show="dashboard.loading">
-      <!-- 统计卡片 -->
-      <n-grid :x-gap="16" :y-gap="16" :cols="4">
+  <div class="dashboard">
+    <!-- 骨架屏 -->
+    <template v-if="dashboard.loading">
+      <div class="dashboard__skeleton-header">
+        <div class="skeleton-line skeleton-line--title" style="width: 40%; height: 1.75rem;" />
+        <div class="skeleton-line" style="width: 30%; height: 1rem; margin-top: 0.5rem;" />
+      </div>
+      <n-grid :x-gap="16" :y-gap="16" cols="1 640:2 1024:4">
+        <n-gi v-for="n in 4" :key="n">
+          <div class="skeleton-kpi">
+            <div class="skeleton-line" style="width: 60%; height: 1rem;" />
+            <div class="skeleton-line" style="width: 40%; height: 2.5rem; margin-top: 1rem;" />
+          </div>
+        </n-gi>
+      </n-grid>
+      <n-grid :x-gap="16" :y-gap="16" cols="1 1024:3" class="dashboard__main">
+        <n-gi :span="2">
+          <SkeletonChart />
+        </n-gi>
         <n-gi>
-          <n-card>
-            <n-statistic label="监控清单" :value="dashboard.activeWatchlistCount">
-              <template #prefix>
-                <span class="text-blue-500 mr-2">📋</span>
-              </template>
-            </n-statistic>
+          <div class="skeleton-feed">
+            <div class="skeleton-line" style="width: 40%; height: 1rem; margin-bottom: 1rem;" />
+            <div v-for="n in 5" :key="n" class="skeleton-line" style="width: 100%; height: 2.5rem; margin-bottom: 0.5rem;" />
+          </div>
+        </n-gi>
+      </n-grid>
+    </template>
+
+    <!-- 真实内容 -->
+    <template v-else>
+      <!-- 欢迎语 + 状态栏 -->
+      <div class="dashboard__welcome">
+        <h1 class="dashboard__greeting">{{ greeting }}，指挥官</h1>
+        <div class="dashboard__status-bar">
+          <span class="dashboard__status-item">
+            <span class="dashboard__status-icon">🔄</span>
+            今日采集 <strong class="font-mono-num">{{ dashboard.todayCollectionCount }}</strong> 次
+          </span>
+          <span class="dashboard__status-item">
+            <span class="dashboard__status-icon">🔔</span>
+            今日告警 <strong class="font-mono-num">{{ dashboard.todayAlertCount }}</strong> 条
+          </span>
+          <span class="dashboard__status-item">
+            <span class="dashboard__status-icon">🕐</span>
+            最后更新 {{ formattedLastUpdate }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 4 张 KPI 卡 -->
+      <n-grid :x-gap="16" :y-gap="16" cols="1 640:2 1024:4">
+        <!-- 监控饰品数 -->
+        <n-gi>
+          <KpiCard
+            title="监控饰品"
+            :value="dashboard.activeWatchlistCount"
+            icon="📋"
+            :icon-color="brand[500]"
+            :icon-bg="`${brand[500]}1F`"
+            variant="default"
+            glass
+          >
+            <template #extra>
+              <MiniSparkline
+                :data="sparklineData"
+                :color="brand[500]"
+                :width="120"
+                :height="36"
+              />
+            </template>
+          </KpiCard>
+        </n-gi>
+
+        <!-- 今日告警 -->
+        <n-gi>
+          <KpiCard
+            title="今日告警"
+            :value="dashboard.todayAlertCount"
+            icon="🔔"
+            :icon-color="semantic.error.light"
+            :icon-bg="`${semantic.error.light}1F`"
+            variant="default"
+            glass
+          >
+            <template #extra>
+              <div class="kpi-compare">
+                <span
+                  class="kpi-compare__badge"
+                  :class="dashboard.alertDiff.up ? 'kpi-compare__badge--up' : 'kpi-compare__badge--down'"
+                >
+                  {{ dashboard.alertDiff.up ? '▲' : '▼' }} {{ Math.abs(dashboard.alertDiff.percent) }}%
+                </span>
+                <span class="kpi-compare__label">较昨日</span>
+              </div>
+            </template>
+          </KpiCard>
+        </n-gi>
+
+        <!-- 极致追踪 -->
+        <n-gi>
+          <KpiCard
+            title="极致追踪"
+            :value="dashboard.extremeTrackCount"
+            icon="🎯"
+            :icon-color="semantic.success.light"
+            :icon-bg="`${semantic.success.light}1F`"
+            variant="default"
+            glass
+          >
+            <template #extra>
+              <div class="kpi-status">
+                <span
+                  class="kpi-status__dot"
+                  :class="{ 'kpi-status__dot--active': dashboard.extremeTrackCount > 0 }"
+                />
+                <span class="kpi-status__text">
+                  {{ dashboard.extremeTrackCount > 0 ? '运行中' : '未启用' }}
+                </span>
+              </div>
+            </template>
+          </KpiCard>
+        </n-gi>
+
+        <!-- API 配额 -->
+        <n-gi>
+          <KpiCard
+            title="API 配额"
+            :value="`${Math.round(dashboard.apiQuotaPercent)}%`"
+            icon="⚡"
+            :icon-color="semantic.warning.light"
+            :icon-bg="`${semantic.warning.light}1F`"
+            variant="default"
+            glass
+          >
+            <template #extra>
+              <div class="ring-progress">
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                  <circle
+                    cx="20" cy="20" r="16"
+                    fill="none"
+                    stroke="rgba(0,0,0,0.08)"
+                    stroke-width="3"
+                  />
+                  <circle
+                    cx="20" cy="20" r="16"
+                    fill="none"
+                    :stroke="quotaColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    :stroke-dasharray="`${quotaArc} 100.5`"
+                    transform="rotate(-90 20 20)"
+                    style="transition: stroke-dasharray 600ms ease;"
+                  />
+                </svg>
+              </div>
+            </template>
+          </KpiCard>
+        </n-gi>
+      </n-grid>
+
+      <!-- 主图区：组合价值曲线 + 今日告警流 -->
+      <n-grid :x-gap="16" :y-gap="16" cols="1 1024:3" class="dashboard__main">
+        <n-gi :span="2">
+          <n-card
+            title="组合价值趋势（30天）"
+            class="dashboard__chart-card"
+            :bordered="false"
+            size="small"
+          >
+            <PortfolioChart
+              :data="dashboard.portfolioHistory"
+              :is-dark="isDark"
+            />
           </n-card>
         </n-gi>
         <n-gi>
-          <n-card>
-            <n-statistic label="极致追踪" :value="dashboard.extremeTrackCount">
-              <template #prefix>
-                <span class="text-purple-500 mr-2">🎯</span>
-              </template>
-            </n-statistic>
-          </n-card>
-        </n-gi>
-        <n-gi>
-          <n-card>
-            <n-statistic label="今日告警" :value="dashboard.todayAlertCount">
-              <template #prefix>
-                <span class="text-red-500 mr-2">🔔</span>
-              </template>
-            </n-statistic>
-          </n-card>
-        </n-gi>
-        <n-gi>
-          <n-card>
-            <n-statistic label="价格记录" :value="dashboard.latestPriceCount">
-              <template #prefix>
-                <span class="text-green-500 mr-2">💰</span>
-              </template>
-            </n-statistic>
+          <n-card
+            class="dashboard__feed-card"
+            :bordered="false"
+            size="small"
+          >
+            <template #header>
+              <div class="feed-card-header">
+                <span class="feed-card-header__title">今日告警流</span>
+                <n-badge :value="dashboard.alerts.length" :max="99" />
+              </div>
+            </template>
+            <AlertFeed :alerts="dashboard.alerts" />
           </n-card>
         </n-gi>
       </n-grid>
 
-      <!-- 价格概览表 -->
-      <n-card title="监控价格概览" class="mt-4">
-        <n-data-table
-          :columns="priceColumns"
-          :data="dashboard.watchlist"
-          :pagination="{ pageSize: 10 }"
-          size="small"
-          striped
-        />
+      <!-- 热度榜 -->
+      <n-card
+        title="24h 波动热度榜"
+        class="dashboard__heatmap"
+        :bordered="false"
+        size="small"
+      >
+        <div class="heatmap-grid">
+          <div
+            v-for="item in dashboard.topVolatile"
+            :key="item.market_hash_name"
+            class="heatmap-item"
+          >
+            <div class="heatmap-item__info">
+              <div class="heatmap-item__name">{{ item.market_hash_name }}</div>
+              <div class="heatmap-item__price font-mono-num">
+                {{ item.current_price != null ? `¥${item.current_price.toFixed(2)}` : '—' }}
+              </div>
+            </div>
+            <div class="heatmap-item__chart">
+              <MiniSparkline
+                v-if="item.sparkline.length >= 2"
+                :data="item.sparkline"
+                :color="item.change_percent >= 0 ? colorUp : colorDown"
+                :width="80"
+                :height="28"
+              />
+              <div
+                v-else
+                class="heatmap-item__bar"
+                :class="item.change_percent >= 0 ? 'heatmap-item__bar--up' : 'heatmap-item__bar--down'"
+                :style="{ width: `${Math.min(100, Math.abs(item.change_percent) * 3)}%` }"
+              />
+            </div>
+            <div
+              class="heatmap-item__change font-mono-num"
+              :class="item.change_percent >= 0 ? 'heatmap-item__change--up' : 'heatmap-item__change--down'"
+            >
+              {{ item.change_percent >= 0 ? '+' : '' }}{{ item.change_percent.toFixed(2) }}%
+            </div>
+          </div>
+        </div>
       </n-card>
 
-      <!-- 最近告警 -->
-      <n-card title="最近告警" class="mt-4">
-        <n-data-table
-          :columns="alertColumns"
-          :data="dashboard.alerts"
-          :pagination="false"
-          size="small"
-          striped
-        />
-      </n-card>
-
-      <n-divider />
-      <n-text depth="3">最后更新: {{ dashboard.lastUpdate }}</n-text>
-    </n-spin>
+      <!-- 采集状态 -->
+      <CollectionStatus
+        :last-update="dashboard.lastUpdate"
+        :check-interval-minutes="dashboard.checkIntervalMinutes"
+        :today-collection-count="dashboard.todayCollectionCount"
+      />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, h } from 'vue'
-import {
-  NSpin,
-  NGrid,
-  NGi,
-  NCard,
-  NStatistic,
-  NDataTable,
-  NDivider,
-  NText,
-  NTag,
-} from 'naive-ui'
-import type { DataTableColumns } from 'naive-ui'
+import { computed, onMounted, onUnmounted } from 'vue'
+import { NGrid, NGi, NCard, NBadge } from 'naive-ui'
 import { useDashboardStore } from '@/stores/dashboard'
-import type { WatchlistItemWithPrice, AlertRecord } from '@/api'
-import api from '@/api'
-import PageHeader from '@/components/layout/PageHeader.vue'
+import { useWebsocketStore } from '@/stores/websocket'
+import { useTheme } from '@/composables/useTheme'
+import { brand, semantic } from '@/styles/tokens'
+import KpiCard from '@/components/business/KpiCard.vue'
+import MiniSparkline from '@/components/business/MiniSparkline.vue'
+import PortfolioChart from '@/components/business/PortfolioChart.vue'
+import AlertFeed from '@/components/business/AlertFeed.vue'
+import CollectionStatus from '@/components/business/CollectionStatus.vue'
+import SkeletonChart from '@/components/base/SkeletonChart.vue'
 
 const dashboard = useDashboardStore()
-const trendMap = ref<Record<string, string>>({})
+const wsStore = useWebsocketStore()
+const { isDark, colorUp, colorDown } = useTheme()
 
-async function loadTrends() {
-  const items = dashboard.watchlist
-  for (const item of items) {
-    try {
-      const { data } = await api.trends(item.market_hash_name, 14)
-      trendMap.value[item.market_hash_name] = data.trend
-    } catch {
-      trendMap.value[item.market_hash_name] = 'unknown'
-    }
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 6) return '夜深了'
+  if (hour < 12) return '早上好'
+  if (hour < 18) return '下午好'
+  return '晚上好'
+})
+
+const formattedLastUpdate = computed(() => {
+  const t = dashboard.lastUpdate
+  if (!t || t === '-') return '—'
+  try {
+    const d = new Date(t)
+    return d.toLocaleString('zh-CN', {
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return t
+  }
+})
+
+const sparklineData = computed(() => {
+  const data = dashboard.watchlistSparkline
+  return data.length >= 2 ? data : [0, 0]
+})
+
+const quotaColor = computed(() => {
+  const p = dashboard.apiQuotaPercent
+  if (p < 50) return semantic.success.light
+  if (p < 80) return semantic.warning.light
+  return semantic.error.light
+})
+
+const quotaArc = computed(() => {
+  const p = Math.min(100, Math.max(0, dashboard.apiQuotaPercent))
+  return (p / 100) * 100.5
+})
+
+// WebSocket 告警推送
+function handleWsAlert(data: any) {
+  if (data?.type === 'alert' && data.data) {
+    const alert = data.data
+    dashboard.alerts.unshift({
+      id: Date.now(),
+      market_hash_name: alert.market_hash_name,
+      alert_type: alert.alert_type,
+      current_price: alert.current_price,
+      baseline_price: alert.baseline_price,
+      change_percent: alert.change_percent,
+      notified_at: alert.timestamp || new Date().toISOString(),
+    })
+    dashboard.incrementTodayAlertCount()
   }
 }
-
-function trendLabel(trend: string) {
-  const map: Record<string, { label: string; type: string }> = {
-    surge: { label: '连涨', type: 'error' },
-    drop: { label: '连跌', type: 'success' },
-    oscillate: { label: '震荡', type: 'warning' },
-    unknown: { label: '-', type: 'default' },
-  }
-  return map[trend] || { label: '-', type: 'default' }
-}
-
-const priceColumns: DataTableColumns<WatchlistItemWithPrice> = [
-  { title: '饰品名称', key: 'market_hash_name', ellipsis: { tooltip: true } },
-  {
-    title: '当前价格',
-    key: 'latest_price',
-    render(row) {
-      if (row.latest_price == null) return '—'
-      return `¥${row.latest_price.toFixed(2)}`
-    },
-  },
-  { title: '平台', key: 'platform' },
-  {
-    title: '趋势',
-    key: 'trend',
-    render(row) {
-      const trend = trendMap.value[row.market_hash_name] || 'unknown'
-      const { label, type } = trendLabel(trend)
-      return h(NTag, { type: type as any, size: 'small' }, { default: () => label })
-    },
-  },
-  { title: '阈值(%)', key: 'threshold_percent' },
-  {
-    title: '状态',
-    key: 'enabled',
-    render(row) {
-      return row.enabled ? '启用' : '禁用'
-    },
-  },
-]
-
-const alertColumns: DataTableColumns<AlertRecord> = [
-  { title: '饰品', key: 'market_hash_name', ellipsis: { tooltip: true } },
-  {
-    title: '类型',
-    key: 'alert_type',
-    render(row) {
-      const typeMap: Record<string, string> = {
-        price_surge: '📈 价格暴涨',
-        price_drop: '📉 价格暴跌',
-        both: '🔔 价格+数量变动',
-        price_change: '💰 价格变动',
-        quantity_change: '📦 数量变动',
-      }
-      return typeMap[row.alert_type] || row.alert_type
-    },
-  },
-  {
-    title: '当前价',
-    key: 'current_price',
-    render(row) {
-      if (row.current_price == null) return '—'
-      return `¥${row.current_price.toFixed(2)}`
-    },
-  },
-  {
-    title: '波动',
-    key: 'change_percent',
-    render(row) {
-      if (row.change_percent == null) return '—'
-      const sign = row.change_percent >= 0 ? '+' : ''
-      return `${sign}${row.change_percent.toFixed(2)}%`
-    },
-  },
-  { title: '时间', key: 'notified_at' },
-]
 
 onMounted(() => {
-  dashboard.loadAll().then(() => {
-    loadTrends()
-  })
+  dashboard.loadAll()
+  wsStore.connectAlerts(handleWsAlert)
+})
+
+onUnmounted(() => {
+  wsStore.disconnectAlerts()
 })
 </script>
+
+<style scoped>
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.feed-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.feed-card-header__title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* 欢迎语 */
+.dashboard__welcome {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.dashboard__greeting {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--n-text-color-1, #171717);
+  letter-spacing: -0.02em;
+}
+.dashboard__status-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.dashboard__status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--n-text-color-2, #525252);
+}
+.dashboard__status-icon {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/* KPI 对比 */
+.kpi-compare {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.kpi-compare__badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.kpi-compare__badge--up {
+  background: v-bind('colorUp') + '22';
+  color: v-bind('colorUp');
+}
+.kpi-compare__badge--down {
+  background: v-bind('colorDown') + '22';
+  color: v-bind('colorDown');
+}
+.kpi-compare__label {
+  font-size: 0.75rem;
+  color: var(--n-text-color-3, #737373);
+}
+
+/* KPI 状态 */
+.kpi-status {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.kpi-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a3a3a3;
+}
+.kpi-status__dot--active {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+.kpi-status__text {
+  font-size: 0.75rem;
+  color: var(--n-text-color-3, #737373);
+}
+
+/* 环形进度 */
+.ring-progress {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* 主图区 */
+.dashboard__main {
+  margin-top: 0.25rem;
+}
+.dashboard__chart-card,
+.dashboard__feed-card,
+.dashboard__heatmap {
+  border-radius: 1rem;
+  background: var(--n-card-color, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+html.dark .dashboard__chart-card,
+html.dark .dashboard__feed-card,
+html.dark .dashboard__heatmap {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* 热度榜 */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+.heatmap-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--n-card-color, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+html.dark .heatmap-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.heatmap-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.heatmap-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.heatmap-item__name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.25rem;
+}
+.heatmap-item__price {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--n-text-color-2, #525252);
+}
+.heatmap-item__chart {
+  width: 80px;
+  flex-shrink: 0;
+}
+.heatmap-item__bar {
+  height: 4px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: width 600ms ease;
+}
+.heatmap-item__bar--up {
+  background: v-bind('colorUp');
+}
+.heatmap-item__bar--down {
+  background: v-bind('colorDown');
+}
+.heatmap-item__change {
+  font-size: 0.875rem;
+  font-weight: 700;
+  width: 72px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.heatmap-item__change--up {
+  color: v-bind('colorUp');
+}
+.heatmap-item__change--down {
+  color: v-bind('colorDown');
+}
+
+/* 骨架屏 */
+.dashboard__skeleton-header {
+  margin-bottom: 0.5rem;
+}
+.skeleton-kpi {
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: var(--n-card-color, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+html.dark .skeleton-kpi {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.skeleton-line {
+  height: 0.875rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 25%,
+    rgba(0, 0, 0, 0.10) 50%,
+    rgba(0, 0, 0, 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+html.dark .skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.08) 25%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.08) 75%
+  );
+  background-size: 200% 100%;
+}
+.skeleton-feed {
+  border-radius: 1rem;
+  padding: 1rem;
+  background: var(--n-card-color, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+html.dark .skeleton-feed {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+</style>

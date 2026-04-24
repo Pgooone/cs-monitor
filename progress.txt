@@ -901,3 +901,35 @@ docker compose up -d
 ### Notes:
 - change-password 后端同时更新 jwt_secret，强制用户重新登录以使用新 secret
 - TopBar 用户菜单中的退出登录现在统一走 auth store，避免状态不一致
+
+## 2026-04-24 - Task 27: 仪表盘重设计
+
+### What was done:
+- 修复 Dashboard.vue TypeScript 编译错误：
+  - MiniSparkline 的 width/height 属性由字符串改为数字绑定（:width="120" :height="36"）
+  - 移除未使用的 NBadge 导入
+  - 修复 dashboard.todayAlertCount++ 只读错误：在 store 中新增 incrementTodayAlertCount() 方法
+- 优化 AlertFeed 与 n-card 标题重复问题：
+  - AlertFeed 移除内部 header，改为由外部 n-card 的 #header 插槽统一控制
+  - Dashboard.vue 的告警流卡片使用 n-card #header + n-badge 展示标题和数量
+  - AlertFeed 颜色改为通过 useTheme 的 colorUp/colorDown 动态绑定，支持中国/国际涨跌色切换
+- 验证现有 Dashboard 设计符合 Task 27 要求：
+  - 欢迎语 + 时间状态栏（今日采集次数、告警数、最后更新时间）
+  - 4 张 KPI 卡（监控饰品数带迷你折线、今日告警对比昨日、极致追踪活跃数带状态点、API 调用配额环形进度）
+  - 主图区左 2/3：组合价值曲线（30 天 ECharts area chart，品牌色渐变填充）
+  - 主图区右 1/3：今日告警流（实时滚动列表，新告警顶部插入 + 闪烁高亮）
+  - 热度榜：波动最大 5 个饰品，带迷你 sparkline 和 24h 变化
+  - 采集状态区：下次采集倒计时进度条 + 最后一次采集结果
+- 修复预先存在的后端单元测试失败：
+  - test_analyzer.py：fixture 中 mock notifier.send_normal_alert 返回 True
+  - test_extreme_tracker.py：fixture 中 mock notifier.send_extreme_alert 返回 True
+  - 失败原因为 NotificationManager 在测试环境中未配置有效渠道，导致告警不被返回
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- `python -m pytest tests/ -v`：86 个测试全部通过
+- `python -m py_compile tests/test_analyzer.py tests/test_extreme_tracker.py` 无语法错误
+
+### Notes:
+- Dashboard.vue 的 UI 框架在 Task 23-26 的累积工作中已大部分实现，本次主要修复编译错误和测试回归
+- 热度榜迷你 K 线当前使用 sparkline（价格折线）而非真正 OHLC K 线，这是后端数据结构的限制（alert_logs 中无 OHLC 数据）
