@@ -3,13 +3,25 @@
     :theme="naiveTheme"
     :theme-overrides="themeOverrides"
   >
-    <router-view />
+    <n-message-provider>
+      <n-dialog-provider>
+        <n-notification-provider>
+          <router-view />
+        </n-notification-provider>
+      </n-dialog-provider>
+    </n-message-provider>
   </n-config-provider>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { darkTheme, NConfigProvider } from 'naive-ui'
+import {
+  darkTheme,
+  NConfigProvider,
+  NMessageProvider,
+  NDialogProvider,
+  NNotificationProvider,
+} from 'naive-ui'
 import { useTheme } from '@/composables/useTheme'
 import { lightThemeOverrides, darkThemeOverrides } from '@/styles/theme'
 import { registerCsMonitorThemes } from '@/charts/theme'
