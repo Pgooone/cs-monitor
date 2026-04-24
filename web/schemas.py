@@ -162,6 +162,33 @@ class AlertStatsResponse(BaseModel):
     by_type: list[AlertStatsItem]
 
 
+class ExtremeAlertRecord(BaseModel):
+    """极致追踪告警记录模型."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    market_hash_name: str
+    platform: str
+    alert_type: str
+    prev_price: float | None = None
+    curr_price: float | None = None
+    price_change_percent: float | None = None
+    prev_quantity: int | None = None
+    curr_quantity: int | None = None
+    quantity_change_percent: float | None = None
+    notified_at: datetime
+
+
+class ExtremeAlertListResponse(BaseModel):
+    """极致追踪告警列表响应."""
+
+    items: list[ExtremeAlertRecord]
+    total: int
+    page: int
+    limit: int
+
+
 class PriceRecord(BaseModel):
     """价格记录模型."""
 

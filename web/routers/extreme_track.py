@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from storage.database import Database
 from web.deps import get_db, require_auth
 from web.schemas import (
+    ExtremeAlertListResponse,
+    ExtremeAlertRecord,
     ExtremeTrackConfig,
     ExtremeTrackConfigCreate,
     ExtremeTrackConfigUpdate,
@@ -150,4 +152,33 @@ def toggle_extreme_track_config(
         "market_hash_name": market_hash_name,
         "platform": platform,
         "enabled": new_enabled,
+    }
+
+
+@router.get("/alerts", response_model=ExtremeAlertListResponse)
+def get_extreme_alerts(
+    page: int = 1,
+    limit: int = 20,
+    alert_type: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    market_hash_name: str | None = None,
+    db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
+) -> dict:
+    """分页查询极致追踪告警记录."""
+    rows, total = db.get_extreme_alerts(
+        page=page,
+        limit=limit,
+        alert_type=alert_type,
+        start_date=start_date,
+        end_date=end_date,
+        market_hash_name=market_hash_name,
+    )
+    items = [dict(row) for row in rows]
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
     }

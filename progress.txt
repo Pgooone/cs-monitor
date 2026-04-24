@@ -972,3 +972,46 @@ docker compose up -d
 ### Notes:
 - ECharts 当前仍为全量引入（echarts 1MB+），Task 30 会专门处理按需引入和 manualChunks 优化
 - K 线时间粒度 4H/1M 后端暂不支持，当前提供 1H/1D/1W
+
+## 2026-04-24 - Task 29: 告警页、极致追踪页、设置页重设计
+
+### What was done:
+- **后端 API 扩展**：
+  - `storage/database.py`：新增 `get_extreme_alerts()`、`get_extreme_alert_stats()` 分页查询极致追踪告警
+  - `web/schemas.py`：新增 `ExtremeAlertRecord`、`ExtremeAlertListResponse` 模型
+  - `web/routers/extreme_track.py`：新增 `GET /api/extreme-track/alerts` 端点
+  - `web/routers/settings.py`：新增 `GET /api/settings/system`（系统信息）、`GET /api/settings/db/export`（导出 DB）、`POST /api/settings/db/clear`（清空数据）
+  - `frontend/src/api/index.ts`：新增 `extremeAlerts()`、`systemInfo()`、`exportDb()`、`clearDb()` 接口
+
+- **Alerts.vue 重设计**：
+  - Tab 切分普通监控告警 / 极致追踪告警
+  - 筛选器水平一行：类型、日期范围、搜索、查询/重置
+  - 告警卡片替代表格：名称、平台、类型徽章、价格、变化幅度、时间、查看 K 线按钮
+  - 按日期分组 + sticky 头部
+  - 点击卡片右侧滑出详情抽屉：告警信息 + 前后 10 条价格上下文表格 + 跳转 K 线按钮
+  - 骨架屏、空态、响应式适配
+
+- **ExtremeTrack.vue 重设计**：
+  - 卡片网格布局（1/2/3/4 列响应式）
+  - 每张卡片：名称、平台 badge、运行状态徽章、追踪强度进度条、价格/数量追踪配置、实时数据（如有）
+  - 操作按钮：启动/停止、编辑、删除
+  - 添加/编辑弹窗改为 4 步骤：选饰品 → 选平台 → 设定类型 → 阈值与高级
+  - 骨架屏、空态
+
+- **Settings.vue 重设计**：
+  - 左右结构：左侧子导航（通用/通知/监控/数据/关于）+ 右侧内容
+  - 通用设置：主题模式（带图标）、涨跌颜色（带色块预览）
+  - 通知配置：顶部 3 步骤条（选择渠道 → 填写配置 → 测试发送）+ 右侧实时预览卡片 + 保存/测试按钮
+  - 监控概览：监控清单数量、极致追踪数量统计卡片
+  - 数据目录：DB 路径/大小显示、导出按钮、危险操作区（红色边框 + CONFIRM 二次确认清空）
+  - 关于页：Logo、版本、描述、GitHub 链接
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- `python -m pytest tests/ -v`：86 个测试全部通过
+- `python -m py_compile storage/database.py web/schemas.py web/routers/extreme_track.py web/routers/settings.py` 无语法错误
+- 新增依赖：`npm install @vicons/ionicons5`（图标库）
+
+### Notes:
+- 极致追踪告警的 stats 图表暂复用普通告警 stats API（后端未单独实现 extreme alert stats）
+- ECharts 仍为全量引入，Task 30 会处理按需引入

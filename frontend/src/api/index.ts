@@ -125,8 +125,29 @@ export interface AlertRecord {
   notified_at: string
 }
 
+export interface ExtremeAlertRecord {
+  id: number
+  market_hash_name: string
+  platform: string
+  alert_type: string
+  prev_price: number | null
+  curr_price: number | null
+  price_change_percent: number | null
+  prev_quantity: number | null
+  curr_quantity: number | null
+  quantity_change_percent: number | null
+  notified_at: string
+}
+
 export interface AlertListResponse {
   items: AlertRecord[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface ExtremeAlertListResponse {
+  items: ExtremeAlertRecord[]
   total: number
   page: number
   limit: number
@@ -314,6 +335,9 @@ export default {
   alertStats(params?: { start_date?: string; end_date?: string }) {
     return api.get<AlertStatsResponse>('/alerts/stats', { params })
   },
+  extremeAlerts(page = 1, limit = 10, params?: { alert_type?: string; start_date?: string; end_date?: string; market_hash_name?: string }) {
+    return api.get<ExtremeAlertListResponse>('/extreme-track/alerts', { params: { page, limit, ...params } })
+  },
   priceHistory(marketHashName: string, days?: number, platform?: string) {
     return api.get<PriceHistoryItem[]>(`/prices/${encodeURIComponent(marketHashName)}/history`, {
       params: { days, platform },
@@ -345,6 +369,15 @@ export default {
   },
   testNotify(channel?: string, extra?: Record<string, any>) {
     return api.post('/settings/notify/test', { channel, extra })
+  },
+  systemInfo() {
+    return api.get<{ version: string; db_path: string; db_size: number; db_size_human: string; data_dir: string; watchlist_count: number; extreme_track_count: number }>('/settings/system')
+  },
+  exportDb() {
+    return api.get('/settings/db/export', { responseType: 'blob' })
+  },
+  clearDb() {
+    return api.post('/settings/db/clear?confirm=true')
   },
   kline(marketHashName: string, period?: number, count?: number) {
     return api.get<KlineResponse>(`/kline/${encodeURIComponent(marketHashName)}`, {

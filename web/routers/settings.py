@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 
 from notify.wecom import WeComChannel
 from storage.database import Database
@@ -81,3 +85,81 @@ def test_notify(
 
     # Telegram / ServerChan 暂未实现前端测试，预留接口
     raise HTTPException(status_code=400, detail=f"渠道 '{channel}' 暂不支持测试")
+
+
+@router.get("/system")
+def get_system_info(
+    db: Database = Depends(get_db),
+    config=Depends(get_config),
+    user: dict = Depends(require_auth),
+) -> dict:
+    """获取系统信息（数据目录、版本、数据库状态等）."""
+    db_path = Path(config.db_path)
+    db_size = db_path.stat().st_size if db_path.exists() else 0
+    return {
+        "version": "1.0.0",
+        "db_path": str(db_path),
+        "db_size": db_size,
+        "db_size_human": _human_readable_size(db_size),
+        "data_dir": str(db_path.parent),
+        "watchlist_count": db.get_watchlist_count(enabled_only=False),
+        "extreme_track_count": db.get_extreme_track_count(enabled_only=False),
+    }
+
+
+@router.get("/db/export")
+def export_database(
+    db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
+) -> FileResponse:
+    """导出数据库文件."""
+    db_path = Path(db.db_path)
+    if not db_path.exists():
+        raise HTTPException(status_code=404, detail="数据库文件不存在")
+    return FileResponse(
+        path=str(db_path),
+        filename="cs_monitor.db",
+        media_type="application/octet-stream",
+    )
+
+
+@router.post("/db/clear")
+def clear_database(
+    confirm: bool = False,
+    db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
+) -> dict:
+    """清空价格记录和告警记录（保留配置表）."""
+    if not confirm:
+        raise HTTPException(status_code=400, detail="必须设置 confirm=true 才能清空数据")
+    try:
+        with db._cursor() as cursor:
+            cursor.execute("DELETE FROM price_records")
+            cursor.execute("DELETE FROM alert_logs")
+            cursor.execute("DELETE FROM extreme_track_snapshots")
+            cursor.execute("DELETE FROM extreme_track_alerts")
+            cursor.execute("DELETE FROM archived_prices")
+        return {
+            "message": "数据已清空",
+            "cleared_tables": [
+                "price_records",
+                "alert_logs",
+                "extreme_track_snapshots",
+                "extreme_track_alerts",
+                "archived_prices",
+            ],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"清空失败: {e}")
+
+
+def _human_readable_size(size_bytes: int) -> str:
+    """将字节数转换为人类可读格式."""
+    if size_bytes == 0:
+        return "0 B"
+    units = ["B", "KB", "MB", "GB"]
+    import math
+    idx = int(math.floor(math.log(size_bytes, 1024)))
+    idx = min(idx, len(units) - 1)
+    size = round(size_bytes / (1024 ** idx), 2)
+    return f"{size} {units[idx]}"
