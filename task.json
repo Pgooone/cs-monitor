@@ -404,7 +404,7 @@
         "技术指标：可选 MA5/MA10/MA30/成交量（多 Y 轴）；Tooltip 深色玻璃卡",
         "历史告警点位标注在 K 线上（三角形 icon，hover 显示详情）；导出 PNG/CSV"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 29,

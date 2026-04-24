@@ -62,12 +62,26 @@ api.interceptors.response.use(
   },
 )
 
+export interface VolatileItem {
+  market_hash_name: string
+  current_price: number | null
+  change_percent: number
+  sparkline: number[]
+}
+
 export interface DashboardSummary {
   active_watchlist: number
   extreme_track_count: number
   today_alert_count: number
+  yesterday_alert_count: number
   latest_price_count: number
   last_update: string | null
+  today_collection_count: number
+  check_interval_minutes: number
+  portfolio_history: { date: string; value: number }[]
+  top_volatile: VolatileItem[]
+  api_quota_percent: number
+  watchlist_sparkline: number[]
 }
 
 export interface WatchlistItem {
@@ -80,6 +94,11 @@ export interface WatchlistItem {
   updated_at: string | null
 }
 
+export interface PlatformPriceMini {
+  platform: string
+  price: number
+}
+
 export interface WatchlistItemWithPrice {
   id: number
   market_hash_name: string
@@ -89,6 +108,9 @@ export interface WatchlistItemWithPrice {
   latest_price: number | null
   platform: string | null
   price_updated_at: string | null
+  change_24h: number | null
+  sparkline: number[]
+  platform_prices: PlatformPriceMini[]
   created_at: string | null
   updated_at: string | null
 }

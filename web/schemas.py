@@ -35,14 +35,30 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=6, description="新密码")
 
 
+class VolatileItem(BaseModel):
+    """波动热度项."""
+
+    market_hash_name: str
+    current_price: float | None = None
+    change_percent: float = 0.0
+    sparkline: list[float] = Field(default_factory=list)
+
+
 class DashboardSummary(BaseModel):
     """Dashboard 概览数据."""
 
     active_watchlist: int = Field(0, description="监控清单数量")
     extreme_track_count: int = Field(0, description="极致追踪数量")
     today_alert_count: int = Field(0, description="今日告警数量")
+    yesterday_alert_count: int = Field(0, description="昨日告警数量")
     latest_price_count: int = Field(0, description="最新价格记录数")
     last_update: str | None = Field(None, description="最后更新时间")
+    today_collection_count: int = Field(0, description="今日采集次数")
+    check_interval_minutes: int = Field(30, description="采集间隔分钟")
+    portfolio_history: list[dict] = Field(default_factory=list, description="组合价值历史")
+    top_volatile: list[VolatileItem] = Field(default_factory=list, description="24h波动热度榜")
+    api_quota_percent: float = Field(0.0, description="API配额百分比")
+    watchlist_sparkline: list[float] = Field(default_factory=list, description="监控清单sparkline")
 
 
 class WatchlistItem(BaseModel):
@@ -76,6 +92,13 @@ class WatchlistItemUpdate(BaseModel):
     enabled: bool | None = Field(None, description="是否启用")
 
 
+class PlatformPriceMini(BaseModel):
+    """平台价格简项."""
+
+    platform: str
+    price: float
+
+
 class WatchlistItemWithPrice(BaseModel):
     """带最新价格的监控清单项."""
 
@@ -89,6 +112,11 @@ class WatchlistItemWithPrice(BaseModel):
     latest_price: float | None = Field(None, description="最新价格")
     platform: str | None = Field(None, description="价格来源平台")
     price_updated_at: datetime | None = Field(None, description="价格更新时间")
+    change_24h: float | None = Field(None, description="24小时价格变化百分比")
+    sparkline: list[float] = Field(default_factory=list, description="最近7天每日价格点")
+    platform_prices: list[PlatformPriceMini] = Field(
+        default_factory=list, description="各平台最新价格"
+    )
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

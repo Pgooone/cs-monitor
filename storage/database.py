@@ -741,7 +741,7 @@ class Database:
     def get_watchlist_with_latest_price(
         self, enabled_only: bool = True
     ) -> list[dict[str, Any]]:
-        """获取监控清单及其最新价格."""
+        """获取监控清单及其最新价格，附带24h变化和7天sparkline."""
         with self._cursor() as cursor:
             if enabled_only:
                 cursor.execute(
@@ -784,7 +784,97 @@ class Database:
                     ORDER BY w.created_at
                     """
                 )
-            return [dict(row) for row in cursor.fetchall()]
+            rows = [dict(row) for row in cursor.fetchall()]
+
+            if not rows:
+                return rows
+
+            names = [r["market_hash_name"] for r in rows]
+            placeholders = ",".join("?" * len(names))
+
+            # 获取最近7天价格历史用于 sparkline 和 24h 变化
+            cursor.execute(
+                f"""
+                SELECT market_hash_name, price, recorded_at
+                FROM price_records
+                WHERE market_hash_name IN ({placeholders})
+                  AND recorded_at >= datetime('now', '-7 days')
+                ORDER BY market_hash_name, recorded_at ASC
+                """,
+                tuple(names),
+            )
+            history_rows = [dict(r) for r in cursor.fetchall()]
+
+            # 获取最接近24小时前的价格
+            cursor.execute(
+                f"""
+                SELECT market_hash_name, price
+                FROM price_records
+                WHERE market_hash_name IN ({placeholders})
+                  AND recorded_at >= datetime('now', '-25 hours')
+                  AND recorded_at <= datetime('now', '-23 hours')
+                ORDER BY market_hash_name,
+                         ABS(julianday(recorded_at) - julianday(datetime('now', '-24 hours')))
+                """,
+                tuple(names),
+            )
+            price_24h_rows = cursor.fetchall()
+            price_24h_by_name: dict[str, float] = {}
+            for p in price_24h_rows:
+                name = p["market_hash_name"]
+                if name not in price_24h_by_name:
+                    price_24h_by_name[name] = p["price"]
+
+            # 按饰品分组历史价格
+            history_by_name: dict[str, list[dict]] = {}
+            for h in history_rows:
+                name = h["market_hash_name"]
+                history_by_name.setdefault(name, []).append(h)
+
+            for row in rows:
+                name = row["market_hash_name"]
+                hist = history_by_name.get(name, [])
+
+                # sparkline: 每天最后一个价格点
+                daily_prices: dict[str, float] = {}
+                for h in hist:
+                    day = str(h["recorded_at"])[:10]
+                    daily_prices[day] = h["price"]
+                row["sparkline"] = list(daily_prices.values())
+
+                # 24h 变化
+                latest = row.get("latest_price")
+                prev = price_24h_by_name.get(name)
+                if latest is not None and prev is not None and prev > 0:
+                    row["change_24h"] = round(
+                        ((latest - prev) / prev) * 100, 2
+                    )
+                else:
+                    row["change_24h"] = None
+
+                # 各平台最新价格
+                cursor.execute(
+                    """
+                    SELECT platform, price
+                    FROM price_records pr
+                    INNER JOIN (
+                        SELECT platform, MAX(recorded_at) AS max_at
+                        FROM price_records
+                        WHERE market_hash_name = ?
+                        GROUP BY platform
+                    ) latest ON pr.platform = latest.platform
+                        AND pr.recorded_at = latest.max_at
+                    WHERE pr.market_hash_name = ?
+                    ORDER BY pr.price ASC
+                    """,
+                    (name, name),
+                )
+                row["platform_prices"] = [
+                    {"platform": r["platform"], "price": r["price"]}
+                    for r in cursor.fetchall()
+                ]
+
+            return rows
 
     def get_extreme_track_count(self, enabled_only: bool = True) -> int:
         """获取极致追踪配置数量."""

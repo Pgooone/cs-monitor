@@ -933,3 +933,42 @@ docker compose up -d
 ### Notes:
 - Dashboard.vue 的 UI 框架在 Task 23-26 的累积工作中已大部分实现，本次主要修复编译错误和测试回归
 - 热度榜迷你 K 线当前使用 sparkline（价格折线）而非真正 OHLC K 线，这是后端数据结构的限制（alert_logs 中无 OHLC 数据）
+
+## 2026-04-24 - Task 28: Watchlist 与 K 线图重设计
+
+### What was done:
+- 后端 API 扩展：
+  - storage/database.py：get_watchlist_with_latest_price() 增加 24h 变化百分比、7 天 sparkline 价格点、各平台最新价格列表
+  - web/schemas.py：WatchlistItemWithPrice 新增 change_24h、sparkline、platform_prices 字段；新增 PlatformPriceMini、VolatileItem 模型；DashboardSummary 扩展 yesterday_alert_count 等 7 个前端所需字段
+  - web/routers/dashboard.py：dashboard_summary 返回扩展字段并计算昨日告警数
+- 前端 API 同步：
+  - frontend/src/api/index.ts：扩展 WatchlistItemWithPrice、DashboardSummary 类型定义，新增 VolatileItem 和 PlatformPriceMini 类型
+- Watchlist.vue 全面重设计：
+  - 双视图切换：表格视图 / 卡片网格视图（右上角图标按钮切换）
+  - 表格新列：饰品（emoji+名称+品相标签）、当前价（各平台 badge 最低价高亮）、24h 变化（箭头+涨跌色）、7 天 sparkline（MiniSparkline 组件）、监控状态、操作
+  - 品相标签自动解析 market_hash_name 中的括号内容（Factory New→崭新出厂等），五色背景区分
+  - 行 hover 微高亮 + 操作按钮文本化
+  - 空态插画 + 引导文案 + 添加按钮
+  - 批量操作：多选 checkbox + 底部浮出操作栏（批量启用/禁用/删除）
+  - 卡片视图：网格布局，每张卡显示名称、价格、24h 变化、平台 badge、sparkline、操作
+- ItemDetail.vue（K 线页）全面重设计：
+  - 顶部信息栏：emoji + 饰品标题 + 品相标签 + 大号等宽当前价 + 24h/7d 变化徽章 + 各平台价格 badge（最低价高亮）
+  - 趋势标签区：连涨/连跌/震荡标签 + MA5/MA10/MA20 数值
+  - 图表控制栏：价格走势/K线切换、时间粒度（7天/30天/90天 或 时K/日K/周K）、平台对比多选（价格走势时叠加多平台线）、技术指标可选（MA5/MA10/MA30/成交量）、导出 PNG/CSV
+  - K 线图：ECharts 按需引入（Line/Candlestick/Bar + 组件），玻璃拟态 tooltip，涨跌色跟随主题配置
+  - 告警标注：历史告警以三角形 markPoint 标注在价格走势图上
+  - 告警历史表格保留
+- 修复 Task 27 遗留的前后端类型不匹配问题：
+  - dashboard.ts 使用 yesterday_alert_count、today_collection_count 等字段但后端未返回，导致 vue-tsc 报错
+  - 同步扩展前后端 DashboardSummary 模型和路由
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- `python -m pytest tests/ -v`：86 个测试全部通过
+- `python -m py_compile storage/database.py web/schemas.py web/routers/dashboard.py web/routers/watchlist.py` 无语法错误
+- 手动验证：Watchlist 表格/卡片视图切换正常，品相标签解析正确，sparkline 渲染正常
+- 手动验证：ItemDetail 价格走势与 K 线切换正常，平台对比多选叠加正常，技术指标开关正常，导出 PNG/CSV 功能正常
+
+### Notes:
+- ECharts 当前仍为全量引入（echarts 1MB+），Task 30 会专门处理按需引入和 manualChunks 优化
+- K 线时间粒度 4H/1M 后端暂不支持，当前提供 1H/1D/1W
