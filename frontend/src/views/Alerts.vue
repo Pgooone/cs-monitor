@@ -528,7 +528,7 @@ onBeforeUnmount(() => {
 .alert-groups {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .alert-group__header {
@@ -538,38 +538,39 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0;
-  background: var(--n-body-color);
-  backdrop-filter: blur(4px);
+  padding: 0.625rem 0;
+  background: var(--cs-bg-page);
+  backdrop-filter: blur(8px);
 }
 
 .alert-group__date {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--n-text-color-2);
+  color: var(--cs-text-secondary);
 }
 
 .alert-group__cards {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .alert-card {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.875rem 1rem;
-  background: var(--n-card-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 0.5rem;
+  padding: 1rem 1.125rem;
+  background: var(--cs-bg-card);
+  border: 1px solid var(--cs-border-light);
+  border-radius: 0.875rem;
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: all var(--cs-transition-fast);
+  box-shadow: var(--cs-shadow-sm);
 }
 
 .alert-card:hover {
-  border-color: var(--n-primary-color);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+  border-color: var(--cs-brand-primary);
+  box-shadow: var(--cs-shadow-md);
   transform: translateY(-1px);
 }
 
@@ -581,7 +582,7 @@ onBeforeUnmount(() => {
 .alert-card__name {
   font-weight: 500;
   font-size: 0.9375rem;
-  color: var(--n-text-color-1);
+  color: var(--cs-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -589,7 +590,7 @@ onBeforeUnmount(() => {
 
 .alert-card__platform {
   font-size: 0.75rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
   margin-left: 0.25rem;
 }
 
@@ -597,12 +598,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.25rem;
+  margin-top: 0.375rem;
 }
 
 .alert-card__time {
   font-size: 0.75rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
 }
 
 .alert-card__right {
@@ -614,7 +615,7 @@ onBeforeUnmount(() => {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: var(--n-text-color-1);
+  color: var(--cs-text-primary);
 }
 
 .alert-card__change {
@@ -626,7 +627,7 @@ onBeforeUnmount(() => {
 .alert-card__action {
   flex-shrink: 0;
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity var(--cs-transition-fast);
 }
 
 .alert-card:hover .alert-card__action {
@@ -642,7 +643,7 @@ onBeforeUnmount(() => {
 .detail-section {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.375rem;
 }
 
 .detail-section.grid-2 {
@@ -653,13 +654,13 @@ onBeforeUnmount(() => {
 
 .detail-label {
   font-size: 0.75rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
 }
 
 .detail-value {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--n-text-color-1);
+  color: var(--cs-text-primary);
   font-family: 'JetBrains Mono', monospace;
 }
 

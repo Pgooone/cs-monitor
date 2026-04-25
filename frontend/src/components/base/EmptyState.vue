@@ -33,45 +33,70 @@ withDefaults(defineProps<{
   justify-content: center;
   padding: 4rem 1rem;
   text-align: center;
-  animation: fade-in 240ms ease;
+  animation: empty-fade-in 400ms cubic-bezier(0.25, 1, 0.5, 1);
 }
+
 .empty-state--compact {
-  padding: 2rem 1rem;
+  padding: 2.5rem 1rem;
 }
+
 .empty-state__icon {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  position: relative;
 }
+
+.empty-state__icon::before {
+  content: '';
+  position: absolute;
+  inset: -0.75rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--cs-brand-primary) 0%, transparent 70%);
+  opacity: 0.08;
+  filter: blur(12px);
+}
+
 .empty-state__emoji {
-  font-size: 4rem;
-  opacity: 0.6;
+  font-size: 3.5rem;
   line-height: 1;
+  display: block;
+  position: relative;
+  filter: saturate(0.85);
+  transition: filter 300ms ease;
 }
+
+.empty-state:hover .empty-state__emoji {
+  filter: saturate(1);
+}
+
 .empty-state__title {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: var(--n-text-color-1);
+  margin-bottom: 0.375rem;
+  color: var(--cs-text-primary);
+  letter-spacing: -0.01em;
 }
+
 .empty-state__desc {
   font-size: 0.875rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
   margin-bottom: 1.5rem;
   max-width: 320px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
+
 .empty-state__action {
   display: flex;
   gap: 0.75rem;
 }
 
-@keyframes fade-in {
+@keyframes empty-fade-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 </style>

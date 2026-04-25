@@ -169,8 +169,16 @@
             size="small"
           >
             <PortfolioChart
+              v-if="dashboard.portfolioHistory.length >= 2"
               :data="dashboard.portfolioHistory"
               :is-dark="isDark"
+            />
+            <EmptyState
+              v-else
+              title="暂无趋势数据"
+              description="监控饰品的价格数据不足，开始采集后将自动生成趋势图"
+              emoji="📈"
+              compact
             />
           </n-card>
         </n-gi>
@@ -198,7 +206,15 @@
         :bordered="false"
         size="small"
       >
-        <div class="heatmap-grid">
+        <div v-if="dashboard.topVolatile.length === 0" class="dashboard__heatmap-empty">
+          <EmptyState
+            title="暂无波动数据"
+            description="监控饰品的价格波动数据不足，采集更多数据后将显示热度榜"
+            emoji="🔥"
+            compact
+          />
+        </div>
+        <div v-else class="heatmap-grid">
           <div
             v-for="item in dashboard.topVolatile"
             :key="item.market_hash_name"
@@ -265,6 +281,7 @@ import PortfolioChart from '@/components/business/PortfolioChart.vue'
 import AlertFeed from '@/components/business/AlertFeed.vue'
 import CollectionStatus from '@/components/business/CollectionStatus.vue'
 import SkeletonChart from '@/components/base/SkeletonChart.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
 import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
 
 const dashboard = useDashboardStore()
@@ -578,6 +595,9 @@ html.dark .skeleton-line {
     rgba(255, 255, 255, 0.08) 75%
   );
   background-size: 200% 100%;
+}
+.dashboard__heatmap-empty {
+  padding: 2rem 0;
 }
 .skeleton-feed {
   border-radius: 1rem;
