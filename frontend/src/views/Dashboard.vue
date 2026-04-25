@@ -29,6 +29,9 @@
 
     <!-- 真实内容 -->
     <template v-else>
+      <!-- 饰品搜索框 -->
+      <ItemSearch @add-to-watchlist="onItemAdded" />
+
       <!-- 欢迎语 + 状态栏 -->
       <div class="dashboard__welcome">
         <h1 class="dashboard__greeting">{{ greeting }}，{{ t('dashboard.greeting') }}</h1>
@@ -283,6 +286,7 @@ import CollectionStatus from '@/components/business/CollectionStatus.vue'
 import SkeletonChart from '@/components/base/SkeletonChart.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
+import ItemSearch from '@/components/business/ItemSearch.vue'
 
 const dashboard = useDashboardStore()
 const wsStore = useWebsocketStore()
@@ -329,6 +333,12 @@ const quotaArc = computed(() => {
   const p = Math.min(100, Math.max(0, dashboard.apiQuotaPercent))
   return (p / 100) * 100.5
 })
+
+// 饰品添加回调
+function onItemAdded(name: string) {
+  dashboard.loadAll()
+  window.$message?.success(`已添加 "${name}" 到监控清单`)
+}
 
 // WebSocket 告警推送
 function handleWsAlert(data: any) {

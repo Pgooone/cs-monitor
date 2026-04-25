@@ -395,4 +395,7 @@ export default {
       params: { days },
     })
   },
+  searchItemPrice(q: string) {
+    return api.get('/prices/search', { params: { q } })
+  },
 }

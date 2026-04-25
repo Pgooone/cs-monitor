@@ -2,13 +2,56 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from api.steamdt import SteamDTClient, SteamDTConfig
+from config import MonitorConfig
 from storage.database import Database
-from web.deps import get_db, require_auth
+from web.deps import get_config, get_db, require_auth
 from web.schemas import LatestPriceItem, PlatformPriceItem, PriceHistoryItem
 
 router = APIRouter(prefix="/prices", tags=["prices"])
+
+
+@router.get("/search")
+def search_item_price(
+    q: str = Query(..., description="饰品 marketHashName"),
+    db: Database = Depends(get_db),
+    config: MonitorConfig = Depends(get_config),
+    user: dict = Depends(require_auth),
+) -> dict:
+    """搜索饰品并返回各平台价格（通过 SteamDT API 实时查询）."""
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="搜索关键词不能为空")
+
+    steamdt_config = SteamDTConfig(
+        api_key=config.api_key,
+        base_url=config.api_base_url,
+        timeout=config.request_timeout,
+        max_retries=config.request_retry,
+    )
+    client = SteamDTClient(steamdt_config)
+    try:
+        response = client.get_items_batch([q.strip()])
+        if not response.get("success"):
+            raise HTTPException(
+                status_code=502,
+                detail=f"SteamDT API 错误: {response.get('errorMsg', '未知错误')}",
+            )
+
+        data = response.get("data") or []
+        if not data:
+            return {"market_hash_name": q, "dataList": [], "in_watchlist": db.get_watchlist_item(q) is not None}
+
+        item = data[0]
+        in_wl = db.get_watchlist_item(item.get("marketHashName", q)) is not None
+        return {
+            "market_hash_name": item.get("marketHashName", q),
+            "dataList": item.get("dataList") or [],
+            "in_watchlist": in_wl,
+        }
+    finally:
+        client.close()
 
 
 @router.get("/latest", response_model=list[LatestPriceItem])
