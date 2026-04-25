@@ -94,7 +94,7 @@ def get_system_info(
     user: dict = Depends(require_auth),
 ) -> dict:
     """获取系统信息（数据目录、版本、数据库状态等）."""
-    db_path = Path(config.db_path)
+    db_path = Path(db.db_path)
     db_size = db_path.stat().st_size if db_path.exists() else 0
     return {
         "version": "1.0.0",

@@ -844,12 +844,16 @@ class Database:
                     FROM watchlist w
                     LEFT JOIN (
                         SELECT market_hash_name, platform, price, recorded_at
-                        FROM price_records p1
-                        WHERE recorded_at = (
-                            SELECT MAX(recorded_at)
-                            FROM price_records p2
-                            WHERE p2.market_hash_name = p1.market_hash_name
-                        )
+                        FROM (
+                            SELECT market_hash_name, platform, price, recorded_at,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY market_hash_name
+                                       ORDER BY recorded_at DESC, platform
+                                   ) AS rn
+                            FROM price_records
+                            WHERE price > 0
+                        ) ranked
+                        WHERE ranked.rn = 1
                     ) pr ON w.market_hash_name = pr.market_hash_name
                     WHERE w.enabled = 1
                     ORDER BY w.created_at
@@ -865,12 +869,16 @@ class Database:
                     FROM watchlist w
                     LEFT JOIN (
                         SELECT market_hash_name, platform, price, recorded_at
-                        FROM price_records p1
-                        WHERE recorded_at = (
-                            SELECT MAX(recorded_at)
-                            FROM price_records p2
-                            WHERE p2.market_hash_name = p1.market_hash_name
-                        )
+                        FROM (
+                            SELECT market_hash_name, platform, price, recorded_at,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY market_hash_name
+                                       ORDER BY recorded_at DESC, platform
+                                   ) AS rn
+                            FROM price_records
+                            WHERE price > 0
+                        ) ranked
+                        WHERE ranked.rn = 1
                     ) pr ON w.market_hash_name = pr.market_hash_name
                     ORDER BY w.created_at
                     """

@@ -97,7 +97,12 @@ class PriceAnalyzer:
         alerts: list[dict[str, Any]] = []
 
         for market_hash_name, platform_records in item_prices.items():
-            current_price = min(r["price"] for r in platform_records)
+            # 过滤掉价格为0的平台（某些平台可能返回0或未收录该饰品）
+            valid_prices = [r["price"] for r in platform_records if r["price"] > 0]
+            if not valid_prices:
+                logger.warning(f"{market_hash_name} 所有平台价格均为0，跳过分析")
+                continue
+            current_price = min(valid_prices)
             baseline_price = self._get_baseline_price(market_hash_name)
 
             if baseline_price is None or baseline_price == 0:
