@@ -47,13 +47,21 @@ def main() -> None:
     if cleaned > 0:
         logger.info(f"🧹 已清理 {cleaned} 条脏告警数据")
 
+    # 初始化 SteamDT 客户端
+    steamdt_config = SteamDTConfig(
+        api_key=config.api_key,
+        base_url=config.api_base_url,
+        timeout=config.request_timeout,
+        max_retries=config.request_retry,
+    )
+    client = SteamDTClient(steamdt_config)
+    logger.info("✅ SteamDT 客户端初始化完成")
+
     # B-42: 启动时同步全量饰品数据（每天限 1 次）
     if db.needs_item_sync():
         logger.info("📦 items 表为空或数据过期，开始同步全量饰品数据...")
         try:
-            sync_client = SteamDTClient(steamdt_config)
-            response = sync_client.get_all_items()
-            sync_client.close()
+            response = client.get_all_items()
             if response.get("success"):
                 items_data = response.get("data") or []
                 count = db.bulk_upsert_items(items_data)
@@ -66,16 +74,6 @@ def main() -> None:
             logger.exception("全量饰品同步异常")
     else:
         logger.info(f"📦 items 表已有 {db.get_items_count()} 条记录，跳过同步")
-
-    # 初始化 SteamDT 客户端
-    steamdt_config = SteamDTConfig(
-        api_key=config.api_key,
-        base_url=config.api_base_url,
-        timeout=config.request_timeout,
-        max_retries=config.request_retry,
-    )
-    client = SteamDTClient(steamdt_config)
-    logger.info("✅ SteamDT 客户端初始化完成")
 
     # 初始化调度器
     scheduler = MonitorScheduler(client, db, config)

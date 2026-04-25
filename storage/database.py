@@ -132,7 +132,11 @@ class Database:
         return count
 
     def search_items(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
-        """本地模糊搜索饰品（FTS5 全文搜索 + LIKE 兜底）.
+        """本地模糊搜索饰品（LIKE 匹配，支持中英文、无分隔符匹配）.
+
+        搜索策略：
+        1. 精确子串匹配（LIKE %query%）
+        2. 若无结果，将查询拆分为 token 逐词匹配（如 "ak47" → "ak" + "47"）
 
         Args:
             query: 搜索关键词（支持 marketHashName 或 name）
@@ -144,46 +148,57 @@ class Database:
         if not query.strip():
             return []
 
-        # 优先使用 FTS5 全文搜索
-        try:
-            with self._cursor() as cursor:
-                fts_query = query.strip().replace('"', '""')
-                # 对中文/短关键词使用前缀匹配
-                cursor.execute(
-                    """
-                    SELECT i.market_hash_name, i.name
-                    FROM items_fts f
-                    JOIN items i ON i.id = f.rowid
-                    WHERE items_fts MATCH ?
-                    ORDER BY rank
-                    LIMIT ?
-                    """,
-                    (f'"{fts_query}" OR "{fts_query}"*', limit),
-                )
-                rows = cursor.fetchall()
-                if rows:
-                    return [dict(r) for r in rows]
-        except Exception:
-            pass
+        q = query.strip()
+        like_param = f"%{q}%"
 
-        # FTS 无结果时用 LIKE 兜底
         with self._cursor() as cursor:
-            like_param = f"%{query.strip()}%"
+            # 策略 1：精确子串匹配
             cursor.execute(
                 """
                 SELECT market_hash_name, name
                 FROM items
-                WHERE market_hash_name LIKE ? OR name LIKE ?
+                WHERE market_hash_name LIKE ? COLLATE NOCASE
+                   OR name LIKE ? COLLATE NOCASE
                 ORDER BY
                     CASE
-                        WHEN market_hash_name LIKE ? THEN 0
-                        ELSE 1
+                        WHEN market_hash_name LIKE ? COLLATE NOCASE THEN 0
+                        WHEN name LIKE ? COLLATE NOCASE THEN 1
+                        ELSE 2
                     END,
+                    LENGTH(market_hash_name),
                     market_hash_name
                 LIMIT ?
                 """,
-                (like_param, like_param, f"%{query.strip()}%", limit),
+                (like_param, like_param, f"%{q}%", f"%{q}%", limit),
             )
+            rows = cursor.fetchall()
+            if rows:
+                return [dict(r) for r in rows]
+
+            # 策略 2：拆分 token 逐词匹配（如 "ak47" → ["ak", "47"]）
+            import re
+            tokens = re.findall(r'[a-zA-Z]+|\d+', q)
+            tokens = [t for t in tokens if len(t) >= 2]
+            if not tokens:
+                return []
+
+            conditions = []
+            params: list[str] = []
+            for token in tokens:
+                conditions.append(
+                    "(market_hash_name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE)"
+                )
+                params.extend([f"%{token}%", f"%{token}%"])
+
+            sql = f"""
+                SELECT market_hash_name, name
+                FROM items
+                WHERE {' AND '.join(conditions)}
+                ORDER BY LENGTH(market_hash_name), market_hash_name
+                LIMIT ?
+            """
+            params.append(str(limit))
+            cursor.execute(sql, params)
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
 
