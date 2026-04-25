@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { init, use } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
@@ -86,11 +86,13 @@ watch(() => props.isDark, () => {
 
 let resizeObserver: ResizeObserver | null = null
 onMounted(() => {
-  initChart()
-  if (chartRef.value) {
-    resizeObserver = new ResizeObserver(() => chart?.resize())
-    resizeObserver.observe(chartRef.value)
-  }
+  nextTick(() => {
+    initChart()
+    if (chartRef.value) {
+      resizeObserver = new ResizeObserver(() => chart?.resize())
+      resizeObserver.observe(chartRef.value)
+    }
+  })
 })
 onUnmounted(() => {
   resizeObserver?.disconnect()

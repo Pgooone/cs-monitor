@@ -11,7 +11,7 @@ from web.schemas import AlertRecord, AlertStatsItem, AlertStatsResponse
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 
-@router.get("", response_model=list[AlertRecord])
+@router.get("")
 def get_alerts(
     page: int = 1,
     limit: int = 20,
@@ -21,7 +21,7 @@ def get_alerts(
     market_hash_name: str | None = None,
     db: Database = Depends(get_db),
     user: dict = Depends(require_auth),
-) -> list[dict]:
+) -> dict:
     """分页查询告警记录.
 
     支持参数：
@@ -32,7 +32,7 @@ def get_alerts(
     - end_date: 结束日期 (YYYY-MM-DD)
     - market_hash_name: 饰品名称模糊匹配
     """
-    rows, _ = db.get_alerts(
+    rows, total = db.get_alerts(
         page=page,
         limit=limit,
         alert_type=alert_type,
@@ -40,7 +40,12 @@ def get_alerts(
         end_date=end_date,
         market_hash_name=market_hash_name,
     )
-    return rows
+    return {
+        "items": rows,
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }
 
 
 @router.get("/stats", response_model=AlertStatsResponse)
