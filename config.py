@@ -57,7 +57,7 @@ class MonitorConfig:
         """从环境变量加载配置."""
         return cls(
             api_key=getenv("STEAMDT_API_KEY", ""),
-            api_base_url=getenv("STEAMDT_API_BASE_URL", "https://api.steamdt.com"),
+            api_base_url=getenv("STEAMDT_API_BASE_URL", "https://open.steamdt.com"),
             request_timeout=int(getenv("REQUEST_TIMEOUT", "30")),
             request_retry=int(getenv("REQUEST_RETRY", "3")),
             check_interval_minutes=int(getenv("CHECK_INTERVAL_MINUTES", "30")),
