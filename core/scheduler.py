@@ -75,6 +75,7 @@ class MonitorScheduler:
         self._add_monitor_job()
         self._add_extreme_tracker_job()
         self._add_archive_job()
+        self._add_item_sync_job()
         self.scheduler.start()
         logger.info("调度器已启动")
 
@@ -132,6 +133,36 @@ class MonitorScheduler:
             replace_existing=True,
         )
         logger.info("归档任务已注册，每天凌晨 3:00 执行")
+
+    def _run_item_sync(self) -> None:
+        """同步全量饰品基础信息（每天 1 次）."""
+        try:
+            if not self.db.needs_item_sync():
+                logger.debug("饰品数据未过期，跳过同步")
+                return
+            logger.info("📦 开始定时同步全量饰品数据...")
+            response = self.client.get_all_items()
+            if response.get("success"):
+                items_data = response.get("data") or []
+                count = self.db.bulk_upsert_items(items_data)
+                logger.info(f"✅ 定时饰品同步完成，共 {count} 条")
+            else:
+                logger.warning(
+                    f"⚠️ 定时饰品同步失败: {response.get('errorMsg', '未知错误')}"
+                )
+        except Exception:
+            logger.exception("定时饰品同步异常")
+
+    def _add_item_sync_job(self) -> None:
+        """注册每日饰品同步任务（每天凌晨 4 点执行）."""
+        self.scheduler.add_job(
+            self._run_item_sync,
+            trigger=CronTrigger(hour=4, minute=0),
+            id="item_sync",
+            name="全量饰品同步",
+            replace_existing=True,
+        )
+        logger.info("饰品同步任务已注册，每天凌晨 4:00 执行")
 
     def shutdown(self, wait: bool = True) -> None:
         """优雅关闭调度器."""

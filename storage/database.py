@@ -50,7 +50,27 @@ class Database:
         with self._cursor() as cursor:
             for sql in ALL_TABLES:
                 cursor.execute(sql)
+
+        # 迁移：为旧 items 表添加 name / last_synced_at 列
+        self._migrate_items_table()
+
         logger.info("数据库表初始化完成")
+
+    def _migrate_items_table(self) -> None:
+        """为旧版 items 表添加新列（如果不存在）."""
+        with self._cursor() as cursor:
+            cursor.execute("PRAGMA table_info(items)")
+            columns = {row[1] for row in cursor.fetchall()}
+
+            if "name" not in columns:
+                cursor.execute("ALTER TABLE items ADD COLUMN name TEXT")
+                logger.info("items 表已添加 name 列")
+
+            if "last_synced_at" not in columns:
+                cursor.execute(
+                    "ALTER TABLE items ADD COLUMN last_synced_at TIMESTAMP"
+                )
+                logger.info("items 表已添加 last_synced_at 列")
 
     # ------------------------------------------------------------------
     # items 表操作
@@ -80,6 +100,136 @@ class Database:
             )
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    def bulk_upsert_items(self, items: list[dict[str, str]]) -> int:
+        """批量插入或更新饰品基础信息（来自 get_all_items API）.
+
+        Args:
+            items: [{"marketHashName": "...", "name": "..."}, ...]
+
+        Returns:
+            实际写入/更新的记录数.
+        """
+        count = 0
+        with self._cursor() as cursor:
+            for item in items:
+                mhn = item.get("marketHashName", "")
+                name = item.get("name", "")
+                if not mhn:
+                    continue
+                cursor.execute(
+                    """
+                    INSERT INTO items (market_hash_name, name, last_synced_at)
+                    VALUES (?, ?, datetime('now'))
+                    ON CONFLICT(market_hash_name) DO UPDATE SET
+                        name = excluded.name,
+                        last_synced_at = datetime('now')
+                    """,
+                    (mhn, name),
+                )
+                count += 1
+        logger.info(f"批量写入/更新 {count} 条饰品基础信息")
+        return count
+
+    def search_items(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
+        """本地模糊搜索饰品（FTS5 全文搜索 + LIKE 兜底）.
+
+        Args:
+            query: 搜索关键词（支持 marketHashName 或 name）
+            limit: 返回数量上限
+
+        Returns:
+            [{"market_hash_name": "...", "name": "..."}, ...]
+        """
+        if not query.strip():
+            return []
+
+        # 优先使用 FTS5 全文搜索
+        try:
+            with self._cursor() as cursor:
+                fts_query = query.strip().replace('"', '""')
+                # 对中文/短关键词使用前缀匹配
+                cursor.execute(
+                    """
+                    SELECT i.market_hash_name, i.name
+                    FROM items_fts f
+                    JOIN items i ON i.id = f.rowid
+                    WHERE items_fts MATCH ?
+                    ORDER BY rank
+                    LIMIT ?
+                    """,
+                    (f'"{fts_query}" OR "{fts_query}"*', limit),
+                )
+                rows = cursor.fetchall()
+                if rows:
+                    return [dict(r) for r in rows]
+        except Exception:
+            pass
+
+        # FTS 无结果时用 LIKE 兜底
+        with self._cursor() as cursor:
+            like_param = f"%{query.strip()}%"
+            cursor.execute(
+                """
+                SELECT market_hash_name, name
+                FROM items
+                WHERE market_hash_name LIKE ? OR name LIKE ?
+                ORDER BY
+                    CASE
+                        WHEN market_hash_name LIKE ? THEN 0
+                        ELSE 1
+                    END,
+                    market_hash_name
+                LIMIT ?
+                """,
+                (like_param, like_param, f"%{query.strip()}%", limit),
+            )
+            rows = cursor.fetchall()
+            return [dict(r) for r in rows]
+
+    def get_items_count(self) -> int:
+        """获取 items 表记录数."""
+        with self._cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM items")
+            row = cursor.fetchone()
+            return row[0] if row else 0
+
+    def needs_item_sync(self) -> bool:
+        """检查是否需要同步全量饰品数据（表为空或上次同步超过 20 小时）."""
+        count = self.get_items_count()
+        if count == 0:
+            return True
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT last_synced_at FROM items
+                WHERE last_synced_at IS NOT NULL
+                ORDER BY last_synced_at DESC LIMIT 1
+                """
+            )
+            row = cursor.fetchone()
+            if not row or not row[0]:
+                return True
+            # 检查是否超过 20 小时
+            cursor.execute(
+                """
+                SELECT julianday('now') - julianday(?) > 20.0/24.0
+                """,
+                (row[0],),
+            )
+            check = cursor.fetchone()
+            return bool(check and check[0])
+
+    def clean_zero_price_alerts(self) -> int:
+        """清理 current_price=0 的历史脏告警数据."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM alert_logs WHERE current_price = 0"
+            )
+            deleted = cursor.rowcount
+            if deleted > 0:
+                logger.info(f"已清理 {deleted} 条 current_price=0 的脏告警数据")
+            return deleted
 
     # ------------------------------------------------------------------
     # price_records 表操作

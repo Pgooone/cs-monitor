@@ -14,15 +14,32 @@ router = APIRouter(prefix="/prices", tags=["prices"])
 
 
 @router.get("/search")
-def search_item_price(
-    q: str = Query(..., description="饰品 marketHashName"),
+def search_items_local(
+    q: str = Query(..., min_length=1, description="搜索关键词"),
+    limit: int = Query(20, ge=1, le=50, description="返回数量上限"),
+    db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
+) -> list[dict]:
+    """本地模糊搜索饰品（FTS5 全文搜索 + LIKE 兜底）.
+
+    返回匹配的饰品列表（market_hash_name + name），不查实时价格。
+    用户选择后再调用 /prices/lookup 查实时价格。
+    """
+    if not q.strip():
+        return []
+    return db.search_items(q.strip(), limit=limit)
+
+
+@router.get("/lookup")
+def lookup_item_price(
+    market_hash_name: str = Query(..., description="精确的 marketHashName"),
     db: Database = Depends(get_db),
     config: MonitorConfig = Depends(get_config),
     user: dict = Depends(require_auth),
 ) -> dict:
-    """搜索饰品并返回各平台价格（通过 SteamDT API 实时查询）."""
-    if not q.strip():
-        raise HTTPException(status_code=400, detail="搜索关键词不能为空")
+    """通过精确 marketHashName 查询饰品各平台实时价格."""
+    if not market_hash_name.strip():
+        raise HTTPException(status_code=400, detail="market_hash_name 不能为空")
 
     steamdt_config = SteamDTConfig(
         api_key=config.api_key,
@@ -32,7 +49,7 @@ def search_item_price(
     )
     client = SteamDTClient(steamdt_config)
     try:
-        response = client.get_items_batch([q.strip()])
+        response = client.get_items_batch([market_hash_name.strip()])
         if not response.get("success"):
             raise HTTPException(
                 status_code=502,
@@ -41,12 +58,18 @@ def search_item_price(
 
         data = response.get("data") or []
         if not data:
-            return {"market_hash_name": q, "dataList": [], "in_watchlist": db.get_watchlist_item(q) is not None}
+            return {
+                "market_hash_name": market_hash_name,
+                "dataList": [],
+                "in_watchlist": db.get_watchlist_item(market_hash_name) is not None,
+            }
 
         item = data[0]
-        in_wl = db.get_watchlist_item(item.get("marketHashName", q)) is not None
+        in_wl = db.get_watchlist_item(
+            item.get("marketHashName", market_hash_name)
+        ) is not None
         return {
-            "market_hash_name": item.get("marketHashName", q),
+            "market_hash_name": item.get("marketHashName", market_hash_name),
             "dataList": item.get("dataList") or [],
             "in_watchlist": in_wl,
         }

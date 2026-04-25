@@ -301,6 +301,19 @@ export interface MeResponse {
   role: string
 }
 
+/** 本地搜索结果项 */
+export interface SearchItemResult {
+  market_hash_name: string
+  name: string | null
+}
+
+/** 实时价格查询结果 */
+export interface ItemPriceResult {
+  market_hash_name: string
+  dataList: { platform: string; sellPrice: number }[]
+  in_watchlist: boolean
+}
+
 export default {
   login(password: string) {
     return api.post<LoginResponse>('/auth/login', { password })
@@ -397,5 +410,13 @@ export default {
   },
   searchItemPrice(q: string) {
     return api.get('/prices/search', { params: { q } })
+  },
+  /** 本地模糊搜索饰品（不查实时价格） */
+  searchItems(q: string, limit = 20) {
+    return api.get<SearchItemResult[]>('/prices/search', { params: { q, limit } })
+  },
+  /** 通过精确 marketHashName 查实时价格 */
+  lookupItemPrice(marketHashName: string) {
+    return api.get<ItemPriceResult>('/prices/lookup', { params: { market_hash_name: marketHashName } })
   },
 }

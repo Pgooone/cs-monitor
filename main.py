@@ -42,6 +42,31 @@ def main() -> None:
     db.import_default_watchlist(config.watchlist)
     db.import_default_extreme_track(config.extreme_track_list)
 
+    # B-37: 清理 current_price=0 的历史脏告警
+    cleaned = db.clean_zero_price_alerts()
+    if cleaned > 0:
+        logger.info(f"🧹 已清理 {cleaned} 条脏告警数据")
+
+    # B-42: 启动时同步全量饰品数据（每天限 1 次）
+    if db.needs_item_sync():
+        logger.info("📦 items 表为空或数据过期，开始同步全量饰品数据...")
+        try:
+            sync_client = SteamDTClient(steamdt_config)
+            response = sync_client.get_all_items()
+            sync_client.close()
+            if response.get("success"):
+                items_data = response.get("data") or []
+                count = db.bulk_upsert_items(items_data)
+                logger.info(f"✅ 全量饰品同步完成，共 {count} 条")
+            else:
+                logger.warning(
+                    f"⚠️ 全量饰品同步失败: {response.get('errorMsg', '未知错误')}"
+                )
+        except Exception:
+            logger.exception("全量饰品同步异常")
+    else:
+        logger.info(f"📦 items 表已有 {db.get_items_count()} 条记录，跳过同步")
+
     # 初始化 SteamDT 客户端
     steamdt_config = SteamDTConfig(
         api_key=config.api_key,

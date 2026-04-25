@@ -277,6 +277,7 @@ import { NGrid, NGi, NCard, NBadge } from 'naive-ui'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useWebsocketStore } from '@/stores/websocket'
 import { useTheme } from '@/composables/useTheme'
+import { toastSuccess } from '@/composables/useToast'
 import { brand, semantic } from '@/styles/tokens'
 import KpiCard from '@/components/business/KpiCard.vue'
 import MiniSparkline from '@/components/business/MiniSparkline.vue'
@@ -337,7 +338,7 @@ const quotaArc = computed(() => {
 // 饰品添加回调
 function onItemAdded(name: string) {
   dashboard.loadAll()
-  window.$message?.success(`已添加 "${name}" 到监控清单`)
+  toastSuccess(`已添加 "${name}" 到监控清单`)
 }
 
 // WebSocket 告警推送

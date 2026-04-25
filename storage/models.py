@@ -5,10 +5,48 @@ CREATE_ITEMS_TABLE = """
 CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     market_hash_name TEXT UNIQUE NOT NULL,
+    name TEXT,
     display_name TEXT,
     category TEXT,
+    last_synced_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+"""
+
+# items 表 FTS 全文搜索索引（加速模糊搜索）
+CREATE_ITEMS_FTS = """
+CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
+    market_hash_name,
+    name,
+    content='items',
+    content_rowid='id'
+);
+"""
+
+# items FTS 触发器：插入时同步
+CREATE_ITEMS_FTS_INSERT = """
+CREATE TRIGGER IF NOT EXISTS items_ai AFTER INSERT ON items BEGIN
+    INSERT INTO items_fts(rowid, market_hash_name, name)
+    VALUES (new.id, new.market_hash_name, new.name);
+END;
+"""
+
+# items FTS 触发器：删除时同步
+CREATE_ITEMS_FTS_DELETE = """
+CREATE TRIGGER IF NOT EXISTS items_ad AFTER DELETE ON items BEGIN
+    INSERT INTO items_fts(items_fts, rowid, market_hash_name, name)
+    VALUES ('delete', old.id, old.market_hash_name, old.name);
+END;
+"""
+
+# items FTS 触发器：更新时同步
+CREATE_ITEMS_FTS_UPDATE = """
+CREATE TRIGGER IF NOT EXISTS items_au AFTER UPDATE ON items BEGIN
+    INSERT INTO items_fts(items_fts, rowid, market_hash_name, name)
+    VALUES ('delete', old.id, old.market_hash_name, old.name);
+    INSERT INTO items_fts(rowid, market_hash_name, name)
+    VALUES (new.id, new.market_hash_name, new.name);
+END;
 """
 
 # 价格记录表（普通监控）
@@ -143,6 +181,10 @@ CREATE TABLE IF NOT EXISTS archived_prices (
 
 ALL_TABLES = [
     CREATE_ITEMS_TABLE,
+    CREATE_ITEMS_FTS,
+    CREATE_ITEMS_FTS_INSERT,
+    CREATE_ITEMS_FTS_DELETE,
+    CREATE_ITEMS_FTS_UPDATE,
     CREATE_PRICE_RECORDS_TABLE,
     CREATE_ALERT_LOGS_TABLE,
     CREATE_EXTREME_TRACK_SNAPSHOTS_TABLE,
