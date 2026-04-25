@@ -190,14 +190,20 @@ class Database:
                 )
                 params.extend([f"%{token}%", f"%{token}%"])
 
+            # 排序：以 token 开头的优先 > 非 Sticker 优先 > 短名称优先
+            first_token = tokens[0]
             sql = f"""
                 SELECT market_hash_name, name
                 FROM items
                 WHERE {' AND '.join(conditions)}
-                ORDER BY LENGTH(market_hash_name), market_hash_name
+                ORDER BY
+                    CASE WHEN market_hash_name LIKE ? COLLATE NOCASE THEN 0 ELSE 1 END,
+                    CASE WHEN market_hash_name LIKE 'Sticker %' THEN 1 ELSE 0 END,
+                    LENGTH(market_hash_name),
+                    market_hash_name
                 LIMIT ?
             """
-            params.append(str(limit))
+            params.extend([f"{first_token}%", str(limit)])
             cursor.execute(sql, params)
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
