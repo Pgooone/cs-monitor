@@ -18,52 +18,49 @@
       <div class="settings-content">
         <!-- 通用 -->
         <div v-if="activeSection === 'general'">
-          <n-card title="外观设置">
-            <n-form label-placement="left" label-width="140">
-              <n-form-item label="主题模式">
-                <n-radio-group :value="themeMode" @update:value="setTheme">
-                  <n-space>
-                    <n-radio value="light">
-                      <span class="radio-with-icon">
-                        <SunnyOutline class="radio-icon" />
-                        浅色
-                      </span>
-                    </n-radio>
-                    <n-radio value="dark">
-                      <span class="radio-with-icon">
-                        <MoonOutline class="radio-icon" />
-                        深色
-                      </span>
-                    </n-radio>
-                    <n-radio value="system">
-                      <span class="radio-with-icon">
-                        <DesktopOutline class="radio-icon" />
-                        跟随系统
-                      </span>
-                    </n-radio>
-                  </n-space>
-                </n-radio-group>
-              </n-form-item>
+          <n-card title="外观设置" class="settings-card">
+            <!-- 主题模式 -->
+            <div class="setting-section">
+              <div class="setting-section__label">主题模式</div>
+              <div class="theme-selector">
+                <div
+                  v-for="mode in themeModes"
+                  :key="mode.value"
+                  class="theme-option"
+                  :class="{ 'theme-option--active': themeMode === mode.value }"
+                  @click="setTheme(mode.value)"
+                >
+                  <div class="theme-option__icon" :style="{ background: mode.bg, color: mode.color }"">
+                    <component :is="mode.icon" />
+                  </div>
+                  <div class="theme-option__label">{{ mode.label }}</div>
+                </div>
+              </div>
+            </div>
 
-              <n-form-item label="涨跌颜色">
-                <n-radio-group :value="riseFallMode" @update:value="setRiseFall">
-                  <n-space>
-                    <n-radio value="china">
-                      <span class="radio-with-icon">
-                        <span class="color-dot" style="background: #ef4444" />
-                        中国（红涨绿跌）
-                      </span>
-                    </n-radio>
-                    <n-radio value="international">
-                      <span class="radio-with-icon">
-                        <span class="color-dot" style="background: #10b981" />
-                        国际（绿涨红跌）
-                      </span>
-                    </n-radio>
-                  </n-space>
-                </n-radio-group>
-              </n-form-item>
-            </n-form>
+            <n-divider />
+
+            <!-- 涨跌颜色 -->
+            <div class="setting-section">
+              <div class="setting-section__label">涨跌颜色</div>
+              <div class="rise-fall-selector">
+                <div
+                  v-for="mode in riseFallModes"
+                  :key="mode.value"
+                  class="rise-fall-option"
+                  :class="{ 'rise-fall-option--active': riseFallMode === mode.value }"
+                  @click="setRiseFall(mode.value)"
+                >
+                  <div class="rise-fall-option__preview">
+                    <span class="rise-fall-option__up" :style="{ color: mode.upColor }"
+                    >&#9650; +2.5%</span>
+                    <span class="rise-fall-option__down" :style="{ color: mode.downColor }"
+                    >&#9660; -1.8%</span>
+                  </div>
+                  <div class="rise-fall-option__label">{{ mode.label }}</div>
+                </div>
+              </div>
+            </div>
           </n-card>
         </div>
 
@@ -356,7 +353,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, markRaw } from 'vue'
 import {
   NCard,
   NForm,
@@ -400,6 +397,45 @@ import { useTheme } from '@/composables/useTheme'
 import { toastSuccess, toastError } from '@/composables/useToast'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import SkeletonCard from '@/components/base/SkeletonCard.vue'
+
+const themeModes = [
+  {
+    value: 'light' as const,
+    label: '浅色',
+    icon: markRaw(SunnyOutline),
+    bg: '#fef3c7',
+    color: '#d97706',
+  },
+  {
+    value: 'dark' as const,
+    label: '深色',
+    icon: markRaw(MoonOutline),
+    bg: '#1e1b4b',
+    color: '#a5b4fc',
+  },
+  {
+    value: 'system' as const,
+    label: '跟随系统',
+    icon: markRaw(DesktopOutline),
+    bg: '#e0e7ff',
+    color: '#4f46e5',
+  },
+]
+
+const riseFallModes = [
+  {
+    value: 'china' as const,
+    label: '中国（红涨绿跌）',
+    upColor: '#ef4444',
+    downColor: '#10b981',
+  },
+  {
+    value: 'international' as const,
+    label: '国际（绿涨红跌）',
+    upColor: '#10b981',
+    downColor: '#ef4444',
+  },
+]
 
 const message = useMessage()
 const { themeMode, riseFallMode, setTheme, setRiseFall } = useTheme()
@@ -593,22 +629,131 @@ onMounted(() => {
   min-width: 0;
 }
 
-.radio-with-icon {
-  display: inline-flex;
+.settings-card {
+  background: var(--cs-bg-card);
+  border: 1px solid var(--cs-border-light);
+  border-radius: 1rem;
+}
+
+/* ===== 设置项区域 ===== */
+.setting-section {
+  padding: 0.5rem 0;
+}
+
+.setting-section__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cs-text-primary);
+  margin-bottom: 1rem;
+}
+
+/* ===== 主题选择器 ===== */
+.theme-selector {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.theme-option {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.875rem;
+  border: 2px solid var(--cs-border-light);
+  background: var(--cs-bg-card);
+  cursor: pointer;
+  transition: all var(--cs-transition-fast);
+  min-width: 100px;
 }
 
-.radio-icon {
-  font-size: 1rem;
-  opacity: 0.7;
+.theme-option:hover {
+  border-color: var(--cs-brand-primary);
+  transform: translateY(-1px);
 }
 
-.color-dot {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 9999px;
-  display: inline-block;
+.theme-option--active {
+  border-color: var(--cs-brand-primary);
+  box-shadow: 0 0 0 3px rgba(46, 91, 255, 0.15);
+}
+
+.theme-option__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.theme-option__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--cs-text-secondary);
+}
+
+.theme-option--active .theme-option__label {
+  color: var(--cs-brand-primary);
+  font-weight: 600;
+}
+
+/* ===== 涨跌颜色选择器 ===== */
+.rise-fall-selector {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.rise-fall-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.875rem;
+  border: 2px solid var(--cs-border-light);
+  background: var(--cs-bg-card);
+  cursor: pointer;
+  transition: all var(--cs-transition-fast);
+  min-width: 160px;
+}
+
+.rise-fall-option:hover {
+  border-color: var(--cs-brand-primary);
+  transform: translateY(-1px);
+}
+
+.rise-fall-option--active {
+  border-color: var(--cs-brand-primary);
+  box-shadow: 0 0 0 3px rgba(46, 91, 255, 0.15);
+}
+
+.rise-fall-option__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.rise-fall-option__up,
+.rise-fall-option__down {
+  transition: color var(--cs-transition-fast);
+}
+
+.rise-fall-option__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--cs-text-secondary);
+}
+
+.rise-fall-option--active .rise-fall-option__label {
+  color: var(--cs-brand-primary);
+  font-weight: 600;
 }
 
 .notify-layout {
@@ -628,15 +773,16 @@ onMounted(() => {
 
 .preview-label {
   font-size: 0.75rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
 
 .preview-card {
-  background: var(--n-hover-color);
-  border-radius: 0.5rem;
+  background: var(--cs-bg-hover);
+  border-radius: 0.75rem;
   padding: 1rem;
+  border: 1px solid var(--cs-border-light);
 }
 
 .preview-header {
@@ -649,6 +795,7 @@ onMounted(() => {
 .preview-channel {
   font-weight: 600;
   font-size: 0.875rem;
+  color: var(--cs-text-primary);
 }
 
 .preview-body {
@@ -665,12 +812,12 @@ onMounted(() => {
 
 .preview-field-label {
   font-size: 0.6875rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
 }
 
 .preview-field-value {
   font-size: 0.8125rem;
-  color: var(--n-text-color-2);
+  color: var(--cs-text-secondary);
   font-family: 'JetBrains Mono', monospace;
   word-break: break-all;
 }
@@ -682,22 +829,28 @@ onMounted(() => {
 }
 
 .stat-item {
-  background: var(--n-hover-color);
-  border-radius: 0.5rem;
+  background: var(--cs-bg-hover);
+  border-radius: 0.75rem;
   padding: 1rem;
   text-align: center;
+  border: 1px solid var(--cs-border-light);
+  transition: transform var(--cs-transition-fast);
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
 }
 
 .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--n-primary-color);
+  color: var(--cs-brand-primary);
   font-family: 'JetBrains Mono', monospace;
 }
 
 .stat-label {
   font-size: 0.75rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
   margin-top: 0.25rem;
 }
 
@@ -715,19 +868,19 @@ onMounted(() => {
 
 .data-field-label {
   font-size: 0.75rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
 }
 
 .data-field-value {
   font-size: 0.875rem;
-  color: var(--n-text-color-2);
+  color: var(--cs-text-secondary);
   font-family: 'JetBrains Mono', monospace;
   word-break: break-all;
 }
 
 .danger-zone {
-  border: 1px solid var(--n-error-color);
-  border-radius: 0.5rem;
+  border: 1px solid #ef4444;
+  border-radius: 0.75rem;
   padding: 1rem;
   background: rgba(239, 68, 68, 0.04);
 }
@@ -738,7 +891,7 @@ onMounted(() => {
   gap: 0.375rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--n-error-color);
+  color: #ef4444;
   margin-bottom: 0.75rem;
 }
 
@@ -770,12 +923,12 @@ onMounted(() => {
 .about-version {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--n-text-color-1);
+  color: var(--cs-text-primary);
 }
 
 .about-desc {
   font-size: 0.875rem;
-  color: var(--n-text-color-3);
+  color: var(--cs-text-muted);
   max-width: 400px;
   margin-top: 0.5rem;
   line-height: 1.6;
@@ -801,6 +954,10 @@ onMounted(() => {
   }
   .notify-preview {
     width: 100%;
+  }
+  .theme-selector,
+  .rise-fall-selector {
+    justify-content: center;
   }
 }
 </style>

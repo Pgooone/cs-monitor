@@ -48,6 +48,9 @@ body {
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--cs-bg-page);
+  color: var(--cs-text-primary);
+  transition: background var(--cs-transition-base), color var(--cs-transition-base);
 }
 
 /* 等宽数字字体 */

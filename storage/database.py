@@ -946,7 +946,7 @@ class Database:
                 # 各平台最新价格
                 cursor.execute(
                     """
-                    SELECT platform, price
+                    SELECT pr.platform, pr.price
                     FROM price_records pr
                     INNER JOIN (
                         SELECT platform, MAX(recorded_at) AS max_at

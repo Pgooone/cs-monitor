@@ -1,13 +1,7 @@
 <template>
-  <div
-    class="kpi-card"
-    :class="[`kpi-card--${variant}`, { 'kpi-card--glass': glass }]"
-  >
+  <div class="kpi-card" :class="cardClasses">
     <div class="kpi-card__header">
-      <div
-        class="kpi-card__icon"
-        :style="{ background: iconBg, color: iconColor }"
-      >
+      <div class="kpi-card__icon" :style="{ background: iconBg, color: iconColor }">
         <slot name="icon">
           <span>{{ icon }}</span>
         </slot>
@@ -16,9 +10,7 @@
     </div>
     <div class="kpi-card__body">
       <slot>
-        <div class="kpi-card__value" :style="{ color: valueColor }">
-          {{ formattedValue }}
-        </div>
+        <div class="kpi-card__value" :style="valueStyle">{{ formattedValue }}</div>
       </slot>
     </div>
     <div v-if="$slots.extra" class="kpi-card__extra">
@@ -30,7 +22,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const props = withDefaults(defineProps<{
+interface Props {
   title: string
   value?: string | number
   icon?: string
@@ -39,7 +31,9 @@ const props = withDefaults(defineProps<{
   valueColor?: string
   variant?: 'default' | 'brand' | 'success' | 'warning' | 'error'
   glass?: boolean
-}>(), {
+}
+
+const props = withDefaults(defineProps<Props>(), {
   value: '',
   icon: '📊',
   iconColor: '#3b82f6',
@@ -47,6 +41,19 @@ const props = withDefaults(defineProps<{
   valueColor: 'inherit',
   variant: 'default',
   glass: false,
+})
+
+const cardClasses = computed(() => {
+  const classes: string[] = [`kpi-card--${props.variant}`]
+  if (props.glass) classes.push('kpi-card--glass')
+  return classes
+})
+
+const valueStyle = computed(() => {
+  if (props.valueColor && props.valueColor !== 'inherit') {
+    return { color: props.valueColor }
+  }
+  return {}
 })
 
 const formattedValue = computed(() => {
@@ -62,7 +69,7 @@ const formattedValue = computed(() => {
   position: relative;
   border-radius: 1rem;
   padding: 1.25rem;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition: transform var(--cs-transition-base), box-shadow var(--cs-transition-base);
   border: 1px solid transparent;
   overflow: hidden;
 }
@@ -71,38 +78,59 @@ const formattedValue = computed(() => {
 }
 
 .kpi-card--default {
-  background: var(--n-card-color, #fff);
-  border-color: rgba(0, 0, 0, 0.06);
+  background: var(--cs-bg-card);
+  border-color: var(--cs-border-light);
+  box-shadow: var(--cs-shadow-sm);
 }
-html.dark .kpi-card--default {
-  border-color: rgba(255, 255, 255, 0.06);
+.kpi-card--default:hover {
+  box-shadow: var(--cs-shadow-md);
 }
 
 .kpi-card--brand {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
 }
+.kpi-card--brand:hover {
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
 .kpi-card--success {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
 }
+.kpi-card--success:hover {
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
 .kpi-card--warning {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
 }
+.kpi-card--warning:hover {
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
 .kpi-card--error {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+}
+.kpi-card--error:hover {
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
 .kpi-card--glass {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--cs-bg-glass);
   backdrop-filter: blur(12px);
-  border-color: rgba(255, 255, 255, 0.3);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: var(--cs-border-light);
+  box-shadow: var(--cs-shadow-md);
 }
-html.dark .kpi-card--glass {
-  background: rgba(23, 23, 23, 0.6);
-  border-color: rgba(255, 255, 255, 0.08);
+.kpi-card--glass:hover {
+  box-shadow: var(--cs-shadow-lg);
 }
 
 .kpi-card__header {
