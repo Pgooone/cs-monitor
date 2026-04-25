@@ -688,6 +688,22 @@ class Database:
             row = cursor.fetchone()
             return row[0] if row else 0
 
+    def get_today_collection_count(self) -> int:
+        """查询今日价格采集次数（按采集批次统计）."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM (
+                    SELECT recorded_at
+                    FROM price_records
+                    WHERE recorded_at >= date('now')
+                    GROUP BY strftime('%Y-%m-%d %H:%M', recorded_at)
+                )
+                """
+            )
+            row = cursor.fetchone()
+            return row[0] if row else 0
+
     def get_latest_price_records_count(self) -> int:
         """查询最新价格记录数（每饰品每平台各取最新）."""
         with self._cursor() as cursor:

@@ -49,7 +49,7 @@ def dashboard_summary(
         yesterday_alert_count=yesterday_alert_count,
         latest_price_count=latest_price_count,
         last_update=last_update,
-        today_collection_count=0,
+        today_collection_count=db.get_today_collection_count(),
         check_interval_minutes=30,
         portfolio_history=[],
         top_volatile=[],
