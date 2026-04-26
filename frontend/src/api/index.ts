@@ -9,13 +9,9 @@ const api = axios.create({
   },
 })
 
-// Request 拦截器：自动注入 Authorization header + 请求日志
+// Request 拦截器：请求日志
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('cs_monitor_token')
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
       console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.params || config.data || '')
@@ -25,7 +21,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-// Response 拦截器：401 自动清除 token 并跳转登录、5xx 自动 Toast、响应日志
+// Response 拦截器：错误处理 + 日志
 api.interceptors.response.use(
   (response) => {
     if (import.meta.env.DEV) {
@@ -44,18 +40,10 @@ api.interceptors.response.use(
       console.error(`[API] ${error.config?.method?.toUpperCase()} ${url} -> ${status}:`, detail)
     }
 
-    if (status === 401) {
-      localStorage.removeItem('cs_monitor_token')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
-      }
-    } else if (status >= 500) {
+    if (status >= 500) {
       toastError(`服务器错误 (${status})：${detail}`)
     } else if (status === 429) {
       toastWarning('请求过于频繁，请稍后再试')
-    } else if (status >= 400) {
-      // 4xx 错误通常由调用方处理（如表单验证），这里不弹全局 Toast
-      // 但可在控制台记录
     }
 
     return Promise.reject(error)
@@ -290,17 +278,6 @@ export interface TrendAnalysisResponse {
   ma20: (number | null)[]
 }
 
-export interface LoginResponse {
-  access_token: string
-  token_type: string
-  requires_password_change: boolean
-}
-
-export interface MeResponse {
-  username: string
-  role: string
-}
-
 /** 本地搜索结果项 */
 export interface SearchItemResult {
   market_hash_name: string
@@ -315,15 +292,6 @@ export interface ItemPriceResult {
 }
 
 export default {
-  login(password: string) {
-    return api.post<LoginResponse>('/auth/login', { password })
-  },
-  me() {
-    return api.get<MeResponse>('/auth/me')
-  },
-  changePassword(currentPassword: string, newPassword: string) {
-    return api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })
-  },
   health() {
     return api.get('/health')
   },

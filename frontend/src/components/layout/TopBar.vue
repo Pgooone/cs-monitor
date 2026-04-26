@@ -195,7 +195,6 @@ import {
 import type { DropdownOption } from 'naive-ui'
 import { useTheme } from '@/composables/useTheme'
 import { useDashboardStore } from '@/stores/dashboard'
-import { useAuthStore } from '@/stores/auth'
 
 defineProps<{
   collapsed: boolean
@@ -210,7 +209,6 @@ defineEmits<{
 const router = useRouter()
 const { themeMode, toggleTheme } = useTheme()
 const dashboardStore = useDashboardStore()
-const authStore = useAuthStore()
 
 // ===== 主题 =====
 const themeIcon = computed(() => {
@@ -322,16 +320,11 @@ function goToAlerts() {
 // ===== 用户菜单 =====
 const userMenuOptions: DropdownOption[] = [
   { label: '系统设置', key: 'settings', icon: () => h('span', '⚙️') },
-  { type: 'divider', key: 'd1' },
-  { label: '退出登录', key: 'logout', icon: () => h('span', '🚪') },
 ]
 
 function handleUserMenu(key: string) {
   if (key === 'settings') {
     router.push({ name: 'Settings' })
-  } else if (key === 'logout') {
-    authStore.logout()
-    window.location.href = '/login'
   }
 }
 </script>
