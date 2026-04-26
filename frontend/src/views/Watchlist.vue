@@ -65,7 +65,7 @@
       </n-card>
     </template>
 
-    <!-- 卡片视图 -->
+    <!-- 卡片视图 — BUFF 风格 -->
     <template v-else>
       <div class="card-grid">
         <div
@@ -73,57 +73,72 @@
           :key="item.market_hash_name"
           class="watchlist-card"
           :class="{ 'watchlist-card--disabled': !item.enabled }"
+          @click="goToDetail(item)"
         >
-          <div class="watchlist-card__header">
-            <n-checkbox
-              :checked="checkedKeys.includes(item.market_hash_name)"
-              @update:checked="(v) => toggleCheck(item.market_hash_name, v as boolean)"
-            />
+          <!-- 顶部：饰品图示区 -->
+          <div class="watchlist-card__image">
+            <div class="watchlist-card__image-inner">
+              <span class="watchlist-card__image-icon">{{ getWeaponEmoji(item.market_hash_name) }}</span>
+            </div>
             <div class="watchlist-card__badge" :class="getWearClass(item.market_hash_name)">
+              <span class="watchlist-card__badge-dot" />
               {{ getWearLabel(item.market_hash_name) }}
             </div>
+            <n-checkbox
+              class="watchlist-card__check"
+              :checked="checkedKeys.includes(item.market_hash_name)"
+              @update:checked="(v) => toggleCheck(item.market_hash_name, v as boolean)"
+              @click.stop
+            />
           </div>
-          <div class="watchlist-card__name">{{ item.display_name || item.market_hash_name }}</div>
-          <div class="watchlist-card__price">
-            <span class="font-mono-num">
+
+          <!-- 中部：名称 + 价格 -->
+          <div class="watchlist-card__body">
+            <div class="watchlist-card__name">{{ item.display_name || item.market_hash_name }}</div>
+            <div class="watchlist-card__price">
+              <span class="watchlist-card__price-symbol">¥</span>
               <AnimatedNumber
                 v-if="item.latest_price != null"
                 :value="item.latest_price"
                 :precision="2"
-                prefix="¥"
+                class="watchlist-card__price-value"
               />
-              <span v-else>—</span>
-            </span>
-            <span
-              v-if="item.change_24h != null"
-              class="watchlist-card__change"
-              :class="item.change_24h >= 0 ? 'up' : 'down'"
-            >
-              {{ item.change_24h >= 0 ? '▲' : '▼' }} {{ Math.abs(item.change_24h).toFixed(2) }}%
-            </span>
+              <span v-else class="watchlist-card__price-value">—</span>
+              <span
+                v-if="item.change_24h != null"
+                class="watchlist-card__change"
+                :class="item.change_24h >= 0 ? 'up' : 'down'"
+              >
+                {{ item.change_24h >= 0 ? '▲' : '▼' }}{{ Math.abs(item.change_24h).toFixed(2) }}%
+              </span>
+            </div>
           </div>
-          <div class="watchlist-card__platforms">
-            <n-tag
-              v-for="p in item.platform_prices.slice(0, 3)"
-              :key="p.platform"
-              size="tiny"
-              :type="p.price === minPlatformPrice(item) ? 'primary' : 'default'"
-            >
-              {{ p.platform }} ¥{{ p.price.toFixed(0) }}
-            </n-tag>
+
+          <!-- 底部：平台价格 + 趋势 -->
+          <div class="watchlist-card__footer">
+            <div class="watchlist-card__platforms">
+              <span
+                v-for="p in item.platform_prices.slice(0, 4)"
+                :key="p.platform"
+                class="watchlist-card__platform-tag"
+                :class="{ 'watchlist-card__platform-tag--best': p.price === minPlatformPrice(item) }"
+              >
+                {{ p.platform }}<span class="watchlist-card__platform-price">¥{{ p.price.toFixed(0) }}</span>
+              </span>
+            </div>
+            <div class="watchlist-card__sparkline">
+              <MiniSparkline
+                v-if="item.sparkline.length >= 2"
+                :data="item.sparkline"
+                :color="sparklineColor(item)"
+                :width="120"
+                :height="28"
+              />
+            </div>
           </div>
-          <div class="watchlist-card__sparkline">
-            <MiniSparkline
-              v-if="item.sparkline.length >= 2"
-              :data="item.sparkline"
-              :color="sparklineColor(item)"
-              :width="200"
-              :height="40"
-            />
-            <span v-else class="text-xs text-gray-400">暂无趋势数据</span>
-          </div>
-          <div class="watchlist-card__actions">
-            <n-button text size="tiny" @click="goToDetail(item)">查看详情</n-button>
+
+          <!-- 操作栏 -->
+          <div class="watchlist-card__actions" @click.stop>
             <n-button text size="tiny" @click="handleToggle(item)">
               {{ item.enabled ? '禁用' : '启用' }}
             </n-button>
@@ -451,6 +466,52 @@ function getWearClass(name: string): string {
   return map[key] || ''
 }
 
+// 武器类型 emoji 映射
+function getWeaponEmoji(name: string): string {
+  const n = name.toLowerCase()
+  if (n.includes('knife') || n.includes('karambit') || n.includes('bayonet') || n.includes('butterfly')) return '🗡️'
+  if (n.includes('glove')) return '🧤'
+  if (n.includes('ak-47')) return 'AK'
+  if (n.includes('awp')) return 'AWP'
+  if (n.includes('m4a4') || n.includes('m4a1')) return 'M4'
+  if (n.includes('desert eagle') || n.includes('deagle')) return 'DE'
+  if (n.includes('usp')) return 'USP'
+  if (n.includes('glock')) return 'G'
+  if (n.includes('p250')) return 'P'
+  if (n.includes('five-seven')) return '5-7'
+  if (n.includes('tec-9')) return 'T9'
+  if (n.includes('p90')) return 'P90'
+  if (n.includes('ak-47')) return 'AK'
+  if (n.includes('scar')) return 'SCAR'
+  if (n.includes('famas')) return 'FAMAS'
+  if (n.includes('galil')) return 'GALIL'
+  if (n.includes('sg')) return 'SG'
+  if (n.includes('aug')) return 'AUG'
+  if (n.includes('ssg')) return 'SSG'
+  if (n.includes('g3sg1')) return 'G3'
+  if (n.includes('mac-10')) return 'MAC'
+  if (n.includes('mp9')) return 'MP9'
+  if (n.includes('mp7')) return 'MP7'
+  if (n.includes('ump')) return 'UMP'
+  if (n.includes('pp-bizon')) return 'PP'
+  if (n.includes('nova')) return 'NOVA'
+  if (n.includes('xm1014')) return 'XM'
+  if (n.includes('sawed-off')) return 'SAW'
+  if (n.includes('mag-7')) return 'MAG'
+  if (n.includes('negev')) return 'NEG'
+  if (n.includes('m249')) return 'M249'
+  if (n.includes('r8')) return 'R8'
+  if (n.includes('cz75')) return 'CZ'
+  if (n.includes('dual')) return 'D'
+  if (n.includes('revolver')) return 'R'
+  if (n.includes('sticker')) return '🏷️'
+  if (n.includes('case') || n.includes('capsule')) return '📦'
+  if (n.includes('agent')) return '👤'
+  if (n.includes('patch')) return '🔖'
+  if (n.includes('music')) return '🎵'
+  return '🔫'
+}
+
 const columns: DataTableColumns<WatchlistItemWithPrice> = [
   {
     type: 'selection',
@@ -663,44 +724,50 @@ onMounted(() => {
   width: fit-content;
 }
 .wear--fn {
-  background: #dcfce7;
-  color: #166534;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
 }
+.wear--fn .watchlist-card__badge-dot { background: #10b981; }
 .wear--mw {
-  background: #dbeafe;
-  color: #1e40af;
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
 }
+.wear--mw .watchlist-card__badge-dot { background: #3b82f6; }
 .wear--ft {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
 }
+.wear--ft .watchlist-card__badge-dot { background: #f59e0b; }
 .wear--ww {
-  background: #ffedd5;
-  color: #9a3412;
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
 }
+.wear--ww .watchlist-card__badge-dot { background: #f97316; }
 .wear--bs {
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
+.wear--bs .watchlist-card__badge-dot { background: #ef4444; }
+
 html.dark .wear--fn {
-  background: #14532d;
-  color: #86efac;
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
 }
 html.dark .wear--mw {
-  background: #1e3a8a;
-  color: #93c5fd;
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
 }
 html.dark .wear--ft {
-  background: #78350f;
-  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
 }
 html.dark .wear--ww {
-  background: #7c2d12;
-  color: #fdba74;
+  background: rgba(251, 146, 60, 0.12);
+  color: #fb923c;
 }
 html.dark .wear--bs {
-  background: #7f1d1d;
-  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
 }
 
 .price-cell {
@@ -724,83 +791,189 @@ html.dark .wear--bs {
   font-size: 0.875rem;
 }
 
-/* 卡片网格 */
+/* 卡片网格 — BUFF 风格 */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-}
-.watchlist-card {
-  border-radius: 0.75rem;
-  padding: 1rem;
-  background: var(--n-card-color, #fff);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 0.75rem;
 }
+
+.watchlist-card {
+  border-radius: 10px;
+  background: var(--n-card-color, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+}
 html.dark .watchlist-card {
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 .watchlist-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: rgba(107, 127, 248, 0.15);
+}
+html.dark .watchlist-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border-color: rgba(107, 127, 248, 0.2);
 }
 .watchlist-card--disabled {
-  opacity: 0.6;
+  opacity: 0.5;
 }
-.watchlist-card__header {
+
+/* 顶部图示区 */
+.watchlist-card__image {
+  position: relative;
+  height: 120px;
+  background: linear-gradient(135deg, rgba(107, 127, 248, 0.04) 0%, rgba(251, 146, 60, 0.04) 100%);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+html.dark .watchlist-card__image {
+  background: linear-gradient(135deg, rgba(107, 127, 248, 0.06) 0%, rgba(251, 146, 60, 0.03) 100%);
+  border-bottom-color: rgba(255, 255, 255, 0.03);
+}
+.watchlist-card__image-inner {
+  font-size: 2.5rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cs-text-muted);
+  opacity: 0.4;
+  letter-spacing: -0.03em;
+  user-select: none;
 }
 .watchlist-card__badge {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 0.6875rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+}
+.watchlist-card__badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.watchlist-card__check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+/* 中部：名称 + 价格 */
+.watchlist-card__body {
+  padding: 10px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .watchlist-card__name {
-  font-weight: 600;
-  font-size: 0.9375rem;
+  font-weight: 500;
+  font-size: 0.8125rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--cs-text-secondary);
+  line-height: 1.3;
 }
 .watchlist-card__price {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  align-items: baseline;
+  gap: 4px;
+}
+.watchlist-card__price-symbol {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fb923c;
+  font-family: 'JetBrains Mono', monospace;
+}
+.watchlist-card__price-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fb923c;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .watchlist-card__change {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8125rem;
+  font-size: 0.6875rem;
   font-weight: 600;
+  margin-left: auto;
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 .watchlist-card__change.up {
   color: v-bind('colorUp');
+  background: rgba(239, 68, 68, 0.08);
 }
 .watchlist-card__change.down {
   color: v-bind('colorDown');
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* 底部：平台价格 + 趋势 */
+.watchlist-card__footer {
+  padding: 0 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .watchlist-card__platforms {
   display: flex;
-  gap: 0.375rem;
+  gap: 4px;
   flex-wrap: wrap;
 }
+.watchlist-card__platform-tag {
+  font-size: 0.625rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--cs-text-muted);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+html.dark .watchlist-card__platform-tag {
+  background: rgba(255, 255, 255, 0.04);
+}
+.watchlist-card__platform-tag--best {
+  background: rgba(107, 127, 248, 0.1);
+  color: #6b7ff8;
+}
+.watchlist-card__platform-price {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
 .watchlist-card__sparkline {
-  height: 40px;
+  height: 28px;
   display: flex;
   align-items: center;
 }
+
+/* 操作栏 */
 .watchlist-card__actions {
   display: flex;
-  gap: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  gap: 0.5rem;
+  padding: 6px 12px 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+  margin-top: auto;
 }
 html.dark .watchlist-card__actions {
-  border-top-color: rgba(255, 255, 255, 0.06);
+  border-top-color: rgba(255, 255, 255, 0.04);
 }
 
 /* 批量操作浮栏 */
