@@ -118,7 +118,7 @@
           <div class="watchlist-card__footer">
             <div class="watchlist-card__platforms">
               <span
-                v-for="p in item.platform_prices.slice(0, 4)"
+                v-for="p in item.platform_prices.filter((pp: any) => pp.price > 0).slice(0, 4)"
                 :key="p.platform"
                 class="watchlist-card__platform-tag"
                 :class="{ 'watchlist-card__platform-tag--best': p.price === minPlatformPrice(item) }"
@@ -423,8 +423,9 @@ function goToDetail(item: WatchlistItemWithPrice) {
 }
 
 function minPlatformPrice(item: WatchlistItemWithPrice): number | undefined {
-  return item.platform_prices.length
-    ? Math.min(...item.platform_prices.map((p) => p.price))
+  const nonzero = item.platform_prices.filter((p) => p.price > 0)
+  return nonzero.length
+    ? Math.min(...nonzero.map((p) => p.price))
     : undefined
 }
 
@@ -551,11 +552,11 @@ const columns: DataTableColumns<WatchlistItemWithPrice> = [
       const minPrice = minPlatformPrice(row)
       return h('div', { class: 'price-cell' }, [
         h('div', { class: 'price-cell__main font-mono-num' }, `¥${row.latest_price.toFixed(2)}`),
-        row.platform_prices.length > 0
+        row.platform_prices.filter((p: any) => p.price > 0).length > 0
           ? h(
               'div',
               { class: 'price-cell__platforms' },
-              row.platform_prices.slice(0, 3).map((p) =>
+              row.platform_prices.filter((p: any) => p.price > 0).slice(0, 3).map((p) =>
                 h(
                   NTag,
                   {

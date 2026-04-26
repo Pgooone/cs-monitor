@@ -70,35 +70,12 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
         }
 
     # ------------------------------------------------------------------
-    # WebSocket 端点
+    # WebSocket 端点（认证已禁用）
     # ------------------------------------------------------------------
-    async def _ws_auth(websocket: WebSocket) -> dict[str, Any] | None:
-        """WebSocket 认证：从 query string 校验 JWT token."""
-        token = websocket.query_params.get("token")
-        if not token:
-            await websocket.close(code=1008, reason="Missing token")
-            return None
-        try:
-            import jwt
-            payload = jwt.decode(
-                token,
-                config.jwt_secret,
-                algorithms=["HS256"],
-                options={"require": ["exp", "sub"]},
-            )
-            return payload
-        except jwt.ExpiredSignatureError:
-            await websocket.close(code=1008, reason="Token expired")
-            return None
-        except jwt.InvalidTokenError:
-            await websocket.close(code=1008, reason="Invalid token")
-            return None
-
     @app.websocket("/ws/alerts")
     async def ws_alerts(websocket: WebSocket) -> None:
         """实时告警推送 WebSocket."""
-        if await _ws_auth(websocket) is None:
-            return
+        await websocket.accept()
         ws_manager.set_loop(asyncio.get_running_loop())
         await ws_manager.connect_alert(websocket)
         try:
@@ -117,8 +94,7 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
         websocket: WebSocket, market_hash_name: str, platform: str
     ) -> None:
         """极致追踪实时数据流 WebSocket."""
-        if await _ws_auth(websocket) is None:
-            return
+        await websocket.accept()
         ws_manager.set_loop(asyncio.get_running_loop())
         track_id = f"{market_hash_name}@{platform}"
         await ws_manager.connect_extreme_track(websocket, track_id)

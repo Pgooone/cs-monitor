@@ -96,8 +96,7 @@ export const useWebsocketStore = defineStore('websocket', () => {
     onMessage: (data: unknown) => void,
     existing?: WsConnection,
   ): WsConnection {
-    const token = localStorage.getItem('cs_monitor_token') || ''
-    const fullUrl = `${url}?token=${encodeURIComponent(token)}`
+    const fullUrl = url
 
     const conn: WsConnection = {
       url,
