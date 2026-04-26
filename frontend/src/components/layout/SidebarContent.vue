@@ -1,13 +1,16 @@
 <template>
   <div class="sidebar-inner" :class="{ 'sidebar-inner--collapsed': collapsed }">
+    <!-- 顶部品牌色渐变线 -->
+    <div class="sidebar-accent-line" />
+
     <!-- Logo 区 -->
     <div class="sidebar-logo">
       <div class="sidebar-logo__icon">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#3b82f6" />
-              <stop offset="100%" stop-color="#8b5cf6" />
+              <stop offset="0%" stop-color="#6b7ff8" />
+              <stop offset="100%" stop-color="#fb923c" />
             </linearGradient>
           </defs>
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="url(#logoGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -134,11 +137,19 @@ const menuOptions: (MenuOption | MenuGroupOption)[] = [
   height: 100%;
 }
 
+/* 顶部品牌渐变线 — 电光橙到品牌蓝 */
+.sidebar-accent-line {
+  height: 2px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #6b7ff8 0%, #fb923c 50%, #6b7ff8 100%);
+  opacity: 0.8;
+}
+
 .sidebar-logo {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  height: 64px;
+  height: 56px;
   padding: 0 1rem;
   flex-shrink: 0;
   border-bottom: 1px solid transparent;
@@ -146,9 +157,14 @@ const menuOptions: (MenuOption | MenuGroupOption)[] = [
 }
 
 .sidebar-logo__icon {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
+  transition: transform 200ms ease;
+}
+
+.sidebar-logo__icon:hover {
+  transform: scale(1.1);
 }
 
 .sidebar-logo__icon svg {
@@ -157,9 +173,10 @@ const menuOptions: (MenuOption | MenuGroupOption)[] = [
 }
 
 .sidebar-logo__wordmark {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #6b7ff8, #fb923c);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -175,7 +192,7 @@ const menuOptions: (MenuOption | MenuGroupOption)[] = [
 
 .sidebar-footer {
   flex-shrink: 0;
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 1rem;
   border-top: 1px solid transparent;
   transition: border-color 200ms ease;
 }
@@ -184,12 +201,14 @@ const menuOptions: (MenuOption | MenuGroupOption)[] = [
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.375rem;
 }
 
 .sidebar-footer__version {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
+  font-family: 'JetBrains Mono', monospace;
   color: var(--n-text-color-3);
+  opacity: 0.7;
 }
 
 .sidebar-footer__ws {
@@ -203,36 +222,21 @@ const menuOptions: (MenuOption | MenuGroupOption)[] = [
 }
 
 .ws-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   display: inline-block;
 }
 
-.ws-dot--idle {
-  background: #9ca3af;
-}
-
-.ws-dot--connecting {
-  background: #f59e0b;
-  animation: ws-pulse 1.5s infinite;
-}
-
-.ws-dot--connected {
-  background: #10b981;
-}
-
-.ws-dot--disconnected {
-  background: #6b7280;
-}
-
-.ws-dot--error {
-  background: #ef4444;
-}
+.ws-dot--idle { background: #5a7ba5; }
+.ws-dot--connecting { background: #fbbf24; animation: ws-pulse 1.5s infinite; }
+.ws-dot--connected { background: #34d399; }
+.ws-dot--disconnected { background: #5a7ba5; }
+.ws-dot--error { background: #f87171; }
 
 @keyframes ws-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.3; }
 }
 
 /* 折叠状态微调 */
@@ -244,7 +248,7 @@ const menuOptions: (MenuOption | MenuGroupOption)[] = [
 /* 深色模式边框色 */
 html.dark .sidebar-logo,
 html.dark .sidebar-footer {
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.04);
 }
 
 html:not(.dark) .sidebar-logo,

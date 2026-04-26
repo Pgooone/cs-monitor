@@ -1,68 +1,108 @@
 /**
- * 全局 CSS 变量 — CS2 Monitor 设计系统
+ * 全局 CSS — Trading Terminal Pro 设计系统
  *
- * 定义深浅两套 CSS 变量，所有组件通过 html / html.dark 切换。
- * 避免在 scoped style 中依赖 Naive UI 内部变量（如 --n-text-color-1），
- * 因为 scoped style 可能无法正确读取外部 CSS 变量。
+ * 深空蓝底 + 电光橙强调 + 高信息密度
+ * 参考 BUFF.163.com 等专业饰品交易平台
  */
 
-/* ===== Light Mode（默认） ===== */
+/* ===== Light Mode ===== */
 html {
-  --cs-bg-page: #f5f7fb;
+  --cs-bg-page: #f0f2f7;
   --cs-bg-card: #ffffff;
   --cs-bg-elevated: #ffffff;
-  --cs-bg-hover: rgba(0, 0, 0, 0.04);
-  --cs-bg-glass: rgba(255, 255, 255, 0.72);
+  --cs-bg-hover: rgba(0, 0, 0, 0.03);
+  --cs-bg-glass: rgba(255, 255, 255, 0.78);
+  --cs-bg-subtle: #f8f9fc;
 
-  --cs-border: #e5e9f2;
-  --cs-border-light: rgba(0, 0, 0, 0.06);
+  --cs-border: #e2e6ef;
+  --cs-border-light: rgba(0, 0, 0, 0.05);
+  --cs-border-focus: #4a5cf2;
 
-  --cs-text-primary: #1a202c;
-  --cs-text-secondary: #4a5568;
-  --cs-text-muted: #8a94a6;
+  --cs-text-primary: #0f172a;
+  --cs-text-secondary: #475569;
+  --cs-text-muted: #94a3b8;
   --cs-text-on-brand: #ffffff;
 
-  --cs-brand-primary: #2e5bff;
-  --cs-brand-accent: #ff6b35;
+  --cs-brand-primary: #4a5cf2;
+  --cs-brand-primary-hover: #3a3fe6;
+  --cs-brand-accent: #f97316;
+  --cs-brand-accent-hover: #ea580c;
 
-  --cs-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --cs-shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
-  --cs-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+  --cs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --cs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --cs-shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --cs-shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.04);
 
-  --cs-transition-fast: 120ms ease;
-  --cs-transition-base: 200ms ease;
-  --cs-transition-page: 240ms ease;
+  --cs-transition-fast: 100ms cubic-bezier(0.25, 1, 0.5, 1);
+  --cs-transition-base: 200ms cubic-bezier(0.25, 1, 0.5, 1);
+  --cs-transition-slow: 300ms cubic-bezier(0.25, 1, 0.5, 1);
+  --cs-transition-page: 240ms cubic-bezier(0.25, 1, 0.5, 1);
+
+  --cs-radius-sm: 6px;
+  --cs-radius-md: 8px;
+  --cs-radius-lg: 12px;
+  --cs-radius-xl: 16px;
 }
 
-/* ===== Dark Mode ===== */
+/* ===== Dark Mode — 深空蓝交易终端 ===== */
 html.dark {
-  --cs-bg-page: #0e1420;
-  --cs-bg-card: #161d2e;
-  --cs-bg-elevated: #1d2538;
+  --cs-bg-page: #080c16;
+  --cs-bg-card: #0d1320;
+  --cs-bg-elevated: #131b2e;
   --cs-bg-hover: rgba(255, 255, 255, 0.04);
-  --cs-bg-glass: rgba(22, 29, 46, 0.72);
+  --cs-bg-glass: rgba(13, 19, 32, 0.82);
+  --cs-bg-subtle: #111827;
 
-  --cs-border: #272f44;
-  --cs-border-light: rgba(255, 255, 255, 0.06);
+  --cs-border: rgba(255, 255, 255, 0.06);
+  --cs-border-light: rgba(255, 255, 255, 0.04);
+  --cs-border-focus: #6b7ff8;
 
-  --cs-text-primary: #e8ecf4;
-  --cs-text-secondary: #a0aec8;
-  --cs-text-muted: #6b7590;
+  --cs-text-primary: #dce6f2;
+  --cs-text-secondary: #8da4c8;
+  --cs-text-muted: #5a7ba5;
   --cs-text-on-brand: #ffffff;
 
-  --cs-brand-primary: #4f7bff;
-  --cs-brand-accent: #ff8c5a;
+  --cs-brand-primary: #6b7ff8;
+  --cs-brand-primary-hover: #7e91fa;
+  --cs-brand-accent: #fb923c;
+  --cs-brand-accent-hover: #fdba74;
 
-  --cs-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --cs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
-  --cs-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --cs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.15);
+  --cs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --cs-shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --cs-shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.25);
+
+  --cs-transition-fast: 100ms cubic-bezier(0.25, 1, 0.5, 1);
+  --cs-transition-base: 200ms cubic-bezier(0.25, 1, 0.5, 1);
+  --cs-transition-slow: 300ms cubic-bezier(0.25, 1, 0.5, 1);
+  --cs-transition-page: 240ms cubic-bezier(0.25, 1, 0.5, 1);
+
+  --cs-radius-sm: 6px;
+  --cs-radius-md: 8px;
+  --cs-radius-lg: 12px;
+  --cs-radius-xl: 16px;
 }
 
 /* ===== 页面级基础样式 ===== */
 body {
   background: var(--cs-bg-page);
   color: var(--cs-text-primary);
+  font-size: 0.875rem;
+  line-height: 1.5;
   transition: background var(--cs-transition-base), color var(--cs-transition-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 深色模式下添加微妙的噪点纹理 */
+html.dark body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
 }
 
 /* ===== 通用页面过渡 ===== */
@@ -73,7 +113,7 @@ body {
 
 .page-enter-from {
   opacity: 0;
-  transform: translateY(4px);
+  transform: translateY(6px);
 }
 
 .page-leave-to {
@@ -81,10 +121,10 @@ body {
   transform: translateY(-4px);
 }
 
-/* ===== 自定义滚动条 ===== */
+/* ===== 自定义滚动条 — 终端风格 ===== */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -92,42 +132,46 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--cs-border);
+  background: rgba(128, 128, 128, 0.25);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--cs-text-muted);
+  background: rgba(128, 128, 128, 0.4);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* ===== 骨架屏动画 ===== */
 @keyframes cs-skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .cs-skeleton {
   background: linear-gradient(
     90deg,
-    rgba(0, 0, 0, 0.06) 25%,
-    rgba(0, 0, 0, 0.10) 50%,
-    rgba(0, 0, 0, 0.06) 75%
+    rgba(0, 0, 0, 0.05) 25%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.05) 75%
   );
   background-size: 200% 100%;
-  animation: cs-skeleton-shimmer 1.5s infinite;
-  border-radius: 4px;
+  animation: cs-skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--cs-radius-sm);
 }
 
 html.dark .cs-skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.08) 25%,
-    rgba(255, 255, 255, 0.14) 50%,
-    rgba(255, 255, 255, 0.08) 75%
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 75%
   );
   background-size: 200% 100%;
 }
@@ -135,49 +179,116 @@ html.dark .cs-skeleton {
 /* ===== 玻璃拟态卡片 ===== */
 .cs-glass-card {
   background: var(--cs-bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--cs-border-light);
-  border-radius: 1rem;
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-lg);
   box-shadow: var(--cs-shadow-md);
-  transition: transform var(--cs-transition-base), box-shadow var(--cs-transition-base);
+  transition: transform var(--cs-transition-base), box-shadow var(--cs-transition-base), border-color var(--cs-transition-base);
 }
 
 .cs-glass-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--cs-shadow-lg);
+  border-color: rgba(74, 92, 242, 0.15);
 }
 
-/* ===== 渐变 KPI 卡片 ===== */
+html.dark .cs-glass-card:hover {
+  border-color: rgba(107, 127, 248, 0.15);
+}
+
+/* ===== 渐变 KPI 卡片 — 更深沉的渐变 ===== */
 .cs-kpi-gradient--brand {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #4a5cf2 0%, #2f32cc 100%);
   color: #fff;
+  box-shadow: 0 4px 16px rgba(74, 92, 242, 0.25);
 }
 
 .cs-kpi-gradient--success {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #fff;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
 }
 
 .cs-kpi-gradient--warning {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #fff;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
 }
 
 .cs-kpi-gradient--error {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+}
+
+/* ===== 电光橙强调卡 ===== */
+.cs-kpi-gradient--accent {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.25);
 }
 
 /* ===== 文字工具类 ===== */
-.cs-text-primary {
+.cs-text-primary { color: var(--cs-text-primary); }
+.cs-text-secondary { color: var(--cs-text-secondary); }
+.cs-text-muted { color: var(--cs-text-muted); }
+
+/* ===== 等宽数字 ===== */
+.font-mono-num {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ===== 价格涨跌高亮闪烁 ===== */
+@keyframes cs-price-flash-up {
+  0% { background-color: transparent; }
+  25% { background-color: rgba(239, 68, 68, 0.15); }
+  100% { background-color: transparent; }
+}
+
+@keyframes cs-price-flash-down {
+  0% { background-color: transparent; }
+  25% { background-color: rgba(16, 185, 129, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.cs-flash-up { animation: cs-price-flash-up 0.6s ease-out; }
+.cs-flash-down { animation: cs-price-flash-down 0.6s ease-out; }
+
+/* ===== 数据表格紧凑模式 ===== */
+.cs-table-compact .n-data-table-td {
+  padding: 6px 12px !important;
+  font-size: 0.8125rem;
+}
+
+.cs-table-compact .n-data-table-th {
+  padding: 8px 12px !important;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--cs-text-muted);
+}
+
+/* ===== 响应式容器 ===== */
+.cs-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .cs-container { padding: 0 1rem; }
+}
+
+/* ===== 选中颜色 ===== */
+::selection {
+  background: rgba(74, 92, 242, 0.2);
   color: var(--cs-text-primary);
 }
 
-.cs-text-secondary {
-  color: var(--cs-text-secondary);
-}
-
-.cs-text-muted {
-  color: var(--cs-text-muted);
+html.dark ::selection {
+  background: rgba(107, 127, 248, 0.25);
 }

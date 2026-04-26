@@ -3,31 +3,15 @@
     <!-- 左侧品牌宣传区 -->
     <div class="login-brand">
       <div class="brand-bg" />
+      <div class="brand-grid" />
+      <div class="brand-glow" />
       <div class="brand-content">
         <div class="brand-logo">
           <div class="logo-icon">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M12 2L2 7L12 12L22 7L12 2Z"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M2 17L12 22L22 17"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M2 12L12 17L22 12"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </div>
           <span class="logo-text">CS2 Monitor</span>
@@ -39,15 +23,21 @@
         </p>
         <div class="brand-features">
           <div class="feature-item">
-            <div class="feature-dot" />
+            <div class="feature-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
             <span>多平台价格实时监控</span>
           </div>
           <div class="feature-item">
-            <div class="feature-dot" />
+            <div class="feature-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
             <span>智能波动分析与告警</span>
           </div>
           <div class="feature-item">
-            <div class="feature-dot" />
+            <div class="feature-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+            </div>
             <span>K 线图表与趋势预测</span>
           </div>
         </div>
@@ -111,6 +101,7 @@
             block
             :loading="authStore.isLoading"
             :disabled="authStore.isLoading"
+            class="login-btn"
             @click="handleLogin"
           >
             登录
@@ -119,7 +110,7 @@
 
         <div class="form-footer">
           <p class="security-tips">
-            <span class="i-carbon-security" />
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex-shrink:0"><path d="M8 1L2 4v4c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5V4L8 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M6 8l2 2 3-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             首次登录请使用默认密码 admin，登录后建议立即修改
           </p>
         </div>
@@ -198,15 +189,44 @@ async function handleLogin() {
   display: none;
   width: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+  background: linear-gradient(135deg, #0a0f1e 0%, #131b3a 40%, #1a2550 70%, #0d1320 100%);
 }
 
 .brand-bg {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 40%);
+    radial-gradient(ellipse at 30% 70%, rgba(74, 92, 242, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 30%, rgba(249, 115, 22, 0.08) 0%, transparent 50%);
+}
+
+/* 网格线纹理 */
+.brand-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* 呼吸光效 */
+.brand-glow {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(107, 127, 248, 0.12) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: brand-glow-pulse 6s ease-in-out infinite;
+}
+
+@keyframes brand-glow-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+  50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
 }
 
 .brand-content {
@@ -224,66 +244,80 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .logo-icon {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.75rem;
-  background: rgba(255,255,255,0.15);
-  backdrop-filter: blur(8px);
+  border-radius: 0.625rem;
+  background: rgba(107, 127, 248, 0.15);
+  border: 1px solid rgba(107, 127, 248, 0.2);
 }
 
 .logo-icon svg {
-  width: 1.5rem;
-  height: 1.5rem;
-  color: #fff;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #6b7ff8;
 }
 
 .logo-text {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #b8c9e2, #6b7ff8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .brand-slogan {
   font-size: 2.25rem;
   font-weight: 800;
-  line-height: 1.2;
-  margin: 0 0 1rem;
-  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 1.25rem;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #f0f4fa 0%, #8da4c8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .brand-desc {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   line-height: 1.75;
-  opacity: 0.85;
-  margin: 0 0 2.5rem;
+  color: #5a7ba5;
+  margin: 0 0 3rem;
   max-width: 400px;
 }
 
 .brand-features {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 1rem;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
+  color: #8da4c8;
 }
 
-.feature-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.7);
+.feature-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(107, 127, 248, 0.08);
+  border: 1px solid rgba(107, 127, 248, 0.1);
+  color: #6b7ff8;
   flex-shrink: 0;
 }
 
@@ -307,14 +341,15 @@ async function handleLogin() {
 }
 
 .form-title {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.375rem;
   color: var(--n-text-color-base);
+  letter-spacing: -0.02em;
 }
 
 .form-subtitle {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   color: var(--n-text-color-3);
   margin: 0;
 }
@@ -332,6 +367,12 @@ async function handleLogin() {
   margin: 0.25rem 0 0.75rem;
 }
 
+.login-btn {
+  height: 44px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .form-footer {
   margin-top: 1.5rem;
   text-align: center;
@@ -340,13 +381,14 @@ async function handleLogin() {
 .security-tips {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.5rem;
   font-size: 0.8125rem;
   color: var(--n-text-color-3);
   margin: 0;
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: 10px;
   background: var(--n-action-color);
+  line-height: 1.4;
 }
 
 /* ===== 响应式 ===== */
@@ -363,10 +405,5 @@ async function handleLogin() {
   .brand-slogan {
     font-size: 2.75rem;
   }
-}
-
-/* dark 模式下的品牌区 */
-.dark .login-brand {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1d4ed8 100%);
 }
 </style>

@@ -1,12 +1,12 @@
 /**
- * Naive UI Theme Overrides
+ * Naive UI Theme Overrides — Trading Terminal Pro
  *
  * 将 Design Tokens 映射到 Naive UI 的 themeOverrides 结构。
  * light / dark 两套配置，与 useTheme 联动。
  */
 
 import type { GlobalThemeOverrides } from 'naive-ui'
-import { brand, semantic, neutral, fontFamily, radius } from './tokens'
+import { brand, semantic, neutral, fontFamily } from './tokens'
 
 const lightCommon: GlobalThemeOverrides['common'] = {
   primaryColor: brand[500],
@@ -36,16 +36,16 @@ const lightCommon: GlobalThemeOverrides['common'] = {
 
   textColorBase: neutral.light[900],
   textColor1: neutral.light[900],
-  textColor2: neutral.light[700],
-  textColor3: neutral.light[500],
+  textColor2: neutral.light[600],
+  textColor3: neutral.light[400],
 
-  bodyColor: neutral.light[50],
+  bodyColor: '#f0f2f7',
   cardColor: '#ffffff',
   modalColor: '#ffffff',
   popoverColor: '#ffffff',
   dividerColor: neutral.light[200],
   borderColor: neutral.light[200],
-  tableHeaderColor: neutral.light[100],
+  tableHeaderColor: '#f8f9fc',
 
   hoverColor: neutral.light[100],
   pressedColor: neutral.light[200],
@@ -53,63 +53,133 @@ const lightCommon: GlobalThemeOverrides['common'] = {
   fontFamily: fontFamily.sans,
   fontFamilyMono: fontFamily.mono,
 
-  borderRadius: radius.md,
-  borderRadiusSmall: radius.sm,
+  borderRadius: '8px',
+  borderRadiusSmall: '6px',
+
+  heightSmall: '28px',
+  heightMedium: '34px',
+  heightLarge: '40px',
+
+  fontSizeSmall: '13px',
+  fontSizeMedium: '14px',
+  fontSizeLarge: '14px',
+
+  boxShadow1: '0 1px 2px rgba(0,0,0,0.04)',
+  boxShadow2: '0 4px 12px rgba(0,0,0,0.08)',
+  boxShadow3: '0 12px 24px rgba(0,0,0,0.12)',
 }
 
 const darkCommon: GlobalThemeOverrides['common'] = {
-  primaryColor: brand[400],
-  primaryColorHover: brand[300],
-  primaryColorPressed: brand[500],
-  primaryColorSuppl: brand[400],
+  primaryColor: '#6b7ff8',
+  primaryColorHover: '#7e91fa',
+  primaryColorPressed: '#4a5cf2',
+  primaryColorSuppl: '#6b7ff8',
 
-  infoColor: semantic.info.dark,
+  infoColor: '#60a5fa',
   infoColorHover: '#93c5fd',
   infoColorPressed: '#3b82f6',
-  infoColorSuppl: semantic.info.dark,
+  infoColorSuppl: '#60a5fa',
 
-  successColor: semantic.success.dark,
+  successColor: '#34d399',
   successColorHover: '#6ee7b7',
   successColorPressed: '#10b981',
-  successColorSuppl: semantic.success.dark,
+  successColorSuppl: '#34d399',
 
-  warningColor: semantic.warning.dark,
+  warningColor: '#fbbf24',
   warningColorHover: '#fcd34d',
   warningColorPressed: '#f59e0b',
-  warningColorSuppl: semantic.warning.dark,
+  warningColorSuppl: '#fbbf24',
 
-  errorColor: semantic.error.dark,
+  errorColor: '#f87171',
   errorColorHover: '#fca5a5',
   errorColorPressed: '#ef4444',
-  errorColorSuppl: semantic.error.dark,
+  errorColorSuppl: '#f87171',
 
-  textColorBase: neutral.dark[900],
-  textColor1: neutral.dark[900],
-  textColor2: neutral.dark[700],
-  textColor3: neutral.dark[500],
+  textColorBase: '#dce6f2',
+  textColor1: '#dce6f2',
+  textColor2: '#8da4c8',
+  textColor3: '#5a7ba5',
 
-  bodyColor: neutral.dark[50],
-  cardColor: neutral.dark[100],
-  modalColor: neutral.dark[100],
-  popoverColor: neutral.dark[100],
-  dividerColor: neutral.dark[200],
-  borderColor: neutral.dark[200],
-  tableHeaderColor: neutral.dark[100],
+  bodyColor: '#080c16',
+  cardColor: '#0d1320',
+  modalColor: '#131b2e',
+  popoverColor: '#131b2e',
+  dividerColor: 'rgba(255,255,255,0.06)',
+  borderColor: 'rgba(255,255,255,0.08)',
+  tableHeaderColor: '#0d1320',
 
-  hoverColor: neutral.dark[200],
-  pressedColor: neutral.dark[300],
+  hoverColor: 'rgba(255,255,255,0.04)',
+  pressedColor: 'rgba(255,255,255,0.06)',
 
   fontFamily: fontFamily.sans,
   fontFamilyMono: fontFamily.mono,
 
-  borderRadius: radius.md,
-  borderRadiusSmall: radius.sm,
+  borderRadius: '8px',
+  borderRadiusSmall: '6px',
+
+  heightSmall: '28px',
+  heightMedium: '34px',
+  heightLarge: '40px',
+
+  fontSizeSmall: '13px',
+  fontSizeMedium: '14px',
+  fontSizeLarge: '14px',
+
+  boxShadow1: '0 1px 3px rgba(0,0,0,0.3)',
+  boxShadow2: '0 4px 12px rgba(0,0,0,0.35)',
+  boxShadow3: '0 12px 24px rgba(0,0,0,0.45)',
 }
 
 export const lightThemeOverrides: GlobalThemeOverrides = {
   common: lightCommon,
+  Button: {
+    fontWeight: '500',
+  },
+  Card: {
+    borderRadius: '12px',
+    borderColor: '#e2e6ef',
+  },
+  DataTable: {
+    borderRadius: '12px',
+    thFontSize: '12px',
+    tdFontSize: '13px',
+  },
+  Input: {
+    borderRadius: '8px',
+  },
+  Tag: {
+    borderRadius: '6px',
+  },
 }
 
 export const darkThemeOverrides: GlobalThemeOverrides = {
   common: darkCommon,
+  Button: {
+    fontWeight: '500',
+  },
+  Card: {
+    borderRadius: '12px',
+    borderColor: 'rgba(255,255,255,0.06)',
+    color: '#0d1320',
+  },
+  DataTable: {
+    borderRadius: '12px',
+    thFontSize: '12px',
+    tdFontSize: '13px',
+    thColor: '#0d1320',
+    tdColor: 'transparent',
+    borderColor: 'rgba(255,255,255,0.04)',
+  },
+  Input: {
+    borderRadius: '8px',
+    color: 'rgba(255,255,255,0.04)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    colorFocus: 'rgba(255,255,255,0.06)',
+  },
+  Tag: {
+    borderRadius: '6px',
+  },
+  Modal: {
+    borderRadius: '16px',
+  },
 }
