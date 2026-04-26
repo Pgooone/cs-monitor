@@ -5,7 +5,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-一个轻量级、可自托管的 **CS2 饰品价格监控平台**，基于 [SteamDT](https://doc.steamdt.com/) 开放平台 API，支持 **CLI 后台监控** 和 **Web 仪表盘** 双模式。用户可通过浏览器完成所有监控操作：查看价格、管理清单、分析趋势、接收告警，**无需修改任何配置文件**。
+一个轻量级、可自托管的 **CS2 饰品价格监控平台**，基于 [SteamDT](https://doc.steamdt.com/) 开放平台 API，支持 **CLI 后台监控** 和 **Web 仪表盘** 双模式。用户可通过浏览器完成所有监控操作：查看价格、管理清单、分析趋势、接收告警，**无需登录，无需修改任何配置文件**。
 
 > 本项目采用 AI Agent 驱动开发，核心开发规范定义在 [`CLAUDE.md`](CLAUDE.md) 中。你可以在此基础上自由改造和扩展。
 
@@ -14,15 +14,17 @@
 ## 核心功能
 
 ### 1. Web 仪表盘（v2.0 新增，v2.1 重设计）
-打开浏览器即可管理所有监控操作：
-- **Dashboard 首页**：KPI 卡 + 组合价值曲线 + 实时告警流 + 热度榜 + 采集状态
-- **监控清单管理**：表格/卡片双视图、Sparkline 迷你图、批量操作
+打开浏览器 `http://localhost:8080` 即可管理所有监控操作，**无需登录**：
+- **Dashboard 首页**：KPI 卡 + 组合价值曲线 + 实时告警流 + 热度榜 + 采集状态 + **饰品搜索**
+- **饰品搜索**：本地 39,000+ 饰品数据库，支持中英文、无分隔符匹配（如输入 `ak47` 匹配 AK-47），实时价格查询
+- **监控清单管理**：表格/卡片双视图、BUFF 风格卡片布局、Sparkline 迷你图、批量操作
 - **饰品详情页**：K 线图（OHLC + MA 均线 + 成交量）、平台对比、历史告警标注
 - **极致追踪管理**：卡片网格、极值进度条、运行状态徽章、实时 WS 面板
 - **告警历史**：卡片化展示、日期分组、详情抽屉、按天统计
 - **系统设置**：通知配置步骤条、数据目录管理、主题切换
+- **Trading Terminal Pro 设计**：深空蓝 + 电光橙配色，参考 BUFF.163.com 专业交易平台风格
 - **深色模式**：light / dark / system 三态切换，全局无闪烁
-- **全局搜索**：`Cmd/Ctrl + K` 唤起，快速跳转页面和饰品
+- **全局搜索**：`Cmd/Ctrl + K` 唤起，快速跳转页面
 - **实时推送**：WebSocket 实时告警和极致追踪数据流
 
 ### 2. 普通监控模式
@@ -40,8 +42,10 @@
 
 ### 4. 多渠道通知
 - 企业微信机器人 Webhook（P0 已完整实现）
-- Telegram Bot（P1）
+- **Telegram Bot**（P1，支持代理访问，中国大陆可用）
 - Server 酱（P1）
+
+> Telegram 需要代理才能在中国大陆使用。在 `.env` 中配置 `TELEGRAM_PROXY=http://127.0.0.1:7890` 即可。
 
 ### 5. SQLite 持久化
 零配置本地数据库，自动记录价格历史和告警日志。v2.0 新增监控清单和极致追踪配置持久化到数据库。
@@ -228,14 +232,12 @@ watchlist = [
 
 如果你想在此基础上继续开发，建议从以下几个方面入手：
 
-1. **前端 UI/UX 优化**：设计系统（tokens）、深色模式、响应式布局、仪表盘重设计（Task 23-30 进行中）
-2. **更多通知渠道**：钉钉、Discord、Bark 等
-3. **套利价差提醒**：对比同一饰品在不同平台的价格差（Phase 2 已实现）
-4. **K 线趋势分析**：接入 `get_item_kline()` 做技术分析（Phase 2 已实现）
-5. **Docker 部署**：已支持 Dockerfile + docker-compose.yml 一键部署
-6. **多用户支持**：扩展 JWT 认证为多用户模式
-7. **数据归档**：自动归档 90 天以上的历史价格数据（Phase 3 已实现）
-8. **桌面端打包**：Tauri 2.x 封装为 Windows/macOS/Linux 原生应用（PRD 已规划）
+1. **更多通知渠道**：钉钉、Discord、Bark 等
+2. **多用户支持**：重新启用 JWT 认证为多用户模式（代码已封存，可随时恢复）
+3. **桌面端打包**：Tauri 2.x 封装为 Windows/macOS/Linux 原生应用
+4. **数据归档优化**：更精细的历史数据管理和清理策略
+
+> 已完成的功能：套利价差提醒、K 线趋势分析、Docker 部署、数据归档、Trading Terminal Pro 设计系统、本地饰品搜索（39K+）
 
 ---
 
@@ -255,7 +257,7 @@ watchlist = [
 | CSS | UnoCSS | 原子化 CSS |
 | 日志 | loguru | 彩色控制台 + 文件日志 |
 | 配置 | python-dotenv | `.env` 环境变量管理 |
-| 测试 | pytest | 36+ 个单元测试 |
+| 测试 | pytest | 86+ 个单元测试 |
 
 ---
 
@@ -264,7 +266,7 @@ watchlist = [
 本项目由 AI Agent 按 `CLAUDE.md` 中的规范逐步开发完成。如果你想用同样的方式继续迭代：
 
 1. 阅读 `CLAUDE.md` 了解工作流
-2. 查看 `task.json` 了解已完成的任务（v1.0 共 10 个，v2.0 新增 12 个，v2.1 前端优化 8 个）
+2. 查看 `task.json` 了解已完成的任务（共 30 个，全部 `passes: true`）
 3. 在 `task.json` 中按顺序完成下一个 `passes: false` 的任务
 4. 遵循"**一个 task 一个 commit**"的原则
 
