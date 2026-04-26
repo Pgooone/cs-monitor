@@ -1,0 +1,1040 @@
+# Progress Log
+
+# CS2 饰品价格波动监控系统 - Agent 开发进度
+
+## 2026-04-24 - Task 30: 前端打磨与工程化收尾
+
+### What was done:
+- 安装 vue-i18n 并在 main.ts 中注册 i18n 插件
+- Dashboard 欢迎语、状态栏和 Watchlist 空态文本改用 $t() 国际化
+- ItemDetail.vue 新增骨架屏（hero area + SkeletonChart + SkeletonTable）
+- Watchlist.vue 空态替换为可复用的 EmptyState 组件
+- AnimatedNumber 数字动效组件集成到 Dashboard 热度榜、ItemDetail 主价格、Watchlist 卡片价格
+- Alerts.vue 中 `import * as echarts` 改为按需引入（echarts/core + BarChart + GridComponent 等）
+- vite.config.ts 新增 naive-ui 独立 chunk 分割
+- TopBar 全局搜索按钮添加 aria-label="打开搜索"
+- npm run build 零错误通过
+
+### Testing:
+- npm run build (vue-tsc --noEmit + vite build) 无错误
+- Python py_compile 全部模块语法检查通过
+- echarts chunk: 574KB, naive-ui: 1,357KB, vendor: 145KB
+- 响应式断点验证：<640px 侧栏变抽屉，640-1024px 折叠，>1536px 最大1440居中
+
+### Notes:
+- vue-i18n locale 文件（zh-CN.ts / en-US.ts）已有完整 223 行翻译，后续可继续扩展 $t() 覆盖率
+- ECharts 按需引入已在 Alerts/ItemDetail/PortfolioChart 三个组件全部生效
+
+## 2026-04-14 - Task 1: 项目脚手架与基础配置
+
+### What was done:
+- 确认 requirements.txt、.env.example、config.py、README.md 已存在
+- 创建 utils/logger.py，配置 loguru 日志输出（含控制台彩色日志和文件日志）
+- 确认目录结构完整（api/, core/, notify/, storage/, utils/, data/, tests/）
+- 运行 init.sh 初始化虚拟环境和依赖
+- 语法检查通过
+
+### Testing:
+- python -m py_compile utils/logger.py config.py main.py 无错误
+- .venv 环境创建成功，依赖安装完成
+
+### Notes:
+- .env 已配置 STEAMDT_API_KEY
+- Git 仓库已初始化并提交初始 commit
+
+## 2026-04-14 - Task 2: SteamDT API 封装模块
+
+### What was done:
+- 创建 api/steamdt.py，实现 SteamDTClient 类
+- 实现 get_items_batch() 批量查询饰品价格（支持 1-100 个）
+- 实现 get_7day_average() 查询 7 天均价
+- 实现 get_all_items() 获取饰品基础信息
+- 实现 get_item_kline() 查询 K 线数据（预留接口）
+- 统一错误处理：重试 3 次、间隔 10 秒、1-3 秒随机延迟防风控
+- 认证方式：Authorization: Bearer API_KEY
+- Base URL 使用 https://open.steamdt.com
+
+## 2026-04-14 - Task 3: 数据存储模块（SQLite）
+
+### What was done:
+- 创建 storage/models.py，定义 6 张表的建表 SQL
+- 创建 storage/database.py，封装 Database 类
+- 实现自动建表（首次运行时 _init_tables）
+- 实现 items、price_records、alert_logs、extreme_track_snapshots、extreme_track_alerts 的 CRUD 方法
+- 包括：insert_item, get_item, insert_price_record, get_latest_price, insert_alert_log, get_recent_alerts
+- 包括：insert_extreme_snapshot, get_latest_snapshot, insert_extreme_alert, get_latest_extreme_alert
+
+### Testing:
+- python -m py_compile storage/database.py storage/models.py 无错误
+- tests/test_storage.py 6 个测试全部通过
+## 2026-04-15 - Task 4: 核心监控逻辑：价格采集与调度
+
+### What was done:
+- 创建 core/monitor.py，实现 PriceMonitor 类
+- 实现 collect_prices()：读取 config.watchlist，批量调用 SteamDT API 获取当前价格
+- 解析 API 响应并写入 price_records 表，同时处理 items 表外键约束
+- 创建 core/scheduler.py，实现 MonitorScheduler 类
+- 使用 APScheduler BackgroundScheduler 注册普通监控定时任务
+- 配置默认每 30 分钟执行一次价格采集
+- 首次启动时立即执行一次价格采集
+- 支持优雅关闭调度器
+
+### Testing:
+- python -m py_compile core/monitor.py core/scheduler.py tests/test_monitor.py 无错误
+- tests/test_monitor.py 4 个测试全部通过
+- 全部 16 个单元测试通过
+- python main.py 可正常启动
+
+## 2026-04-15 - Task 5: 核心监控逻辑：波动分析与告警检测
+
+### What was done:
+- 创建 core/analyzer.py，实现 PriceAnalyzer 类
+- 实现波动率计算：(当前价 - 基准价) / 基准价 × 100%
+- 基准价优先使用 7 天均价（get_7day_average），缺失时回退到上一次采集价格
+- 实现告警判断：涨幅 ≥ 阈值% 触发 price_surge，跌幅 ≤ -阈值% 触发 price_drop
+- 实现告警冷却：同一饰品同一方向 4 小时内只告警 1 次
+- 将触发的告警写入 alert_logs 表
+- 集成 analyzer 到 monitor.py，每次采集后自动执行分析
+- 为 database.py 添加 get_latest_price_any_platform() 支持无平台限制的基准价查询
+
+## 2026-04-15 - Task 6: 极致追踪模块（高频单品狙击）
+
+### What was done:
+- 创建 core/extreme_tracker.py，实现 ExtremeTracker 类
+- 使用统一 tick 机制（每 10 秒）管理多个追踪项，各追踪项按自定义间隔独立执行
+- 支持 any 模式（任何变动通知）和 percent 模式（超百分比通知）
+- 自动降频保护：API 返回 429 时自动翻倍间隔（最大 1 小时），连续成功 10 次后逐步恢复
+- 价格和数量同时变动时合并为 both 类型告警写入 extreme_track_alerts
+- 支持 alert_cooldown_seconds 冷却期和 quiet_hours 免打扰时段
+- 集成到 scheduler.py，注册独立的 extreme_tracker 定时任务
+- database.py 新增 get_latest_price_any_platform() 和 get_recent_extreme_alerts() 支持新功能
+
+### Testing:
+- python -m py_compile core/extreme_tracker.py core/scheduler.py tests/test_extreme_tracker.py 无错误
+- tests/test_extreme_tracker.py 7 个测试全部通过（首次运行、价格告警、合并告警、冷却、429降频、禁用、免打扰）
+- 全部 28 个单元测试通过
+
+### Notes:
+- PriceMonitor 对 API 失败、空 watchlist、异常响应都做了防御性处理
+- 首次采集在 scheduler.start() 中立即触发
+- analyzer 取各平台最低价为当前价进行波动判断
+
+### Testing:
+- python -m py_compile api/steamdt.py 无错误
+- tests/test_api.py 6 个测试全部通过
+
+## 2026-04-15 - Task 7: 通知推送模块
+
+### What was done:
+- 创建 notify/base.py，定义 NotificationChannel 抽象基类
+- 创建 notify/wecom.py，实现企业微信机器人 Webhook 推送（P0）
+- 创建 notify/telegram.py，实现 Telegram Bot 推送（P1）
+- 创建 notify/serverchan.py，实现 Server 酱推送（P1）
+- 创建 notify/manager.py，实现 NotificationManager 负责消息格式化和渠道路由
+- 支持通过 config.notify_channel 切换默认渠道
+- 通知发送失败时重试 3 次（send_with_retry）
+- 集成通知到 analyzer.py，普通监控触发告警后自动推送
+- 集成通知到 extreme_tracker.py，极致追踪触发告警后自动推送
+- 按照 PRD 模板格式化普通监控和极致追踪三种消息内容
+
+### Testing:
+- python -m py_compile notify/*.py tests/test_notify.py 无错误
+- tests/test_notify.py 8 个测试全部通过（企微成功/失败、TG、Server酱、渠道创建、消息格式化）
+- 全部 36 个单元测试通过
+
+### Notes:
+- 通知渠道配置依赖 .env 中的 Webhook URL / Bot Token
+- 未配置时 channel 为 None，告警仅记录数据库不发送通知
+
+## 2026-04-15 - Task 8: 主程序入口与优雅退出
+
+### What was done:
+- 重写 main.py 作为完整主程序入口
+- 加载配置（MonitorConfig.from_env()），校验 STEAMDT_API_KEY 是否存在
+- 初始化 SQLite 数据库（data/prices.db）
+- 初始化 SteamDTClient 并传入配置
+- 启动 MonitorScheduler 调度器，注册普通监控和极致追踪任务
+- 首次启动立即执行一次价格采集（已在 scheduler.start() 中实现）
+- 实现 Ctrl+C (SIGINT) 和 SIGTERM 优雅退出处理，关闭调度器和 HTTP 客户端
+- 添加主循环保持程序常驻运行
+- 修正 .env 中 STEAMDT_BASE_URL 为 https://open.steamdt.com
+
+### Testing:
+- python -m py_compile main.py 无错误
+- python main.py 可正常启动、初始化、执行首次价格采集和波动分析
+- 企微通知失败符合预期（因为 Webhook URL 为占位符）
+- 全部 36 个单元测试仍然通过
+
+### Notes:
+- 主程序运行后会一直阻塞在 while True 循环中，直到收到中断信号
+- 首次启动时会立即调用 collect_prices() 进行一轮采集
+
+## 2026-04-15 - Task 9: 单元测试
+
+### What was done:
+- tests/test_api.py：6 个测试覆盖 SteamDTClient 批量查询、7天均价、基础信息、重试失败
+- tests/test_analyzer.py：5 个测试覆盖波动检测、阈值判断、告警冷却、基准价回退
+- tests/test_notify.py：8 个测试覆盖企微/TG/Server酱发送、消息格式化、渠道路由
+- tests/test_monitor.py：4 个测试覆盖价格采集、空清单、API失败
+- tests/test_extreme_tracker.py：7 个测试覆盖快照、价格/数量变动、合并告警、429降频、冷却、免打扰
+- tests/test_storage.py：6 个测试覆盖数据库表、CRUD操作
+
+### Testing:
+- python -m pytest tests/ -v 全部 36 个测试通过
+- 所有核心模块均有测试覆盖
+
+### Notes:
+- 所有外部 API 调用在单元测试中使用 unittest.mock 模拟
+- 数据库测试使用 tempfile 创建临时 SQLite 文件
+
+## 2026-04-15 - Task 10: 最终集成测试与优化
+
+### What was done:
+- 运行全部 36 个单元测试，全部通过
+- 运行 ruff check . --fix，修复 2 个未使用 import 问题
+- 运行 mypy，除 apscheduler 第三方库缺失类型存根外无其他错误
+- 验证 main.py 可正常启动、初始化、执行首次价格采集和波动分析
+- 验证普通监控模式完整流程：批量采集 → 写入数据库 → 波动分析 → 触发告警 → 通知推送
+- 验证极致追踪模式已通过单元测试覆盖：高频轮询 → 快照对比 → 合并通知
+- 验证 429 自动降频、告警冷却、免打扰时段逻辑全部通过测试
+- 代码格式统一，清理未使用 import
+
+### Testing:
+- python -m pytest tests/ -v：36 passed
+- python -m ruff check .：0 errors
+- python -m mypy .：仅 apscheduler 缺少 stubs（第三方库问题）
+- python main.py：启动正常，API 调用成功，首次采集完成
+
+### Notes:
+- 项目核心功能已全部开发完成
+- 用户只需在 .env 中配置真实的 Webhook URL 即可接收通知
+- 企微通知在测试中出现 93000 错误是因为使用了占位符 Webhook URL
+
+---
+
+## 2026-04-18 - Task 11: Web API 骨架（FastAPI）
+
+### What was done:
+- 安装 fastapi、uvicorn 并更新 requirements.txt
+- 创建 web/app.py：FastAPI 应用入口，含 CORS 配置（允许 localhost:5173）
+- 创建 web/schemas.py：定义 HealthResponse、DashboardSummary、AlertRecord、PriceRecord Pydantic 模型
+- 创建 web/routers/dashboard.py：实现 /api/dashboard/summary 概览端点
+- 修改 main.py：同时启动 APScheduler（后台线程）+ FastAPI/uvicorn（主线程 8080 端口）
+- 修改 config.py：新增 web_host、web_port 配置，支持从环境变量读取
+- 给 storage/database.py 新增统计查询方法：get_today_alert_count、get_latest_price_records_count、get_latest_price_record_any
+- 创建 tests/test_web_api.py：3 个测试覆盖 health、dashboard summary、CORS preflight
+
+### Testing:
+- python -m py_compile main.py config.py web/*.py web/routers/*.py storage/database.py 无错误
+- python -m pytest tests/ -v：39 个测试全部通过（原有 36 + 新增 3）
+- python -m ruff check .：0 errors
+- python main.py：正常启动，调度器 + Web 服务同时运行，首次价格采集成
+
+### Notes:
+- 依赖注入通过 request.app.state 传递 db 和 config，避免循环导入
+- CLI 监控功能未被破坏，scheduler 仍在后台线程正常运行
+
+---
+
+## 2026-04-18 - PRD Update: v2.0 Web 仪表盘
+
+### Update Description:
+基于《CS2 饰品监控 Web 仪表盘 — 后续开发 PRD》更新 agent workspace，追加 Web 仪表盘功能开发任务。
+
+### New Tasks Added (12):
+- Task 11: Web API 骨架（FastAPI）
+- Task 12: 数据库迁移：监控清单持久化
+- Task 13: Watchlist API 与 Alerts API
+- Task 14: 价格数据 API 与极致追踪 API
+- Task 15: Vue 3 前端初始化与 Dashboard 首页
+- Task 16: 监控清单页与饰品详情页
+- Task 17: 极致追踪页、告警页与设置页
+- Task 18: 前端打包与静态文件托管
+- Task 19: K线图表、价差看板与 WebSocket 推送
+- Task 20: 趋势分析与极致追踪实时面板
+- Task 21: 用户认证与数据归档
+- Task 22: Docker 容器化与性能优化
+
+### Files Updated:
+- task.json：追加 12 个新任务（id 11-22），passes 初始化为 false
+- architecture.md：新增 Web 层、前端层、新数据模型、API 设计、Docker 方案
+- CLAUDE.md：更新项目结构、命令列表、编码规范（增加前端规范）、阻塞场景
+- init.sh：增加 Node.js 检查、前端 npm install
+- .env.example：增加 WEB_HOST、WEB_PORT 配置
+- README.md：增加 Web 仪表盘功能说明、开发模式、技术栈
+- QUICKSTART.md：更新任务清单数量、常用命令
+- progress.txt：追加 PRD 更新记录
+
+### Architecture Changes:
+- 新增 web/ 目录（FastAPI 应用、路由、Pydantic 模型、WebSocket）
+- 新增 frontend/ 目录（Vue 3 + Vite + TypeScript + Naive UI）
+- main.py 改造：同时启动 APScheduler + FastAPI uvicorn
+- storage/models.py 新增 watchlist、extreme_track_config、system_config 表
+- 采用 DB 优先策略：config.py 仅作初始默认值
+
+## 2026-04-18 - Task 12: 数据库迁移：监控清单持久化
+
+### What was done:
+- storage/models.py 新增 3 张表：
+  - watchlist 表（market_hash_name, display_name, threshold_percent, enabled, created_at, updated_at）
+  - extreme_track_config 表（完整的追踪配置字段，含 interval_seconds、price/quantity 追踪模式、阈值、冷却、免打扰等）
+  - system_config 表（key-value 系统配置）
+- storage/database.py 新增 CRUD 方法：
+  - watchlist: insert/get/update/delete + get_watchlist_threshold
+  - extreme_track_config: insert/get/update/delete
+  - system_config: set/get
+  - import_default_watchlist() / import_default_extreme_track()：首次启动时从 config.py 默认值自动导入
+  - 数据库连接启用 WAL 模式（PRAGMA journal_mode = WAL）
+- core/monitor.py：collect_prices() 改为从 self.db.get_watchlist() 读取监控清单
+- core/analyzer.py：_get_threshold() 改为从 DB 读取，不存在时回退到 config.default_threshold_percent
+- core/extreme_tracker.py：tick() 改为从 self.db.get_extreme_track_configs() 读取追踪配置
+- core/scheduler.py：_add_extreme_tracker_job() 改为从 DB 检查列表是否为空
+- main.py：初始化数据库后调用默认数据导入方法
+- 保持 config.py 作为初始默认值兜底，DB 优先策略
+
+### Testing:
+- python -m py_compile 所有修改文件无语法错误
+- python -m ruff check .：0 errors
+- python -m pytest tests/ -v：39 个测试全部通过
+- 修正 test_monitor.py 和 test_extreme_tracker.py 的 fixture：测试数据通过 DB 插入而非仅配置 config
+
+### Notes:
+- DB 优先策略已落地：运行时所有清单数据从 SQLite 读取，config.py 仅在首次启动时作为默认种子
+- 新增表结构兼容后续 Web API（Task 13/14）的 CRUD 操作
+- WAL 模式启用，支持并发读写，避免 Web API 和 scheduler 之间的数据库锁冲突
+
+## 2026-04-18 - Task 13: Watchlist API 与 Alerts API
+
+### What was done:
+- 扩展 web/schemas.py：新增 WatchlistItem、WatchlistItemCreate、WatchlistItemUpdate、WatchlistItemWithPrice、AlertRecordFilter、AlertStatsItem、AlertStatsResponse 等 Pydantic 模型
+- 创建 web/routers/watchlist.py：实现监控清单完整 CRUD
+  - GET /api/watchlist：获取全部监控清单（含最新价格，通过 LEFT JOIN 子查询）
+  - POST /api/watchlist：添加监控项（重复返回 409）
+  - PUT /api/watchlist/{market_hash_name}：更新监控项（不存在返回 404）
+  - DELETE /api/watchlist/{market_hash_name}：删除监控项
+- 创建 web/routers/alerts.py：实现告警记录查询和统计
+  - GET /api/alerts：分页查询告警（支持 page/limit、alert_type 过滤、start_date/end_date 时间范围、market_hash_name 模糊搜索）
+  - GET /api/alerts/stats：按天/类型聚合统计，返回 total、by_day、by_type
+- storage/database.py 新增查询方法：get_alerts()、get_alert_stats()、get_watchlist_count()、get_extreme_track_count()、get_watchlist_with_latest_price()
+- 更新 web/routers/dashboard.py：active_watchlist 和 extreme_track_count 改为从 DB 读取（DB 优先策略）
+- 更新 web/app.py：注册 watchlist 和 alerts 路由
+- tests/test_web_api.py 新增 12 个测试覆盖 watchlist CRUD 和 alerts 查询/统计
+
+### Testing:
+- python -m py_compile 所有修改文件无语法错误
+- python -m pytest tests/ -v：51 个测试全部通过（原有 39 + 新增 12）
+- python -m ruff check .：0 errors
+- python main.py：可正常导入和启动
+
+### Notes:
+- DashboardSummary 中 active_watchlist 和 extreme_track_count 已完全从 DB 读取，不再依赖 config.py
+- get_watchlist_with_latest_price 使用关联子查询获取每个饰品最新的价格记录
+- alerts 查询支持完整的时间范围过滤和分页
+
+## 2026-04-18 - Task 14: 价格数据 API 与极致追踪 API
+
+### What was done:
+- 扩展 web/schemas.py：新增 LatestPriceItem、PriceHistoryItem、PlatformPriceItem、ExtremeTrackConfig、ExtremeTrackConfigCreate、ExtremeTrackConfigUpdate Pydantic 模型
+- 创建 web/routers/prices.py：实现价格数据查询接口
+  - GET /api/prices/latest：获取所有监控品最新价格（每饰品每平台各取最新）
+  - GET /api/prices/{name}/history：获取历史价格，支持 days 和 platform 过滤
+  - GET /api/prices/{name}/platforms：获取指定饰品在各平台的最新价格
+- 创建 web/routers/extreme_track.py：实现极致追踪完整 CRUD + toggle 启停
+  - GET /api/extreme-track：获取全部追踪配置
+  - POST /api/extreme-track：添加追踪配置（重复返回 409）
+  - PUT /api/extreme-track/{name}/{platform}：更新追踪配置（不存在返回 404）
+  - DELETE /api/extreme-track/{name}/{platform}：删除追踪配置
+  - POST /api/extreme-track/{name}/{platform}/toggle：切换启停状态
+- storage/database.py 新增查询方法：get_latest_prices()、get_price_history()、get_price_by_platforms()
+- 更新 web/app.py：注册 prices 和 extreme_track 路由
+- tests/test_web_api.py 新增 12 个测试覆盖 prices 查询和 extreme_track CRUD/toggle
+
+### Testing:
+- python -m py_compile 所有修改文件无语法错误
+- python -m pytest tests/ -v：65 个测试全部通过（原有 51 + 新增 14）
+- python -m ruff check .：0 errors
+- python main.py：可正常导入和启动
+
+### Notes:
+- prices 路由中的 {market_hash_name} 支持 URL 编码的特殊字符（如空格、|）
+- get_price_history 的 days 参数使用 SQLite datetime 字符串拼接（参数绑定不支持间隔值）
+- extreme_track 的 toggle 端点返回布尔值 enabled，便于前端直接更新状态
+
+## 2026-04-18 - Task 15: Vue 3 前端初始化与 Dashboard 首页
+
+### What was done:
+- 创建 frontend/package.json（Vue 3 + Vite + TypeScript + UnoCSS）
+- 创建 frontend/vite.config.ts，配置 /api 代理到 localhost:8080
+- 创建 tsconfig.json / tsconfig.node.json 严格模式配置
+- 创建 frontend/src/main.ts，集成 Vue Router + Pinia + Naive UI
+- 创建基础布局 AppLayout.vue：可折叠侧边栏导航 + 主内容区
+- 创建 axios 封装 frontend/src/api/index.ts，定义 DashboardSummary / WatchlistItemWithPrice / AlertRecord 类型
+- 创建 Pinia store dashboard.ts，管理 Dashboard 数据状态
+- 实现 Dashboard.vue 首页：4 个统计卡片 + 监控价格概览表 + 最近告警列表
+- 创建 Watchlist.vue / ExtremeTrack.vue / Alerts.vue / Settings.vue 占位页面（支持路由切换）
+- 路由配置：/ → Dashboard, /watchlist, /extreme-track, /alerts, /settings
+
+### Testing:
+- cd frontend && npm install：依赖安装成功
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m pytest tests/ -v：65 个后端测试全部通过，无回归
+- python -m ruff check .：0 errors
+
+### Notes:
+- 前端路由使用懒加载（Dashboard 除外），优化首屏加载
+- 统计卡片使用 naive-ui NStatistic + NCard 组件
+- 表格使用 NDataTable，支持分页和溢出提示
+- 构建产物输出到 frontend/dist（为 Task 18 静态文件托管做准备）
+
+## 2026-04-18 - Task 16: 监控清单页与饰品详情页
+
+### What was done:
+- 扩展 frontend/src/api/index.ts：
+  - 新增 WatchlistItem、PriceHistoryItem、PlatformPriceItem、CreateWatchlistPayload、UpdateWatchlistPayload 类型
+  - 新增 createWatchlistItem、updateWatchlistItem、deleteWatchlistItem、priceHistory、platformPrices API 方法
+- 创建 Pinia store stores/watchlist.ts：
+  - 管理监控清单状态（items、loading、error）
+  - 实现 fetchItems、addItem、updateItem、removeItem、toggleEnabled 方法
+- 实现 Watchlist.vue 完整功能：
+  - 表格展示监控清单（名称、当前价格、平台、阈值、状态、操作）
+  - 点击饰品名称跳转 ItemDetail 详情页
+  - 添加/编辑弹窗（表单验证、名称不可重复）
+  - 启停开关（表格内切换启用/禁用状态）
+  - 删除确认（对话框二次确认）
+- 实现 ItemDetail.vue 饰品详情页：
+  - 顶部 3 个统计卡片（当前价格、均价、波动率）
+  - 各平台价格对比卡片（grid 布局）
+  - ECharts 价格走势折线图（支持 7天/30天切换，面积图）
+  - 该饰品的告警历史表格（类型、当前价、基准价、波动、时间）
+- 更新 src/router/index.ts：新增 /item/:name 路由
+- 更新 AppLayout.vue 页面标题映射：新增 ItemDetail → 饰品详情
+
+### Testing:
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m pytest tests/ -v：65 个后端测试全部通过，无回归
+- python -m ruff check .：0 errors
+
+### Notes:
+- ECharts 按需全量引入（当前仅折线图），后续 K 线图（Task 19）可复用图表初始化逻辑
+- 详情页通过 route.params.name 获取饰品名称，使用 encodeURIComponent/解码处理特殊字符
+- 价格走势图按 recorded_at 升序排列，x 轴显示月日格式
+- 告警历史调用 /api/alerts?market_hash_name=xxx 接口过滤
+
+---
+
+## 2026-04-18 - Task 17: 极致追踪页、告警页与设置页
+
+### What was done:
+- 新建后端 web/routers/settings.py：
+  - GET /api/settings/notify：读取通知配置（DB 优先，fallback 到 .env）
+  - PUT /api/settings/notify：保存通知配置到 system_config 表
+  - POST /api/settings/notify/test：发送测试通知（当前支持企微）
+- 扩展 web/schemas.py：新增 NotifySettings、NotifyTestRequest Pydantic 模型
+- 更新 web/app.py：注册 settings 路由
+- 扩展 frontend/src/api/index.ts：
+  - 新增 ExtremeTrackConfig 相关类型和 API（extremeTrackList、createExtremeTrack、updateExtremeTrack、deleteExtremeTrack、toggleExtremeTrack）
+  - 新增 alertStats、getNotifySettings、updateNotifySettings、testNotify API
+- 创建 Pinia store stores/extremeTrack.ts：管理极致追踪状态（CRUD + toggle）
+- 创建 Pinia store stores/alerts.ts：管理告警记录状态（分页查询 + 统计）
+- 实现 ExtremeTrack.vue：
+  - 表格展示追踪项（饰品、平台、间隔、价格/数量追踪模式、状态、操作）
+  - 添加/编辑弹窗（含价格/数量追踪开关、模式选择、阈值、冷却、免打扰时段）
+  - 启停开关、删除确认
+- 实现 Alerts.vue：
+  - 筛选区：告警类型、开始/结束日期、饰品名称搜索
+  - ECharts 柱状图展示按天告警趋势
+  - 分页告警列表（类型标签化、价格/波动格式化）
+- 实现 Settings.vue：
+  - 通知渠道选择（企微/Telegram/Server酱）
+  - 各渠道对应配置表单输入
+  - 保存配置按钮、测试通知按钮
+
+### Testing:
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m py_compile web/routers/settings.py web/app.py web/schemas.py：无语法错误
+- python -m pytest tests/ -v：65 个后端测试全部通过，无回归
+- python -m ruff check .：0 errors
+
+### Notes:
+- 后端 settings 路由使用 system_config 表持久化通知配置，与 config.py 解耦
+- 前端三个页面均使用 Naive UI 组件 + Pinia 状态管理，保持与 Watchlist.vue 一致的交互模式
+- Alerts.vue 柱状图在筛选条件变化时自动重绘
+
+---
+
+## 2026-04-18 - Task 18: 前端打包与静态文件托管
+
+### What was done:
+- 运行 `cd frontend && npm run build` 生成生产构建产物到 frontend/dist
+- 修改 web/app.py：
+  - 引入 `FileResponse`、`HTTPException` 和 `Path`
+  - 添加 catch-all 路由 `/{full_path:path}`，实现 SPA fallback
+  - 对存在的静态文件（CSS/JS/图片）直接返回文件内容
+  - 对不存在的路径回退到 index.html，由 Vue Router 处理前端路由
+  - API 路径（/api/*）正常抛出 404，不干扰已有 API 路由
+- 更新 README.md「快速开始」章节：
+  - 步骤 3 增加 `npm run build` 构建说明
+  - 明确说明构建后访问 `http://localhost:8080` 即可直接打开仪表盘
+  - 步骤 4 开发模式增加提醒：开发完成后需重新构建使生产环境生效
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无编译错误
+- TestClient 测试：GET / 返回 index.html，GET /watchlist 返回 index.html（SPA fallback），GET /assets/... 返回静态文件，GET /api/health 返回 JSON，GET /docs 正常可用
+- 实际启动服务测试：curl 验证 /、/watchlist、/assets/、/api/health 均正常
+- `python -m pytest tests/ -v`：65 个测试全部通过，无回归
+- `python -m ruff check .`：0 errors
+- `python -m py_compile web/app.py main.py`：无语法错误
+
+### Notes:
+- SPA fallback 使用 catch-all route 而非 `StaticFiles(html=True)`，后者对非根路径不会自动回退到 index.html
+- 前端构建产物（frontend/dist）不提交到 git，由 CI/CD 或部署时构建
+
+---
+
+## 2026-04-18 - Task 19: K线图表、价差看板与 WebSocket 推送
+
+### What was done:
+- 后端：创建 web/ws_manager.py，实现 WebSocketManager 全局单例
+  - 支持 /ws/alerts 告警实时推送频道和 /ws/extreme-track/{name}/{platform} 极致追踪实时数据流频道
+  - 提供 sync 版本广播方法（broadcast_alert_sync / broadcast_extreme_track_sync），支持从 APScheduler 后台线程安全地向 FastAPI 事件循环推送消息
+- 后端：创建 web/routers/kline.py，实现 K 线和价差 API
+  - GET /api/kline/{name}：查询饰品 K 线数据，支持 period（1=时K, 2=日K, 3=周K）和 count 参数，调用 SteamDTClient.get_item_kline()
+  - GET /api/arbitrage：所有监控品跨平台价差列表，按价差百分比降序排列
+  - GET /api/arbitrage/{name}：单品各平台价差明细
+  - 为避免 /kline/{name} 与 /kline/arbitrage 路由冲突，将 arbitrage 路由独立为 arbitrage_router（prefix=/arbitrage）
+- 后端：修改 web/app.py，注册 kline/arbitrage 路由，添加两个 WebSocket endpoint
+- 后端：修改 core/monitor.py，collect_prices() 返回 {"records": ..., "alerts": ...}，使告警可被外部获取
+- 后端：修改 core/scheduler.py，新增 _run_monitor() 和 _run_extreme_tracker() 包装方法，在任务执行后通过 ws_manager 广播实时消息
+- 前端：扩展 frontend/src/api/index.ts，新增 kline、arbitrage、arbitrageItem API 方法和 KlineResponse / ArbitrageItem 类型
+- 前端：创建 frontend/src/utils/ws.ts，实现 WebSocketClient 类（自动重连、指数退避、心跳 ping/pong）
+- 前端：修改 ItemDetail.vue，集成 ECharts K 线图（OHLC + MA5/MA10/MA20 均线 + 成交量柱状图），支持价格走势/K线图切换，支持时K/日K/周K切换
+- 前端：修改 Alerts.vue，集成 WebSocket 连接 /ws/alerts，收到实时告警后通过 store.prependAlert() 插入列表顶部
+- 前端：修改 stores/alerts.ts，新增 prependAlert() 方法支持实时插入
+- 前端：修改 ExtremeTrack.vue，为每个启用的追踪项建立 WebSocket 连接（连接池管理），收到实时数据后更新到 store
+- 前端：修改 stores/extremeTrack.ts，新增 updateRealtimeData() 方法存储实时数据
+
+### Testing:
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m py_compile 所有修改文件无语法错误
+- python -m pytest tests/ -v：65 个测试全部通过（修复 test_monitor.py 适配新的 collect_prices 返回格式）
+- python -m ruff check .：0 errors
+- FastAPI 应用初始化测试通过
+
+### Notes:
+- WebSocket 的 sync 广播通过 asyncio.run_coroutine_threadsafe() 实现，首次 WS 连接时自动捕获事件循环
+- K 线图红绿配色采用国内习惯（涨红跌绿）
+- 前端 WS 客户端支持指数退避重连（初始 3 秒，最大 30 秒）
+
+---
+
+## 2026-04-18 - Task 20: 趋势分析与极致追踪实时面板
+
+### What was done:
+- 后端：创建 core/trend_analyzer.py，实现 TrendAnalyzer 类
+  - 从 DB 按天聚合价格（get_daily_prices），计算 MA5/MA10/MA20 移动平均线
+  - 趋势标签检测：最近连续 3 天上涨 → surge（连涨），连续 3 天下跌 → drop（连跌），否则 → oscillate（震荡）
+  - 数据不足 5 天时返回 None
+- 后端：扩展 storage/database.py，新增 get_daily_prices() 按天均价聚合查询方法
+- 后端：扩展 web/routers/kline.py，新增 trends_router（prefix=/trends）
+  - GET /api/trends/{name}：返回趋势标签、日价格序列、MA5/MA10/MA20 数据
+- 后端：修改 web/app.py，注册 trends_router
+- 后端：扩展 web/schemas.py，新增 DailyPricePoint、TrendAnalysisResponse Pydantic 模型
+- 前端：扩展 frontend/src/api/index.ts，新增 trends() API 和 DailyPricePoint / TrendAnalysisResponse 类型
+- 前端：修改 Dashboard.vue，价格概览表新增「趋势」列
+  - 异步加载每个监控项的趋势标签（连涨/连跌/震荡）
+  - 使用 NTag 展示，颜色区分（连涨红色、连跌绿色、震荡橙色）
+- 前端：修改 ItemDetail.vue，新增趋势标签区域
+  - 显示趋势标签（大尺寸 NTag）
+  - 显示 MA5/MA10/MA20 最新值（小尺寸 NTag）
+  - 趋势数据随页面加载一并请求
+- 前端：修改 ExtremeTrack.vue，新增实时面板展开行
+  - 使用 naive-ui DataTable 的 expand 列，点击展开查看实时变动
+  - 创建组件 ExtremeTrackTimeline.vue，时间线式呈现价格/数量变化
+  - 显示变动类型标签、时间、价格变化（含金额和百分比）、数量变化
+- 前端：修改 stores/extremeTrack.ts，updateRealtimeData() 将 WS 实时数据附加到 item._realtime 数组
+
+### Testing:
+- cd frontend && npm run build：vue-tsc + vite build 通过，无编译错误
+- python -m py_compile 所有修改文件无语法错误
+- python -m pytest tests/ -v：75 个测试全部通过（原有 65 + 新增 10 个趋势分析测试）
+- python -m ruff check .：0 errors
+- python main.py：可正常导入和启动
+
+### Notes:
+- 趋势分析使用按天均价聚合，避免同一天多次采集导致数据噪音
+- 实时面板仅展示最近 10 条变动记录，防止数据过多
+- WebSocket 数据在 ExtremeTrackTimeline 中通过 timeline 组件直观展示变动方向（价格涨红跌绿、数量涨绿跌红）
+
+---
+
+## 2026-04-18 - Task 21: 用户认证与数据归档
+
+### What was done:
+- **JWT 认证中间件（单用户模式）**：
+  - 新增 `web/deps.py`：实现 `require_auth` 依赖（HTTPBearer + PyJWT 验证），`create_access_token` 令牌生成
+  - 新增 `web/routers/auth.py`：实现 `POST /api/auth/login` 登录端点（验证 admin_password，返回 JWT）
+  - 扩展 `config.py`：新增 `admin_password`、`jwt_secret`、`jwt_expiry_hours` 配置，支持从环境变量读取
+  - 更新 `.env.example`：新增 `ADMIN_PASSWORD`、`JWT_SECRET`、`JWT_EXPIRY_HOURS` 配置项
+  - 更新 `requirements.txt`：添加 `pyjwt>=2.8.0`
+- **API 路由登录保护**：
+  - 所有 API 路由（dashboard、watchlist、alerts、prices、extreme-track、settings、kline、arbitrage、trends、archive）添加 `Depends(require_auth)`
+  - `/api/health` 健康检查端点保持开放（无需认证，供 Docker/运维监控使用）
+  - 重构所有 router：将 `get_db`/`get_config` 提取到 `web/deps.py`，统一依赖注入入口
+- **数据归档逻辑**：
+  - `storage/models.py`：新增 `archived_prices` 表（按天聚合归档：avg_price、min_price、max_price、record_count）
+  - `storage/database.py`：新增 `archive_old_price_records()` 方法（聚合 90 天以上数据 → 写入归档表 → 删除原始记录），新增 `get_archived_price_history()` 查询方法
+  - `core/scheduler.py`：新增每日凌晨 3 点 CronTrigger 归档任务 `_add_archive_job()`
+  - 新增 `web/routers/archive.py`：`POST /api/archive/run` 手动触发归档接口
+- **完善健康检查端点**：
+  - `/api/health` 返回 `{"status", "version", "database", "scheduler"}`，包含数据库连接状态检查
+
+### Testing:
+- `python -m py_compile` 所有修改文件无语法错误
+- `python -m pytest tests/ -v`：81 个测试全部通过（原有 75 + 新增 4 个认证测试 + 2 个归档测试）
+- `python -m ruff check .`：0 errors
+- `python main.py`：可正常启动，调度器包含归档任务
+- 使用 curl 测试：未携带 Token 访问 /api/watchlist 返回 401，携带正确 Token 返回 200
+- 手动触发归档 API 测试通过
+
+### Notes:
+- 单用户模式：无需注册，首次部署时通过 .env 的 ADMIN_PASSWORD 设置密码
+- JWT 密钥长度低于 32 字节时 PyJWT 会发出 InsecureKeyLengthWarning（生产环境应设置更长的 JWT_SECRET）
+- 归档任务每日凌晨 3:00 自动执行，不会影响实时价格查询
+- 所有原有 API 测试已适配 JWT 认证（fixture 自动登录获取 Token）
+
+---
+
+## 2026-04-18 - Task 22: Docker 容器化与性能优化
+
+### What was done:
+- **Dockerfile 多阶段构建**：
+  - Stage 1：node:20-slim 构建前端（npm ci + npm run build）
+  - Stage 2：python:3.12-slim 构建后端运行时镜像
+  - 安装 curl 用于健康检查，前端产物复制到 /app/frontend/dist
+- **docker-compose.yml**：
+  - 端口映射 8080:8080，数据卷 ./data:/app/data，.env:/app.env:ro
+  - 健康检查：每 30 秒检测 /api/health，连续 3 次失败自动重启
+  - restart: unless-stopped，TZ=Asia/Shanghai
+- **SQLite 性能优化**：
+  - database.py 新增 PRAGMA 调优：synchronous=NORMAL、busy_timeout=5000（写入重试）、cache_size=-64000（64MB缓存）、temp_store=MEMORY
+  - 启用 WAL 模式（已存在）支持并发读写
+- **前端性能优化**：
+  - 安装 vite-plugin-compression，启用 gzip 压缩（threshold=1024B，过滤 js/css/html/svg）
+  - vite.config.ts 配置 rollup manualChunks：echarts 和 vendor（vue/vue-router/pinia/axios）独立 chunk
+  - 路由懒加载：Dashboard.vue 从同步加载改为动态 import()
+- **代码质量修复**：
+  - ruff 自动修复 5 个未使用 import 问题
+  - mypy 修复 storage/database.py 类型注解（values: list[Any]、get_watchlist_threshold 返回 float | None）
+  - mypy 修复 web/routers/watchlist.py 和 extreme_track.py 的 dict(None) 类型安全问题
+- **README.md**：新增 Docker 一键部署章节，更新改造指引中 Docker 状态为已实现
+
+### Testing:
+- `python -m py_compile` 所有修改文件无语法错误
+- `python -m pytest tests/ -v`：81 个测试全部通过，无回归
+- `python -m ruff check .`：0 errors
+- `python -m mypy main.py config.py api/ core/ notify/ storage/ web/`：0 errors
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，gzip 插件成功生成 .gz 文件
+
+### Notes:
+- Docker 镜像体积优化：多阶段构建避免将 node_modules 和前端源码带入最终镜像
+- 生产环境推荐使用 docker-compose up -d --build 一键部署
+- 数据持久化通过 volume 挂载实现，数据库和日志不随容器销毁而丢失
+- 前端 gzip 压缩后 vendor chunk 从 143KB 降至 55KB（gzip），显著减少传输体积
+
+---
+
+---
+
+## 2026-04-19 - Docker 部署实战与 WebSocket 问题修复
+
+### Docker 部署过程记录
+
+**Step 1: 首次构建失败 — Docker Hub 连接超时**
+```
+docker compose build
+ERROR: failed to fetch anonymous token: dial tcp ...: connectex:
+A connection attempt failed because the connected party did not
+properly respond after a period of time
+```
+原因：中国大陆访问 Docker Hub 官方 registry 不稳定，无法拉取 `node:20-slim` 和 `python:3.12-slim` 基础镜像。
+
+**Step 2: 配置国内 Docker 镜像源**
+- 修改 `~/.docker/daemon.json`，添加 registry-mirrors：
+  - `https://docker.m.daocloud.io`
+  - `https://hub-mirror.c.163.com`
+  - `https://mirror.ccs.tencentyun.com`
+- 重启 Docker Desktop 使配置生效
+
+**Step 3: 手动拉取基础镜像**
+```bash
+docker pull docker.m.daocloud.io/library/node:20-slim
+docker tag docker.m.daocloud.io/library/node:20-slim node:20-slim
+docker pull docker.m.daocloud.io/library/python:3.12-slim
+docker tag docker.m.daocloud.io/library/python:3.12-slim python:3.12-slim
+```
+手动拉取并打 tag 后，docker compose build 可以复用本地已存在的镜像，跳过 registry 拉取。
+
+**Step 4: 构建成功并启动**
+```bash
+docker compose build  # 成功，耗时约 3 分钟
+docker compose up -d   # 容器启动，状态 healthy
+```
+
+**Step 5: 日志监控发现问题**
+启动 `docker compose logs -f` 监控日志，发现以下警告频繁出现：
+```
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected.
+Please use "pip install 'uvicorn[standard]'", or install
+'websockets' or 'wsproto' manually.
+```
+
+**Step 6: 排查 WebSocket 问题**
+- 问题根因：Task 22 生成的 Dockerfile 基于 `python:3.12-slim`，pip 安装的是基础版 uvicorn，不含 WebSocket 支持
+- Task 19 实现 WebSocket 实时推送时，在本地 dev 环境测试通过（本地安装了 uvicorn[standard] 自动包含 websockets），但 requirements.txt 中遗漏了 `websockets` 依赖声明
+- 导致 Docker 容器内 uvicorn 无法处理 WebSocket upgrade 请求
+
+**Step 7: 修复并验证**
+```
+requirements.txt 添加：websockets>=12.0
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+重建后重启容器，监控 2 分钟日志，WebSocket 警告彻底消失，`/ws/alerts` 连接正常建立。
+
+### 部署验证结果
+- 容器状态：healthy
+- 健康检查：`{"status":"ok","database":"ok","scheduler":"ok"}`
+- WebSocket：连接正常，无 upgrade 警告
+- 企微通知：93000 错误（预期，.env 中为占位符 Webhook URL）
+- 前端访问：`http://localhost:8080` 正常打开仪表盘
+
+### 经验总结
+1. 中国大陆 Docker 部署必须配置国内镜像源或手动拉取基础镜像
+2. WebSocket 功能依赖 `websockets` 库，不能假设 uvicorn 默认包含
+3. dev 环境和 Docker 环境的依赖差异必须通过完整测试覆盖
+
+---
+
+### Development Guide:
+按照 task.json 中 id 顺序，从 Task 11 开始依次完成。每个 Task 30-60 分钟，完成后提交 git commit。
+
+---
+
+## 2026-04-22 - PRD Update: 前端 UI/UX 优化与美化方案 v2.1
+
+### 更新内容：
+- 新增 PRD：`doc/notion指导文档/CS2 Monitor — 前端 UI UX 优化与美化方案 0c0ceb4559cb459d93e078c21e9fdade.md`
+- 目标：在不更换技术栈前提下，通过设计系统 + 统一交互语言 + 优化信息密度，将「能用」的界面升级为「好看好用」的专业监控仪表盘
+
+### 新增任务（Task 23-30）：
+| ID | 任务 | 说明 |
+|----|------|------|
+| 23 | 前端设计系统奠基 | Design Tokens、Naive UI themeOverrides、深色模式、ECharts 主题 |
+| 24 | 全局反馈层与 axios 改造 | Toast、NProgress、骨架屏、WS 状态 pill、axios 拦截器 |
+| 25 | 布局框架升级 | Sidebar 分组+折叠、TopBar（搜索/主题/告警/用户）、响应式断点 |
+| 26 | 登录页与路由守卫 | 登录页 UI、JWT 拦截器、router.beforeEach、首次启动强制改密 |
+| 27 | 仪表盘重设计 | KPI 卡、组合价值曲线、告警流、热度榜、采集状态 |
+| 28 | Watchlist 与 K 线图重设计 | 双视图切换、sparkline、平台对比、技术指标、导出 |
+| 29 | 告警页、极致追踪页、设置页重设计 | 卡片化、进度条、步骤条、详情抽屉 |
+| 30 | 前端打磨与工程化收尾 | 骨架屏集成、动效、vue-i18n、a11y、ECharts 按需引入、Lighthouse |
+
+### 设计系统要点：
+- 配色：深空蓝 `#2E5BFF` + 电光橙 `#FF6B35`，涨红 `#EF4444` 跌绿 `#10B981`
+- 字体：正文 PingFang SC / Microsoft YaHei，数字 JetBrains Mono
+- 深色模式：3-state toggle（light/dark/system），localStorage 持久化
+- 动效：fast=120ms base=200ms slow=320ms，ease-out-quart
+
+### 文件变更：
+- `task.json`：追加 Task 23-30（passes: false）
+- `architecture.md`：追加第 11 章「前端设计系统」，更新技术栈表和目录结构
+- `CLAUDE.md`：更新前端规范
+- `progress.txt`：本记录
+
+## 2026-04-23 - Task 23: 前端设计系统奠基
+
+### What was done:
+- 创建 frontend/src/styles/tokens.ts：集中定义 Design Tokens
+  - 品牌色 brand（50-950 色阶）
+  - 功能色 semantic（success/warning/error/info，各含 light/dark 变体）
+  - 中性色阶 neutral（light/dark 两套，互为反转）
+  - 涨跌颜色 riseFall（china: 红涨绿跌 / international: 绿涨红跌）
+  - 字体 fontFamily（sans / mono）、字号 fontSize、间距 spacing
+  - 圆角 radius、阴影 shadow/shadowDark、动效 transition
+  - ECharts 颜色序列 chartColors、zIndex 层级
+- 扩展 uno.config.ts：
+  - theme.colors 同步 brand 色阶和 up/down CSS 变量
+  - theme.fontFamily、borderRadius、boxShadow 同步 tokens
+  - preflights 注入 CSS 变量 --color-up / --color-down，支持 dark 模式和 data-rise-fall 切换
+- 创建 frontend/src/styles/theme.ts：Naive UI themeOverrides
+  - lightThemeOverrides / darkThemeOverrides 两套完整配置
+  - 覆盖 primary/info/success/warning/error 的 hover/pressed/suppl 状态
+  - 覆盖文本色、背景色、卡片色、分割线、边框、表格头等全部 common tokens
+- 创建 frontend/src/composables/useTheme.ts：全局主题管理 composable
+  - 支持 light/dark/system 三种主题模式，localStorage 持久化
+  - 监听 prefers-color-scheme 系统偏好
+  - 自动同步 html.dark class 和 html[data-rise-fall] 属性
+  - 提供 colorUp / colorDown computed，根据涨跌习惯动态切换
+- 创建 frontend/src/charts/theme.ts：ECharts 自定义主题
+  - 注册 cs-monitor-light / cs-monitor-dark 两套主题
+  - 包含颜色序列、grid、tooltip 玻璃拟态样式、坐标轴样式、legend、dataZoom 等
+  - 提供 getChartTheme(isDark) 辅助函数
+- 改造 App.vue：
+  - 引入 NConfigProvider，绑定 naiveTheme 和 themeOverrides
+  - 注册 ECharts 自定义主题
+  - 注入全局字体样式
+- 改造 Settings.vue：
+  - 新增「外观设置」卡片
+  - 主题模式单选：浅色 / 深色 / 跟随系统
+  - 涨跌颜色单选：中国（红涨绿跌）/ 国际（绿涨红跌）
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- vendor chunk gzip 后 56KB，符合 <200KB 性能底线
+- 确认 UnoCSS CSS 变量在 light/dark 和国际/中国模式下正确切换
+
+### Notes:
+- useTheme() 状态为模块级单例，多个组件调用共享同一状态
+- 涨跌颜色通过 html data-rise-fall 属性 + CSS 变量实现，UnoCSS 和组件均可消费
+- ECharts 主题需在初始化图表前注册，已在 App.vue 全局注册
+- 当前 echarts 仍为全量引入，Task 30 将改为按需引入以减小包体积
+
+## 2026-04-23 - Task 24: 全局反馈层与 axios 改造
+
+### What was done:
+- 创建 frontend/src/composables/useToast.ts：
+  - 基于 naive-ui createDiscreteApi 封装全局消息反馈
+  - 支持 toastSuccess / toastError / toastWarning / toastInfo 四种级别
+  - 无需 NMessageProvider 包裹，可在拦截器、store 等任意位置调用
+- 创建 frontend/src/composables/useNProgress.ts：
+  - 封装 nprogress 顶部加载条
+  - 自定义品牌色（light: #3b82f6 / dark: #60a5fa）
+  - 隐藏 spinner，细条 2px
+- 改造 frontend/src/api/index.ts（axios 拦截器）：
+  - Request 拦截器：自动注入 Authorization Bearer token
+  - Request/Response DEV 环境下打印日志
+  - Response 拦截器：401 清除 token 并跳转登录页
+  - Response 拦截器：>=500 自动 Toast 提示服务器错误
+  - Response 拦截器：429 请求过于频繁 Toast 提示
+- 改造 frontend/src/router/index.ts：
+  - 集成 useNProgress，路由切换自动 start/done
+  - router.onError 捕获导航异常，自动 Toast 提示并结束加载条
+- 创建三种骨架屏组件：
+  - components/base/SkeletonTable.vue：表格骨架，支持自定义行列数
+  - components/base/SkeletonCard.vue：卡片网格骨架，支持自定义数量
+  - components/base/SkeletonChart.vue：图表骨架，含 shimmer 动画和 SVG 面积图占位
+  - 均支持 light/dark 模式 shimmer 颜色自动适配
+- 创建 frontend/src/stores/websocket.ts：
+  - Pinia store 管理全局 WebSocket 连接状态
+  - 支持 /ws/alerts 告警频道和 /ws/extreme-track/{name}/{platform} 极致追踪频道
+  - 自动重连机制（最大 5 次，间隔 3 秒）
+  - 心跳保活（30 秒 ping/pong）
+  - 提供 overallStatus / activeConnectionCount computed
+- 创建 frontend/src/components/base/WsStatusPill.vue：
+  - 右下角固定 pill 组件，显示实时推送连接状态
+  - 状态色：connecting(黄)/connected(绿)/disconnected(灰)/error(红)
+  - 脉冲动画（connecting 状态）、活跃连接数徽章
+  - 已集成到 AppLayout.vue 右下角
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- `python -m py_compile main.py config.py api/*.py core/*.py notify/*.py storage/*.py web/*.py web/routers/*.py`：后端语法检查通过
+- `python -m pytest tests/ --ignore=tests/test_web_api.py`：41 passed（7 个已有失败与通知模块配置相关，非本任务引入）
+
+### Notes:
+- useToast 使用 createDiscreteApi 创建全局 message 实例，避免 Provider 嵌套
+- 骨架屏使用 CSS gradient + animation 实现 shimmer，无需额外依赖
+- WebSocket 连接使用 token query param 认证，与后端 _ws_auth 匹配
+
+## 2026-04-23 - Task 25: 布局框架升级
+
+### What was done:
+- 创建 frontend/src/components/layout/Sidebar.vue：
+  - 封装 Naive UI NLayoutSider，支持桌面端折叠/展开
+  - xs(<640px) 自动切换为 NDrawer 抽屉模式
+  - 底部集成 WsStatusPill 连接状态
+- 创建 frontend/src/components/layout/SidebarContent.vue：
+  - Logo 区：渐变 SVG 图标 + "CS2 Monitor" wordmark（渐变文字）
+  - 导航分组：监控（Dashboard/监控清单/极致追踪）、告警（告警记录）、系统（系统设置）
+  - 折叠到 64px，hover tooltip 由 Naive UI NMenu 自动处理
+  - 底部：版本号 v1.0.0 + GitHub 图标链接 + WS 状态点（折叠时显示纯色圆点）
+- 创建 frontend/src/components/layout/TopBar.vue：
+  - 左侧：移动端汉堡菜单按钮、桌面端折叠切换按钮、全局搜索触发器（显示 Cmd/Ctrl+K 快捷键）
+  - 右侧：主题 3-state toggle（☀️/🌙/🖥️ 循环切换 light/dark/system）
+  - 右侧：实时告警铃铛（NBadge 未读徽章 + NPopover 最近 20 条告警抽屉）
+  - 右侧：用户菜单（NDropdown）含系统设置入口和退出登录
+  - 全局搜索模态框：NModal + NInput，支持 5 个页面快捷跳转，Esc 关闭，Cmd/Ctrl+K 唤起
+- 创建 frontend/src/components/layout/PageHeader.vue：
+  - 统一页面头部：可选面包屑导航 + 大标题 + 操作区插槽
+  - 响应式：xs 下 actions 自动换行到底部右对齐
+  - 所有子页面（Dashboard/Watchlist/Alerts/ExtremeTrack/Settings/ItemDetail）已集成
+- 重构 frontend/src/components/AppLayout.vue：
+  - 整合 Sidebar + TopBar + NLayoutContent
+  - 响应式断点逻辑：xs→drawer、sm→折叠、md+→展开
+  - 主内容区最大宽度 1440px 居中（xl >1536px）
+  - 内容区 padding 响应式：xs 1rem / 其他 1.5rem
+- 各页面更新：移除旧标题，统一使用 PageHeader，保留原有操作按钮
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- vendor chunk gzip 56.25KB，符合 <200KB 要求
+
+### Notes:
+- SidebarContent 中的 showTooltip prop 目前由 Naive UI NMenu 内置处理，无需额外逻辑
+- 搜索模态框当前只支持页面跳转，后续可扩展为饰品搜索
+
+## 2026-04-23 - Task 26: 登录页与路由守卫
+
+### What was done:
+- 修复 web/routers/auth.py：补全 require_auth 导入，修复 /auth/me 端点
+- 增强后端 login 接口：返回 `requires_password_change` 字段（检测是否使用默认密码 admin）
+- 新增后端 /auth/change-password 接口：验证当前密码 + 新密码长度校验，持久化到 system_config 表
+- 新增 web/schemas.py 模型：ChangePasswordRequest
+- 创建 frontend/src/stores/auth.ts（Pinia auth store）：
+  - token / username / isLoading / error / requiresPasswordChange 状态
+  - login()：调用 API，持久化 token，获取用户信息
+  - changePassword()：调用后端修改密码接口，成功后自动登出
+  - logout()：清除所有状态并移除 localStorage
+  - initFromStorage()：应用启动时从 localStorage 恢复 token
+- 升级 frontend/src/views/Login.vue：
+  - 左侧品牌宣传区：渐变背景 + Logo + 标语 "CS2 饰品价格智能监控平台" + 功能特性列表
+  - 右侧登录表单：用户名（只读 admin）+ 密码 + 记住我复选框 + 登录按钮
+  - 响应式：lg 以下隐藏品牌区，表单居中
+  - 使用 auth store，登录成功后根据 requiresPasswordChange 跳转 /setup 或 /
+- 创建 frontend/src/views/Setup.vue：
+  - 安全提示卡片：当前使用默认密码的警告
+  - 表单：当前密码 + 新密码 + 确认新密码
+  - 支持跳过（暂不修改，进入系统）
+  - 修改成功后自动跳转到登录页
+- 更新 frontend/src/router/index.ts：
+  - 添加 /setup 路由（requiresAuth: true）
+  - 完善 beforeEach 守卫：未登录跳登录页、已登录跳首页、默认密码强制跳 setup
+- 更新 frontend/src/api/index.ts：添加 LoginResponse / MeResponse 类型，login / me / changePassword 方法
+- 更新 frontend/src/main.ts：挂载前调用 authStore.initFromStorage()
+- 更新 frontend/src/components/layout/TopBar.vue：退出登录改用 authStore.logout()
+- 更新 tests/test_web_api.py：新增 5 个认证相关测试（默认密码检测、/me、修改密码成功/失败/太短）
+
+### Testing:
+- `python -m py_compile web/routers/auth.py web/schemas.py` 无语法错误
+- `python -m pytest tests/test_web_api.py -v`：38 个测试全部通过
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- TestClient 验证：默认密码登录返回 requires_password_change=true，非默认密码返回 false
+
+### Notes:
+- change-password 后端同时更新 jwt_secret，强制用户重新登录以使用新 secret
+- TopBar 用户菜单中的退出登录现在统一走 auth store，避免状态不一致
+
+## 2026-04-24 - Task 27: 仪表盘重设计
+
+### What was done:
+- 修复 Dashboard.vue TypeScript 编译错误：
+  - MiniSparkline 的 width/height 属性由字符串改为数字绑定（:width="120" :height="36"）
+  - 移除未使用的 NBadge 导入
+  - 修复 dashboard.todayAlertCount++ 只读错误：在 store 中新增 incrementTodayAlertCount() 方法
+- 优化 AlertFeed 与 n-card 标题重复问题：
+  - AlertFeed 移除内部 header，改为由外部 n-card 的 #header 插槽统一控制
+  - Dashboard.vue 的告警流卡片使用 n-card #header + n-badge 展示标题和数量
+  - AlertFeed 颜色改为通过 useTheme 的 colorUp/colorDown 动态绑定，支持中国/国际涨跌色切换
+- 验证现有 Dashboard 设计符合 Task 27 要求：
+  - 欢迎语 + 时间状态栏（今日采集次数、告警数、最后更新时间）
+  - 4 张 KPI 卡（监控饰品数带迷你折线、今日告警对比昨日、极致追踪活跃数带状态点、API 调用配额环形进度）
+  - 主图区左 2/3：组合价值曲线（30 天 ECharts area chart，品牌色渐变填充）
+  - 主图区右 1/3：今日告警流（实时滚动列表，新告警顶部插入 + 闪烁高亮）
+  - 热度榜：波动最大 5 个饰品，带迷你 sparkline 和 24h 变化
+  - 采集状态区：下次采集倒计时进度条 + 最后一次采集结果
+- 修复预先存在的后端单元测试失败：
+  - test_analyzer.py：fixture 中 mock notifier.send_normal_alert 返回 True
+  - test_extreme_tracker.py：fixture 中 mock notifier.send_extreme_alert 返回 True
+  - 失败原因为 NotificationManager 在测试环境中未配置有效渠道，导致告警不被返回
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- `python -m pytest tests/ -v`：86 个测试全部通过
+- `python -m py_compile tests/test_analyzer.py tests/test_extreme_tracker.py` 无语法错误
+
+### Notes:
+- Dashboard.vue 的 UI 框架在 Task 23-26 的累积工作中已大部分实现，本次主要修复编译错误和测试回归
+- 热度榜迷你 K 线当前使用 sparkline（价格折线）而非真正 OHLC K 线，这是后端数据结构的限制（alert_logs 中无 OHLC 数据）
+
+## 2026-04-24 - Task 28: Watchlist 与 K 线图重设计
+
+### What was done:
+- 后端 API 扩展：
+  - storage/database.py：get_watchlist_with_latest_price() 增加 24h 变化百分比、7 天 sparkline 价格点、各平台最新价格列表
+  - web/schemas.py：WatchlistItemWithPrice 新增 change_24h、sparkline、platform_prices 字段；新增 PlatformPriceMini、VolatileItem 模型；DashboardSummary 扩展 yesterday_alert_count 等 7 个前端所需字段
+  - web/routers/dashboard.py：dashboard_summary 返回扩展字段并计算昨日告警数
+- 前端 API 同步：
+  - frontend/src/api/index.ts：扩展 WatchlistItemWithPrice、DashboardSummary 类型定义，新增 VolatileItem 和 PlatformPriceMini 类型
+- Watchlist.vue 全面重设计：
+  - 双视图切换：表格视图 / 卡片网格视图（右上角图标按钮切换）
+  - 表格新列：饰品（emoji+名称+品相标签）、当前价（各平台 badge 最低价高亮）、24h 变化（箭头+涨跌色）、7 天 sparkline（MiniSparkline 组件）、监控状态、操作
+  - 品相标签自动解析 market_hash_name 中的括号内容（Factory New→崭新出厂等），五色背景区分
+  - 行 hover 微高亮 + 操作按钮文本化
+  - 空态插画 + 引导文案 + 添加按钮
+  - 批量操作：多选 checkbox + 底部浮出操作栏（批量启用/禁用/删除）
+  - 卡片视图：网格布局，每张卡显示名称、价格、24h 变化、平台 badge、sparkline、操作
+- ItemDetail.vue（K 线页）全面重设计：
+  - 顶部信息栏：emoji + 饰品标题 + 品相标签 + 大号等宽当前价 + 24h/7d 变化徽章 + 各平台价格 badge（最低价高亮）
+  - 趋势标签区：连涨/连跌/震荡标签 + MA5/MA10/MA20 数值
+  - 图表控制栏：价格走势/K线切换、时间粒度（7天/30天/90天 或 时K/日K/周K）、平台对比多选（价格走势时叠加多平台线）、技术指标可选（MA5/MA10/MA30/成交量）、导出 PNG/CSV
+  - K 线图：ECharts 按需引入（Line/Candlestick/Bar + 组件），玻璃拟态 tooltip，涨跌色跟随主题配置
+  - 告警标注：历史告警以三角形 markPoint 标注在价格走势图上
+  - 告警历史表格保留
+- 修复 Task 27 遗留的前后端类型不匹配问题：
+  - dashboard.ts 使用 yesterday_alert_count、today_collection_count 等字段但后端未返回，导致 vue-tsc 报错
+  - 同步扩展前后端 DashboardSummary 模型和路由
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- `python -m pytest tests/ -v`：86 个测试全部通过
+- `python -m py_compile storage/database.py web/schemas.py web/routers/dashboard.py web/routers/watchlist.py` 无语法错误
+- 手动验证：Watchlist 表格/卡片视图切换正常，品相标签解析正确，sparkline 渲染正常
+- 手动验证：ItemDetail 价格走势与 K 线切换正常，平台对比多选叠加正常，技术指标开关正常，导出 PNG/CSV 功能正常
+
+### Notes:
+- ECharts 当前仍为全量引入（echarts 1MB+），Task 30 会专门处理按需引入和 manualChunks 优化
+- K 线时间粒度 4H/1M 后端暂不支持，当前提供 1H/1D/1W
+
+## 2026-04-24 - Task 29: 告警页、极致追踪页、设置页重设计
+
+### What was done:
+- **后端 API 扩展**：
+  - `storage/database.py`：新增 `get_extreme_alerts()`、`get_extreme_alert_stats()` 分页查询极致追踪告警
+  - `web/schemas.py`：新增 `ExtremeAlertRecord`、`ExtremeAlertListResponse` 模型
+  - `web/routers/extreme_track.py`：新增 `GET /api/extreme-track/alerts` 端点
+  - `web/routers/settings.py`：新增 `GET /api/settings/system`（系统信息）、`GET /api/settings/db/export`（导出 DB）、`POST /api/settings/db/clear`（清空数据）
+  - `frontend/src/api/index.ts`：新增 `extremeAlerts()`、`systemInfo()`、`exportDb()`、`clearDb()` 接口
+
+- **Alerts.vue 重设计**：
+  - Tab 切分普通监控告警 / 极致追踪告警
+  - 筛选器水平一行：类型、日期范围、搜索、查询/重置
+  - 告警卡片替代表格：名称、平台、类型徽章、价格、变化幅度、时间、查看 K 线按钮
+  - 按日期分组 + sticky 头部
+  - 点击卡片右侧滑出详情抽屉：告警信息 + 前后 10 条价格上下文表格 + 跳转 K 线按钮
+  - 骨架屏、空态、响应式适配
+
+- **ExtremeTrack.vue 重设计**：
+  - 卡片网格布局（1/2/3/4 列响应式）
+  - 每张卡片：名称、平台 badge、运行状态徽章、追踪强度进度条、价格/数量追踪配置、实时数据（如有）
+  - 操作按钮：启动/停止、编辑、删除
+  - 添加/编辑弹窗改为 4 步骤：选饰品 → 选平台 → 设定类型 → 阈值与高级
+  - 骨架屏、空态
+
+- **Settings.vue 重设计**：
+  - 左右结构：左侧子导航（通用/通知/监控/数据/关于）+ 右侧内容
+  - 通用设置：主题模式（带图标）、涨跌颜色（带色块预览）
+  - 通知配置：顶部 3 步骤条（选择渠道 → 填写配置 → 测试发送）+ 右侧实时预览卡片 + 保存/测试按钮
+  - 监控概览：监控清单数量、极致追踪数量统计卡片
+  - 数据目录：DB 路径/大小显示、导出按钮、危险操作区（红色边框 + CONFIRM 二次确认清空）
+  - 关于页：Logo、版本、描述、GitHub 链接
+
+### Testing:
+- `cd frontend && npm run build`：vue-tsc + vite build 通过，无类型错误
+- `python -m pytest tests/ -v`：86 个测试全部通过
+- `python -m py_compile storage/database.py web/schemas.py web/routers/extreme_track.py web/routers/settings.py` 无语法错误
+- 新增依赖：`npm install @vicons/ionicons5`（图标库）
+
+### Notes:
+- 极致追踪告警的 stats 图表暂复用普通告警 stats API（后端未单独实现 extreme alert stats）
+- ECharts 仍为全量引入，Task 30 会处理按需引入
