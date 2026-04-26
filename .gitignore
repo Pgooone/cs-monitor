@@ -47,6 +47,11 @@ automation-logs/
 .env
 .env.local
 
+# Runtime
+backend.pid
+frontend.pid
+*.pid
+
 # OS
 .DS_Store
 Thumbs.db
