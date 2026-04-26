@@ -1,0 +1,441 @@
+{
+  "project": "CS2 饰品价格波动监控系统",
+  "description": "基于 SteamDT API 的 CS2 饰品价格监控工具，支持 CLI 监控 + Web 仪表盘双模式",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "项目脚手架与基础配置",
+      "description": "初始化 Python 项目结构、依赖、配置模板和日志系统",
+      "steps": [
+        "创建 requirements.txt（httpx, apscheduler, loguru, python-dotenv）",
+        "创建 .env.example 模板文件（包含 API_KEY、WEBHOOK_URL 等必需变量）",
+        "创建 config.py，使用 dataclass 定义 MonitorConfig 配置类",
+        "创建 utils/logger.py，配置 loguru 日志输出",
+        "创建 README.md 项目说明文档",
+        "确保所有目录结构完整（api/, core/, notify/, storage/, utils/, data/, tests/）"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "SteamDT API 封装模块",
+      "description": "封装 SteamDT 开放平台 API 调用，包含统一错误处理和重试逻辑",
+      "steps": [
+        "创建 api/steamdt.py，实现 SteamDTClient 类",
+        "实现 get_items_batch() 批量查询饰品价格",
+        "实现 get_7day_average() 查询所有平台近 7 天均价",
+        "实现 get_item_kline() 查询饰品 K 线数据（可选，预留接口）",
+        "实现 get_all_items() 获取饰品基础信息（每日限 1 次，需缓存）",
+        "统一错误处理：重试 3 次、间隔 10 秒、记录日志",
+        "请求间加入 1-3 秒随机延迟，避免触发风控"
+      ],
+      "passes": true
+    },
+    {
+      "id": 3,
+      "title": "数据存储模块（SQLite）",
+      "description": "实现 SQLite 数据库连接、表创建和基础 CRUD 操作",
+      "steps": [
+        "创建 storage/database.py，封装 SQLite 连接和上下文管理器",
+        "创建 storage/models.py，定义所有表结构的建表 SQL",
+        "创建 items 表（饰品基础信息）",
+        "创建 price_records 表（普通监控价格记录）",
+        "创建 alert_logs 表（普通监控告警记录）",
+        "创建 extreme_track_snapshots 表（极致追踪快照）",
+        "创建 extreme_track_alerts 表（极致追踪告警记录）",
+        "首次运行时自动执行建表",
+        "封装 insert_price_record(), insert_alert_log() 等常用写入方法"
+      ],
+      "passes": true
+    },
+    {
+      "id": 4,
+      "title": "核心监控逻辑：价格采集与调度",
+      "description": "实现普通监控模式的价格采集调度和 APScheduler 集成",
+      "steps": [
+        "创建 core/monitor.py，实现普通监控的价格采集逻辑",
+        "读取 config.watchlist，批量调用 SteamDT API 获取当前价格",
+        "将采集结果写入 price_records 表",
+        "创建 core/scheduler.py，使用 APScheduler 注册定时任务",
+        "配置普通监控任务：默认每 30 分钟执行一次",
+        "首次启动时立即执行一次价格采集",
+        "确保调度器可正常启动和运行"
+      ],
+      "passes": true
+    },
+    {
+      "id": 5,
+      "title": "核心监控逻辑：波动分析与告警检测",
+      "description": "实现价格波动检测、基准价对比和告警冷却逻辑",
+      "steps": [
+        "创建 core/analyzer.py，实现 PriceAnalyzer 类",
+        "实现波动率计算：(当前价 - 基准价) / 基准价 × 100%",
+        "基准价优先使用 7 天均价，缺失时使用上一次采集价格",
+        "实现告警判断：涨幅 >= 阈值% 或 跌幅 <= -阈值%",
+        "实现告警冷却：同一饰品同一方向 4 小时内只告警 1 次",
+        "将触发的告警写入 alert_logs 表",
+        "集成到 monitor.py 的采集流程中，每次采集后执行分析"
+      ],
+      "passes": true
+    },
+    {
+      "id": 6,
+      "title": "极致追踪模块（高频单品狙击）",
+      "description": "实现极致追踪模式的高频轮询、快照对比和自动降频保护",
+      "steps": [
+        "创建 core/extreme_tracker.py，实现 ExtremeTracker 类",
+        "支持自定义轮询间隔（秒级），读取 config.extreme_track_list",
+        "每次轮询查询单品指定平台的价格和在售数量",
+        "将结果写入 extreme_track_snapshots 表",
+        "对比上一次快照，检测价格和在售数量变动",
+        "支持 any 模式（任何变动通知）和 percent 模式（超百分比通知）",
+        "实现自动降频保护：API 返回 429 时自动翻倍间隔（最大 1 小时），连续成功 10 次后逐步恢复",
+        "价格和数量同时变动时合并为一条通知",
+        "支持免打扰时段（quiet_hours）和冷却期（alert_cooldown_seconds）",
+        "在 scheduler.py 中为极致追踪注册独立的定时任务"
+      ],
+      "passes": true
+    },
+    {
+      "id": 7,
+      "title": "通知推送模块",
+      "description": "实现多渠道通知推送，至少支持企业微信机器人",
+      "steps": [
+        "创建 notify/base.py，定义 NotificationChannel 抽象基类",
+        "创建 notify/wecom.py，实现企业微信机器人 Webhook 推送（P0 必须实现）",
+        "创建 notify/telegram.py，实现 Telegram Bot 推送（P1）",
+        "创建 notify/serverchan.py，实现 Server 酱推送（P1）",
+        "按照 PRD 中的消息模板格式化通知内容（普通监控 + 极致追踪三种模板）",
+        "支持通过 config.notify_channel 切换默认渠道",
+        "通知发送失败时重试 3 次",
+        "在 analyzer.py 和 extreme_tracker.py 中集成通知发送"
+      ],
+      "passes": true
+    },
+    {
+      "id": 8,
+      "title": "主程序入口与优雅退出",
+      "description": "实现 main.py 入口，串联所有模块并支持优雅退出",
+      "steps": [
+        "创建 main.py 作为主程序入口",
+        "加载配置（从 .env 和 config.py）",
+        "初始化数据库（自动建表）",
+        "初始化 SteamDTClient",
+        "启动 APScheduler 调度器，注册普通监控和极致追踪任务",
+        "首次启动立即执行一次价格采集",
+        "实现 Ctrl+C 优雅退出处理（关闭调度器）",
+        "添加基础运行日志输出"
+      ],
+      "passes": true
+    },
+    {
+      "id": 9,
+      "title": "单元测试",
+      "description": "为核心模块编写单元测试",
+      "steps": [
+        "创建 tests/test_api.py，使用 unittest.mock 模拟 API 响应，测试 SteamDTClient 解析逻辑",
+        "创建 tests/test_analyzer.py，测试波动检测阈值判断和告警冷却逻辑",
+        "创建 tests/test_notify.py，测试消息格式化和通知发送（mock HTTP 请求）",
+        "确保所有测试可以通过 pytest 或 unittest 运行"
+      ],
+      "passes": true
+    },
+    {
+      "id": 10,
+      "title": "最终集成测试与优化",
+      "description": "完整运行测试、修复问题、进行代码优化",
+      "steps": [
+        "运行所有单元测试并修复失败项",
+        "运行 mypy 或 ruff 进行代码检查（如已安装）",
+        "测试主程序 main.py 可正常启动和运行",
+        "验证普通监控模式：批量采集 → 波动分析 → 通知推送",
+        "验证极致追踪模式：高频轮询 → 快照对比 → 合并通知",
+        "验证 429 自动降频逻辑",
+        "验证告警冷却和免打扰时段",
+        "代码格式统一、注释完善"
+      ],
+      "passes": true
+    },
+    {
+      "id": 11,
+      "title": "Web API 骨架（FastAPI）",
+      "description": "新增 FastAPI Web 层，提供 RESTful API 基础，同时启动调度器和 Web 服务",
+      "steps": [
+        "新增 web/ 目录，创建 web/app.py（FastAPI 应用入口）",
+        "新增 web/schemas.py，定义 Pydantic 数据模型",
+        "安装 fastapi、uvicorn 并更新 requirements.txt",
+        "实现 /api/health 健康检查端点",
+        "实现 /api/dashboard/summary Dashboard 概览端点",
+        "配置 CORS 允许 localhost:5173（Vite 开发端口）",
+        "修改 main.py：同时启动 APScheduler（后台线程）+ FastAPI（主线程 uvicorn 8080）",
+        "确保不破坏已有 CLI 监控功能"
+      ],
+      "passes": true
+    },
+    {
+      "id": 12,
+      "title": "数据库迁移：监控清单持久化",
+      "description": "将 config.py 中的 watchlist 和 extreme_track_list 迁移到 SQLite，新增系统配置表",
+      "steps": [
+        "在 storage/models.py 新增 watchlist 表（id, market_hash_name, display_name, threshold_percent, enabled, created_at, updated_at）",
+        "在 storage/models.py 新增 extreme_track_config 表（完整追踪配置字段）",
+        "在 storage/models.py 新增 system_config 表（key, value, updated_at）",
+        "在 database.py 新增对应 CRUD 方法",
+        "首次启动时如果表为空，自动从 config.py 默认值导入",
+        "修改 core/monitor.py 和 core/extreme_tracker.py，从 DB 读取清单而非 config",
+        "保持 config.py 作为默认值兜底，DB 优先"
+      ],
+      "passes": true
+    },
+    {
+      "id": 13,
+      "title": "Watchlist API 与 Alerts API",
+      "description": "实现监控清单完整 CRUD 和告警记录查询接口",
+      "steps": [
+        "创建 web/routers/watchlist.py：GET/POST/PUT/DELETE /api/watchlist",
+        "创建 web/routers/alerts.py：GET /api/alerts（支持分页、类型过滤、时间范围）",
+        "创建 web/routers/alerts.py：GET /api/alerts/stats（按天/类型聚合）",
+        "在 web/schemas.py 定义 WatchlistItem、WatchlistItemWithPrice、AlertRecord 模型",
+        "编写对应的 API 测试"
+      ],
+      "passes": true
+    },
+    {
+      "id": 14,
+      "title": "价格数据 API 与极致追踪 API",
+      "description": "实现价格查询和极致追踪管理接口",
+      "steps": [
+        "创建 web/routers/prices.py：GET /api/prices/latest（所有监控品最新价）",
+        "创建 web/routers/prices.py：GET /api/prices/{name}/history（历史价格，支持 days/platform 过滤）",
+        "创建 web/routers/prices.py：GET /api/prices/{name}/platforms（各平台当前价）",
+        "创建 web/routers/extreme_track.py：完整 CRUD + toggle 启停",
+        "完善 web/routers/dashboard.py 返回完整统计（active_watchlist、extreme_track_count 等）",
+        "编写对应的 API 测试"
+      ],
+      "passes": true
+    },
+    {
+      "id": 15,
+      "title": "Vue 3 前端初始化与 Dashboard 首页",
+      "description": "初始化 Vue 3 + Vite 项目，实现 Dashboard 首页和基础布局",
+      "steps": [
+        "在 frontend/ 下创建 Vue 3 + Vite + TypeScript 项目（package.json、vite.config.ts）",
+        "安装依赖：naive-ui、echarts、axios、vue-router、pinia、unocss",
+        "配置 vite.config.ts 代理 /api 到 localhost:8080",
+        "创建基础布局：侧边栏导航 + 主内容区",
+        "创建 axios 封装（frontend/src/api/index.ts）和 Pinia store（dashboard.ts）",
+        "实现 Dashboard 首页：4 个统计卡片 + 价格概览表 + 最近告警列表"
+      ],
+      "passes": true
+    },
+    {
+      "id": 16,
+      "title": "监控清单页与饰品详情页",
+      "description": "实现监控清单管理和饰品详情查看页面",
+      "steps": [
+        "实现 Watchlist.vue：表格展示、添加/编辑弹窗、启停开关、删除确认",
+        "实现 Pinia store（watchlist.ts）管理监控清单状态",
+        "实现 ItemDetail.vue：顶部统计卡片（当前价/均价/波动率）",
+        "实现 ItemDetail.vue：各平台价格对比卡片",
+        "实现 ItemDetail.vue：ECharts 价格走势折线图（7天/30天切换）",
+        "实现 ItemDetail.vue：该饰品的告警历史表格"
+      ],
+      "passes": true
+    },
+    {
+      "id": 17,
+      "title": "极致追踪页、告警页与设置页",
+      "description": "完成 Phase 1 剩余前端页面",
+      "steps": [
+        "实现 ExtremeTrack.vue：追踪项列表、添加/编辑弹窗、启停开关",
+        "实现 Alerts.vue：可筛选告警列表（类型、时间范围、搜索）",
+        "实现 Alerts.vue：按天的告警数量柱状图",
+        "实现 Settings.vue：通知渠道配置表单",
+        "实现 Settings.vue：测试通知按钮"
+      ],
+      "passes": true
+    },
+    {
+      "id": 18,
+      "title": "前端打包与静态文件托管",
+      "description": "实现前后端一体化部署，单端口提供服务",
+      "steps": [
+        "配置 frontend npm run build 输出到 frontend/dist",
+        "FastAPI 添加 StaticFiles 挂载 /static → frontend/dist",
+        "添加 fallback 路由支持 SPA history 模式",
+        "访问 http://localhost:8080 直接打开仪表盘",
+        "更新 README.md 添加 Web 仪表盘使用说明"
+      ],
+      "passes": true
+    },
+    {
+      "id": 19,
+      "title": "K线图表、价差看板与 WebSocket 推送",
+      "description": "Phase 2：高级可视化与实时推送",
+      "steps": [
+        "实现 /api/kline/{name} 端点（支持 period/count 参数）",
+        "实现 /api/arbitrage 和 /api/arbitrage/{name} 端点",
+        "前端 ItemDetail.vue 集成 ECharts K 线图（OHLC + MA 均线 + 成交量）",
+        "实现 WebSocket 管理器（web/ws_manager.py）和 WS 路由 /ws/alerts、/ws/extreme-track/{id}",
+        "前端集成 WebSocket 自动重连和心跳",
+        "实现 Alerts.vue 和 ExtremeTrack.vue 实时推送更新"
+      ],
+      "passes": true
+    },
+    {
+      "id": 20,
+      "title": "趋势分析与极致追踪实时面板",
+      "description": "Phase 2：智能趋势标签和实时数据流展示",
+      "steps": [
+        "实现 /api/trends/{name} 端点（连涨/连跌/震荡标签 + MA 均线）",
+        "实现趋势分析核心逻辑（core/trend_analyzer.py）",
+        "前端集成趋势标签到价格概览表和详情页",
+        "实现极致追踪实时面板（时间线式呈现价格/数量变化）"
+      ],
+      "passes": true
+    },
+    {
+      "id": 21,
+      "title": "用户认证与数据归档",
+      "description": "Phase 3：JWT 登录保护、数据归档、健康检查",
+      "steps": [
+        "实现 JWT 认证中间件（单用户模式）",
+        "为所有 API 路由添加登录保护",
+        "实现 90 天以上价格记录自动归档/压缩逻辑",
+        "完善 /api/health 端点，供 Docker / 运维监控系统调用"
+      ],
+      "passes": true
+    },
+    {
+      "id": 22,
+      "title": "Docker 容器化与性能优化",
+      "description": "Phase 3：生产就绪部署",
+      "steps": [
+        "编写 Dockerfile（多阶段构建：Node 前端 + Python 后端）",
+        "编写 docker-compose.yml（含健康检查、数据卷挂载）",
+        "配置 SQLite WAL 模式 + 写入重试 + 连接池优化",
+        "前端 gzip 压缩 + 路由懒加载",
+        "端到端测试：docker-compose up 一键启动",
+        "最终验收：所有 Phase 1/2/3 验收标准通过"
+      ],
+      "passes": true
+    },
+    {
+      "id": 23,
+      "title": "前端设计系统奠基",
+      "description": "建立统一 Design Tokens，打通 Naive UI / UnoCSS / ECharts 三套主题",
+      "steps": [
+        "创建 frontend/src/styles/tokens.ts：颜色、字体、间距、圆角、阴影、动效常量",
+        "扩展 uno.config.ts theme，将 tokens 同步到 UnoCSS 预设",
+        "创建 frontend/src/styles/theme.ts：Naive UI themeOverrides（light + dark 两套）",
+        "创建 frontend/src/composables/useTheme.ts：主题切换 + localStorage 持久化 + prefers-color-scheme 监听",
+        "创建 frontend/src/charts/theme.ts：ECharts 自定义主题注册（cs-monitor），含颜色序列、grid、tooltip 玻璃拟态样式",
+        "在 App.vue 接入 NConfigProvider + darkTheme 绑定",
+        "Settings 页增加「涨跌颜色」切换（中国红涨绿跌 / 国际绿涨红跌）"
+      ],
+      "passes": true
+    },
+    {
+      "id": 24,
+      "title": "全局反馈层与 axios 改造",
+      "description": "统一错误提示、加载状态、骨架屏、WebSocket 连接状态",
+      "steps": [
+        "封装 frontend/src/composables/useToast.ts，支持 success / error / warning / info",
+        "改造 axios 拦截器：401 自动跳转登录、5xx 自动 Toast、请求/响应日志",
+        "引入并封装顶部 NProgress 风格加载条（路由切换自动显隐）",
+        "创建 SkeletonTable / SkeletonCard / SkeletonChart 三种骨架屏组件",
+        "创建全局 WebSocket 状态管理（stores/websocket.ts）：连接/断开/重连状态 + 右下角 pill 组件",
+        "在 axios 和 router 中集成 useToast，确保所有异常有用户可见反馈"
+      ],
+      "passes": true
+    },
+    {
+      "id": 25,
+      "title": "布局框架升级",
+      "description": "重构 Sidebar + TopBar + PageHeader，支持分组导航、折叠、响应式",
+      "steps": [
+        "重构 Sidebar：Logo 区（渐变图标 + wordmark）、导航分组（监控/告警/数据/系统）、折叠到 64px + hover tooltip、底部版本号 + GitHub + WS 状态点",
+        "重构 TopBar：全局搜索（Cmd/Ctrl+K 唤起）、主题 3-state toggle（light/dark/system）、实时告警铃铛（未读徽章 + 最近 20 条抽屉）、用户菜单",
+        "创建 PageHeader 统一组件（标题 + breadcrumb + 操作区）",
+        "实现响应式断点：xs(<640) 侧栏变抽屉、sm(640-1024) 折叠、md(1024-1280) 展开、lg(1280-1536) 4 列、xl(>1536) 最大 1440 居中",
+        "更新 App.vue 和 router 布局，确保所有页面套用新框架"
+      ],
+      "passes": true
+    },
+    {
+      "id": 26,
+      "title": "登录页与路由守卫",
+      "description": "新增登录页 UI，完善 JWT 认证流程",
+      "steps": [
+        "创建 Login.vue：左侧品牌宣传区（渐变 + slogan）+ 右侧登录表单（用户名/密码/记住我）",
+        "后端确认 JWT 登录接口已可用（/api/auth/login）",
+        "axios 请求拦截器自动携带 Authorization: Bearer token",
+        "router.beforeEach 路由守卫：未登录跳登录页，已登录跳首页",
+        "首次启动检测：若使用默认密码 admin，登录后强制跳转 /setup 修改密码",
+        "登录状态持久化：localStorage token + Pinia auth store"
+      ],
+      "passes": true
+    },
+    {
+      "id": 27,
+      "title": "仪表盘重设计",
+      "description": "Dashboard 首页全面重设计，提升信息密度和专业感",
+      "steps": [
+        "欢迎语 + 时间状态栏（今日采集次数、告警数）",
+        "4 张 KPI 卡（监控饰品数带迷你折线、今日告警对比昨日、极致追踪活跃数带状态点、API 调用配额环形进度）",
+        "主图区左 2/3：组合价值曲线（自选清单总价值 30 天 ECharts area chart，品牌色渐变填充）",
+        "主图区右 1/3：今日告警流（实时滚动列表，新告警顶部插入 + 闪烁高亮）",
+        "热度榜：波动最大 5 个饰品，带迷你 K 线和 24h 变化",
+        "采集状态区：下次采集倒计时进度条 + 最后一次采集结果",
+        "所有卡片使用玻璃拟态或品牌渐变背景，数字使用 JetBrains Mono 等宽字体"
+      ],
+      "passes": true
+    },
+    {
+      "id": 28,
+      "title": "Watchlist 与 K 线图重设计",
+      "description": "自选清单和饰品详情页全面重设计",
+      "steps": [
+        "Watchlist 视图切换：表格 / 卡片网格双视图，右上角图标切换",
+        "表格新列：饰品（图标+名称+品相标签）、当前价（各平台 badge 最低价高亮）、24h 变化（箭头+颜色）、7 天 sparkline（40x16 SVG）、告警状态、操作",
+        "行 hover 微高亮 + 浮出「查看详情」按钮；空态插画 + 引导；批量操作底部浮栏",
+        "K 线页顶部：饰品标题 + 品相 + 大号等宽当前价 + 24h/7d 变化徽章",
+        "时间粒度 tab：1H/4H/1D/1W/1M + 自定义日期范围；平台对比多选叠加多条线",
+        "技术指标：可选 MA5/MA10/MA30/成交量（多 Y 轴）；Tooltip 深色玻璃卡",
+        "历史告警点位标注在 K 线上（三角形 icon，hover 显示详情）；导出 PNG/CSV"
+      ],
+      "passes": true
+    },
+    {
+      "id": 29,
+      "title": "告警页、极致追踪页、设置页重设计",
+      "description": "Alerts / ExtremeTrack / Settings 三页统一重设计",
+      "steps": [
+        "Alerts 页：Tab 切分普通/极致追踪告警；筛选器水平一行；告警卡片替代表格（图片+名称+类型徽章+价格变化+时间+已通知+查看 K 线）",
+        "Alerts 按日期分组 sticky 头；点击卡片右侧滑出详情抽屉（前后 10 条价格上下文）",
+        "ExtremeTrack 页：卡片网格布局，每张卡显示「当前价 vs 极值价」进度条 + 距离极值百分比；运行状态徽章（绿/黄/灰）",
+        "ExtremeTrack 编辑表单改为分步骤（选饰品→选平台→设定类型→阈值）",
+        "Settings 页改为左右结构：左侧子导航（通用/通知/监控/数据/关于）+ 右侧内容",
+        "通知配置卡：顶部图文步骤条、表单字段、右侧实时预览、测试按钮带 loading + Toast",
+        "数据目录卡：显示路径、一键打开/导出 DB/清空；危险操作折叠在底部红色边框二次确认"
+      ],
+      "passes": true
+    },
+    {
+      "id": 30,
+      "title": "前端打磨与工程化收尾",
+      "description": "骨架屏、动效、i18n、a11y、性能优化",
+      "steps": [
+        "所有列表/图表页面集成对应骨架屏，请求时自动切换",
+        "空态插画应用到 Watchlist/Alerts/ExtremeTrack 无数据场景",
+        "数字变化动效：价格跳动加 100ms 高亮闪烁；关键数字使用滚动过渡",
+        "引入 vue-i18n，搭建 zh-CN / en-US 骨架，至少 20% 可见字符串走 $t()",
+        "a11y 审查：所有图标按钮 aria-label、表单 label-for、tab 顺序、焦点环可见",
+        "ECharts 改为按需引入（减少 400KB+），vite.config.ts manualChunks 优化",
+        "运行 npm run build 验证无报错，Lighthouse Performance ≥ 90、Accessibility ≥ 90",
+        "移动端 375px 验证：侧栏变抽屉，所有页面无横向滚动"
+      ],
+      "passes": true
+    }
+  ]
+}

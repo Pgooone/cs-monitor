@@ -20,6 +20,7 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
 
 # Virtual environments
 .venv
@@ -48,10 +49,13 @@ automation-logs/
 .env.local
 
 # Runtime
-backend.pid
-frontend.pid
 *.pid
+next-task.txt
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend build cache
+frontend/node_modules/
+frontend/dist/
