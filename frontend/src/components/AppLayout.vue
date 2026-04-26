@@ -22,7 +22,6 @@
         </div>
       </n-layout-content>
     </n-layout>
-    <ws-status-pill v-if="!isMobile" class="app-layout__ws-pill" />
   </n-layout>
 </template>
 
@@ -31,14 +30,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { NLayout, NLayoutContent } from 'naive-ui'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import TopBar from '@/components/layout/TopBar.vue'
-import WsStatusPill from '@/components/base/WsStatusPill.vue'
 
-// 响应式断点
-// xs(<640): 侧栏变抽屉
-// sm(640-1024): 折叠
-// md(1024-1280): 展开
-// lg(1280-1536): 4 列
-// xl(>1536): 最大 1440 居中
 const isMobile = ref(false)
 const collapsed = ref(false)
 const mobileDrawerOpen = ref(false)
@@ -94,12 +86,5 @@ onUnmounted(() => {
     max-width: 1440px;
     margin: 0 auto;
   }
-}
-
-.app-layout__ws-pill {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 1030;
 }
 </style>

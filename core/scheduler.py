@@ -12,7 +12,6 @@ from config import MonitorConfig
 from core.extreme_tracker import ExtremeTracker
 from core.monitor import PriceMonitor
 from storage.database import Database
-from web.ws_manager import ws_manager
 
 
 class MonitorScheduler:
@@ -32,43 +31,12 @@ class MonitorScheduler:
         self.scheduler = BackgroundScheduler()
 
     def _run_monitor(self) -> None:
-        """执行普通监控并广播 WebSocket 告警."""
-        result = self.monitor.collect_prices()
-        alerts = result.get("alerts", [])
-        for alert in alerts:
-            ws_manager.broadcast_alert_sync({
-                "type": "alert",
-                "data": {
-                    "market_hash_name": alert["market_hash_name"],
-                    "alert_type": alert["alert_type"],
-                    "current_price": alert.get("current_price"),
-                    "baseline_price": alert.get("baseline_price"),
-                    "change_percent": alert.get("change_percent"),
-                    "timestamp": alert.get("notified_at", ""),
-                },
-            })
+        """执行普通监控采集."""
+        self.monitor.collect_prices()
 
     def _run_extreme_tracker(self) -> None:
-        """执行极致追踪并广播 WebSocket 消息."""
-        results = self.extreme_tracker.tick()
-        for result in results:
-            track_id = result.get("track_id", "")
-            ws_manager.broadcast_extreme_track_sync(track_id, {
-                "type": "extreme_track",
-                "data": {
-                    "track_id": track_id,
-                    "alert_type": result.get("alert_type"),
-                    "prev_price": result.get("prev_price"),
-                    "curr_price": result.get("curr_price"),
-                    "price_change": result.get("price_change"),
-                    "price_change_percent": result.get("price_change_percent"),
-                    "prev_quantity": result.get("prev_quantity"),
-                    "curr_quantity": result.get("curr_quantity"),
-                    "quantity_change": result.get("quantity_change"),
-                    "quantity_change_percent": result.get("quantity_change_percent"),
-                    "timestamp": result.get("timestamp", ""),
-                },
-            })
+        """执行极致追踪采集."""
+        self.extreme_tracker.tick()
 
     def start(self) -> None:
         """启动调度器并注册任务."""

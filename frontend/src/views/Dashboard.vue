@@ -275,7 +275,6 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NGrid, NGi, NCard, NBadge } from 'naive-ui'
 import { useDashboardStore } from '@/stores/dashboard'
-import { useWebsocketStore } from '@/stores/websocket'
 import { useTheme } from '@/composables/useTheme'
 import { toastSuccess } from '@/composables/useToast'
 import { brand, semantic } from '@/styles/tokens'
@@ -290,7 +289,6 @@ import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
 import ItemSearch from '@/components/business/ItemSearch.vue'
 
 const dashboard = useDashboardStore()
-const wsStore = useWebsocketStore()
 const { isDark, colorUp, colorDown } = useTheme()
 const { t } = useI18n()
 
@@ -341,30 +339,11 @@ function onItemAdded(name: string) {
   toastSuccess(`已添加 "${name}" 到监控清单`)
 }
 
-// WebSocket 告警推送
-function handleWsAlert(data: any) {
-  if (data?.type === 'alert' && data.data) {
-    const alert = data.data
-    dashboard.alerts.unshift({
-      id: Date.now(),
-      market_hash_name: alert.market_hash_name,
-      alert_type: alert.alert_type,
-      current_price: alert.current_price,
-      baseline_price: alert.baseline_price,
-      change_percent: alert.change_percent,
-      notified_at: alert.timestamp || new Date().toISOString(),
-    })
-    dashboard.incrementTodayAlertCount()
-  }
-}
-
 onMounted(() => {
   dashboard.loadAll()
-  wsStore.connectAlerts(handleWsAlert)
 })
 
 onUnmounted(() => {
-  wsStore.disconnectAlerts()
 })
 </script>
 

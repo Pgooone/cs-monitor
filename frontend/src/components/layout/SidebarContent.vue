@@ -41,10 +41,6 @@
           </template>
         </n-button>
       </div>
-      <ws-status-pill v-if="!collapsed" class="sidebar-footer__ws" />
-      <div v-else class="sidebar-footer__ws-collapsed">
-        <span class="ws-dot" :class="`ws-dot--${wsStore.overallStatus}`" />
-      </div>
     </div>
   </div>
 </template>
@@ -55,8 +51,6 @@ import { useRoute } from 'vue-router'
 import { NMenu, NButton } from 'naive-ui'
 import type { MenuOption, MenuGroupOption } from 'naive-ui'
 import { RouterLink } from 'vue-router'
-import WsStatusPill from '@/components/base/WsStatusPill.vue'
-import { useWebsocketStore } from '@/stores/websocket'
 
 defineProps<{
   collapsed: boolean
@@ -68,7 +62,6 @@ defineEmits<{
 }>()
 
 const route = useRoute()
-const wsStore = useWebsocketStore()
 
 const activeKey = computed(() => route.name as string)
 
@@ -211,33 +204,6 @@ const menuOptions: (MenuOption | MenuGroupOption)[] = [
   opacity: 0.7;
 }
 
-.sidebar-footer__ws {
-  font-size: 0.75rem;
-}
-
-.sidebar-footer__ws-collapsed {
-  display: flex;
-  justify-content: center;
-  padding: 0.25rem 0;
-}
-
-.ws-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.ws-dot--idle { background: #5a7ba5; }
-.ws-dot--connecting { background: #fbbf24; animation: ws-pulse 1.5s infinite; }
-.ws-dot--connected { background: #34d399; }
-.ws-dot--disconnected { background: #5a7ba5; }
-.ws-dot--error { background: #f87171; }
-
-@keyframes ws-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
 
 /* 折叠状态微调 */
 .sidebar-inner--collapsed .sidebar-logo {
