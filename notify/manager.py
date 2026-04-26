@@ -32,6 +32,7 @@ class NotificationManager:
             return TelegramChannel(
                 self.config.telegram_bot_token,
                 self.config.telegram_chat_id,
+                proxy=self.config.telegram_proxy or None,
             )
         elif (
             channel_name == "serverchan" and self.config.serverchan_sendkey

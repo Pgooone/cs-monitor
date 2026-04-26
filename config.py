@@ -28,6 +28,7 @@ class MonitorConfig:
     wecom_webhook_url: str = ""
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    telegram_proxy: str = ""
     serverchan_sendkey: str = ""
 
     # === 监控清单 ===
@@ -72,5 +73,6 @@ class MonitorConfig:
             wecom_webhook_url=getenv("WECOM_WEBHOOK_URL", ""),
             telegram_bot_token=getenv("TELEGRAM_BOT_TOKEN", ""),
             telegram_chat_id=getenv("TELEGRAM_CHAT_ID", ""),
+            telegram_proxy=getenv("TELEGRAM_PROXY", ""),
             serverchan_sendkey=getenv("SERVERCHAN_SENDKEY", ""),
         )

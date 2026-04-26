@@ -9,9 +9,10 @@ from notify.base import NotificationChannel
 class TelegramChannel(NotificationChannel):
     """Telegram Bot 通知渠道."""
 
-    def __init__(self, bot_token: str, chat_id: str) -> None:
+    def __init__(self, bot_token: str, chat_id: str, proxy: str | None = None) -> None:
         self.bot_token = bot_token
         self.chat_id = chat_id
+        self.proxy = proxy
         self.api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
     def send(self, title: str, content: str) -> bool:
@@ -22,7 +23,10 @@ class TelegramChannel(NotificationChannel):
             "parse_mode": "HTML",
         }
         try:
-            with httpx.Client(timeout=30) as client:
+            client_kwargs: dict = {"timeout": 30}
+            if self.proxy:
+                client_kwargs["proxy"] = self.proxy
+            with httpx.Client(**client_kwargs) as client:
                 resp = client.post(self.api_url, json=payload)
                 resp.raise_for_status()
                 data = resp.json()
