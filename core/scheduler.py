@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
 
-from api.steamdt import SteamDTClient
+from api.steamdt import SteamDTClient, SteamDTError, SteamDTRateLimitError
 from config import MonitorConfig
 from core.extreme_tracker import ExtremeTracker
 from core.monitor import PriceMonitor
@@ -29,6 +31,7 @@ class MonitorScheduler:
         self.monitor = PriceMonitor(client, db, config)
         self.extreme_tracker = ExtremeTracker(client, db, config)
         self.scheduler = BackgroundScheduler()
+        self._last_synced_at: datetime | None = None
 
     def _run_monitor(self) -> None:
         """执行普通监控采集."""
@@ -103,23 +106,38 @@ class MonitorScheduler:
         logger.info("归档任务已注册，每天凌晨 3:00 执行")
 
     def _run_item_sync(self) -> None:
-        """同步全量饰品基础信息（每天 1 次）."""
+        """同步全量饰品基础信息（每天 1 次，内存级 20h 防抖）."""
+        now = datetime.now()
+        if self._last_synced_at and now - self._last_synced_at < timedelta(hours=20):
+            logger.debug(
+                f"[scheduler] item sync 20h 内已执行"
+                f"(上次: {self._last_synced_at:%Y-%m-%d %H:%M})，跳过"
+            )
+            return
+
+        if not self.db.needs_item_sync():
+            logger.debug("饰品数据未过期，跳过同步")
+            return
+
+        logger.info("📦 开始定时同步全量饰品数据...")
         try:
-            if not self.db.needs_item_sync():
-                logger.debug("饰品数据未过期，跳过同步")
-                return
-            logger.info("📦 开始定时同步全量饰品数据...")
             response = self.client.get_all_items()
-            if response.get("success"):
-                items_data = response.get("data") or []
-                count = self.db.bulk_upsert_items(items_data)
-                logger.info(f"✅ 定时饰品同步完成，共 {count} 条")
-            else:
-                logger.warning(
-                    f"⚠️ 定时饰品同步失败: {response.get('errorMsg', '未知错误')}"
-                )
-        except Exception:
-            logger.exception("定时饰品同步异常")
+        except SteamDTRateLimitError as e:
+            logger.warning(f"[scheduler] item sync 限流: {e}")
+            return
+        except SteamDTError as e:
+            logger.error(f"[scheduler] item sync 失败: {e}")
+            return
+
+        if response.get("success"):
+            items_data = response.get("data") or []
+            count = self.db.bulk_upsert_items(items_data)
+            self._last_synced_at = now
+            logger.info(f"✅ 定时饰品同步完成，共 {count} 条")
+        else:
+            logger.warning(
+                f"⚠️ 定时饰品同步失败: {response.get('errorMsg', '未知错误')}"
+            )
 
     def _add_item_sync_job(self) -> None:
         """注册每日饰品同步任务（每天凌晨 4 点执行）."""
