@@ -143,11 +143,37 @@
         <!-- Step 1: 选饰品 -->
         <div v-if="stepCurrent === 0">
           <n-form-item label="饰品名称" path="market_hash_name">
+            <div class="search-wrapper" v-if="!isEditing">
+              <n-input
+                v-model:value="searchQuery"
+                placeholder="输入饰品名称搜索，如 AK-47、红线、Asiimov..."
+                clearable
+                :loading="searching"
+                @update:value="onSearchInput"
+                @blur="onSearchBlur"
+              />
+              <div v-if="showSearchDropdown && searchResults.length > 0" class="search-dropdown">
+                <div
+                  v-for="item in searchResults"
+                  :key="item.market_hash_name"
+                  class="search-item"
+                  @mousedown.prevent="selectSearchResult(item)"
+                >
+                  <span class="search-item-name">{{ item.name || item.market_hash_name }}</span>
+                  <span v-if="item.name && item.name !== item.market_hash_name" class="search-item-alias">
+                    {{ item.market_hash_name }}
+                  </span>
+                </div>
+              </div>
+            </div>
             <n-input
-              v-model:value="formData.market_hash_name"
-              placeholder="请输入饰品市场名称，如 AK-47 | 红线 (久经沙场)"
-              :disabled="isEditing"
+              v-else
+              :value="formData.market_hash_name"
+              disabled
             />
+            <div v-if="!isEditing && formData.market_hash_name" class="selected-item-hint">
+              已选: {{ formData.market_hash_name }}
+            </div>
           </n-form-item>
         </div>
 
@@ -387,6 +413,13 @@ const formRef = ref<FormInst | null>(null)
 const itemToDelete = ref<ExtremeTrackConfig | null>(null)
 const stepCurrent = ref(0)
 
+// 搜索相关
+const searchQuery = ref('')
+const searchResults = ref<{ market_hash_name: string; name: string | null }[]>([])
+const searching = ref(false)
+const showSearchDropdown = ref(false)
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
 const platformOptions = [
   { label: 'BUFF', value: 'buff' },
   { label: '悠悠有品', value: 'youpin' },
@@ -417,7 +450,7 @@ const formData = ref({
 
 const formRules: FormRules = {
   market_hash_name: [
-    { required: true, message: '请输入饰品名称', trigger: 'blur' },
+    { required: true, message: '请搜索并选择饰品', trigger: 'blur' },
   ],
   platform: [
     { required: true, message: '请选择平台', trigger: 'blur' },
@@ -440,6 +473,9 @@ function resetForm() {
     quiet_hours_start: null,
     quiet_hours_end: null,
   }
+  searchQuery.value = ''
+  searchResults.value = []
+  showSearchDropdown.value = false
   stepCurrent.value = 0
 }
 
@@ -466,6 +502,7 @@ function openEditModal(item: ExtremeTrackConfig) {
     quiet_hours_start: item.quiet_hours_start,
     quiet_hours_end: item.quiet_hours_end,
   }
+  searchQuery.value = item.display_name || item.market_hash_name
   stepCurrent.value = 0
   modalVisible.value = true
 }
@@ -473,6 +510,43 @@ function openEditModal(item: ExtremeTrackConfig) {
 function openDeleteModal(item: ExtremeTrackConfig) {
   itemToDelete.value = item
   deleteModalVisible.value = true
+}
+
+// 搜索饰品
+function onSearchInput(val: string) {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchResults.value = []
+  showSearchDropdown.value = false
+
+  const q = val.trim()
+  if (!q) return
+
+  searchDebounceTimer = setTimeout(async () => {
+    searching.value = true
+    try {
+      const { data } = await api.searchItems(q)
+      searchResults.value = data || []
+      showSearchDropdown.value = searchResults.value.length > 0
+    } catch {
+      searchResults.value = []
+    } finally {
+      searching.value = false
+    }
+  }, 300)
+}
+
+function selectSearchResult(item: { market_hash_name: string; name: string | null }) {
+  formData.value.market_hash_name = item.market_hash_name
+  searchQuery.value = item.name || item.market_hash_name
+  showSearchDropdown.value = false
+  searchResults.value = []
+}
+
+function onSearchBlur() {
+  // 延迟关闭，让点击事件先触发
+  setTimeout(() => {
+    showSearchDropdown.value = false
+  }, 200)
 }
 
 function nextStep() {
@@ -492,6 +566,10 @@ function nextStep() {
 async function handleSubmit() {
   await formRef.value?.validate(async (errors) => {
     if (errors) return
+    if (!formData.value.market_hash_name) {
+      message.warning('请搜索并选择饰品')
+      return
+    }
     submitting.value = true
     try {
       if (isEditing.value) {
@@ -575,6 +653,58 @@ onBeforeUnmount(() => {
   padding: 4rem 0;
   display: flex;
   justify-content: center;
+}
+
+/* 搜索下拉框 */
+.search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  margin-top: 4px;
+  background: var(--n-color, #fff);
+  border: 1px solid var(--n-border-color, #e0e0e6);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.search-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.search-item:hover {
+  background: rgba(46, 91, 255, 0.08);
+}
+
+.search-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--n-text-color-1);
+}
+
+.search-item-alias {
+  font-size: 0.75rem;
+  color: var(--n-text-color-3);
+  margin-left: 0.5rem;
+}
+
+.selected-item-hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--n-text-color-3);
 }
 
 .track-card {
