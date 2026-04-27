@@ -2,17 +2,36 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from loguru import logger
 
+from api.steamdt import SteamDTClient, SteamDTConfig
 from config import MonitorConfig
 from storage.database import Database
 from web.routers import alerts, archive, auth, dashboard, extreme_track, kline, prices, settings, watchlist
 from web.schemas import HealthResponse
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """应用生命周期：启动时创建共享 SteamDT client，关闭时释放."""
+    config: MonitorConfig = app.state.config
+    app.state.steamdt_client = SteamDTClient(SteamDTConfig(
+        api_key=config.api_key,
+        base_url=config.api_base_url,
+        timeout=config.request_timeout,
+        max_retries=config.request_retry,
+    ))
+    logger.info("SteamDT 共享客户端已创建")
+    yield
+    app.state.steamdt_client.close()
+    logger.info("SteamDT 共享客户端已关闭")
 
 
 def create_app(db: Database, config: MonitorConfig) -> FastAPI:
@@ -21,6 +40,7 @@ def create_app(db: Database, config: MonitorConfig) -> FastAPI:
         title="CS2 Monitor API",
         description="CS2 饰品价格波动监控系统 Web API",
         version="1.0.0",
+        lifespan=lifespan,
     )
 
     # 将 db 和 config 存入 app.state 供依赖注入使用
