@@ -62,20 +62,15 @@ def lookup_item_price(
             detail=f"SteamDT API 错误: {response.get('errorMsg', '未知错误')}",
         )
 
-    data = response.get("data")
-    if not data:
-        return {
-            "market_hash_name": market_hash_name,
-            "dataList": [],
-            "in_watchlist": db.get_watchlist_item(market_hash_name) is not None,
-        }
+    # /price/single 返回 data 是平台价格数组（不是 batch 那样的 {marketHashName, dataList}）
+    data_list = response.get("data") or []
+    if not isinstance(data_list, list):
+        data_list = []
 
-    in_wl = db.get_watchlist_item(
-        data.get("marketHashName", market_hash_name)
-    ) is not None
+    in_wl = db.get_watchlist_item(market_hash_name) is not None
     return {
-        "market_hash_name": data.get("marketHashName", market_hash_name),
-        "dataList": data.get("dataList") or [],
+        "market_hash_name": market_hash_name,
+        "dataList": data_list,
         "in_watchlist": in_wl,
     }
 
