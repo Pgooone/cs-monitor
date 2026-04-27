@@ -69,12 +69,11 @@ class MonitorScheduler:
         logger.info(f"普通监控任务已注册，间隔: {interval} 分钟")
 
     def _add_extreme_tracker_job(self) -> None:
-        """注册极致追踪定时任务."""
-        tracks = self.db.get_extreme_track_configs(enabled_only=True)
-        if not tracks:
-            logger.info("极致追踪列表为空，跳过注册")
-            return
+        """注册极致追踪定时任务.
 
+        始终注册 job（即使当前列表为空），因为用户可能在运行时通过 Web 添加追踪项。
+        ExtremeTracker.tick() 内部已有空列表检查，不会产生无效调用。
+        """
         # 统一使用 10 秒 tick，由 ExtremeTracker 内部管理各追踪项的执行时间
         self.scheduler.add_job(
             self._run_extreme_tracker,
