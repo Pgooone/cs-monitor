@@ -22,6 +22,7 @@ class MonitorConfig:
     check_interval_minutes: int = 30
     default_threshold_percent: float = 5.0
     alert_cooldown_hours: int = 4
+    timezone: str = "Asia/Shanghai"
 
     # === 通知配置 ===
     notify_channel: str = "wecom"
@@ -64,6 +65,7 @@ class MonitorConfig:
             check_interval_minutes=int(getenv("CHECK_INTERVAL_MINUTES", "30")),
             default_threshold_percent=float(getenv("DEFAULT_THRESHOLD_PERCENT", "5.0")),
             alert_cooldown_hours=int(getenv("ALERT_COOLDOWN_HOURS", "4")),
+            timezone=getenv("TIMEZONE", "Asia/Shanghai"),
             web_host=getenv("WEB_HOST", "0.0.0.0"),
             web_port=int(getenv("WEB_PORT", "8080")),
             admin_password=getenv("ADMIN_PASSWORD", "admin"),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -30,7 +31,8 @@ class MonitorScheduler:
         self.config = config
         self.monitor = PriceMonitor(client, db, config)
         self.extreme_tracker = ExtremeTracker(client, db, config)
-        self.scheduler = BackgroundScheduler()
+        self.tz = ZoneInfo(config.timezone)
+        self.scheduler = BackgroundScheduler(timezone=config.timezone)
         self._last_synced_at: datetime | None = None
 
     def _run_monitor(self) -> None:
@@ -98,12 +100,12 @@ class MonitorScheduler:
         """注册每日归档任务（每天凌晨 3 点执行）."""
         self.scheduler.add_job(
             self._run_archive,
-            trigger=CronTrigger(hour=3, minute=0),
+            trigger=CronTrigger(hour=3, minute=0, timezone=self.tz),
             id="archive_prices",
             name="价格记录归档",
             replace_existing=True,
         )
-        logger.info("归档任务已注册，每天凌晨 3:00 执行")
+        logger.info(f"归档任务已注册，每天凌晨 3:00 执行 ({self.config.timezone})")
 
     def _run_item_sync(self) -> None:
         """同步全量饰品基础信息（每天 1 次，内存级 20h 防抖）."""
@@ -143,12 +145,12 @@ class MonitorScheduler:
         """注册每日饰品同步任务（每天凌晨 4 点执行）."""
         self.scheduler.add_job(
             self._run_item_sync,
-            trigger=CronTrigger(hour=4, minute=0),
+            trigger=CronTrigger(hour=4, minute=0, timezone=self.tz),
             id="item_sync",
             name="全量饰品同步",
             replace_existing=True,
         )
-        logger.info("饰品同步任务已注册，每天凌晨 4:00 执行")
+        logger.info(f"饰品同步任务已注册，每天凌晨 4:00 执行 ({self.config.timezone})")
 
     def shutdown(self, wait: bool = True) -> None:
         """优雅关闭调度器."""
