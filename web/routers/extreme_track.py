@@ -155,6 +155,33 @@ def toggle_extreme_track_config(
     }
 
 
+@router.get("/snapshots")
+def get_latest_snapshots(
+    db: Database = Depends(get_db),
+    user: dict = Depends(require_auth),
+) -> list[dict]:
+    """获取所有追踪项的最新快照（用于前端轮询显示实时数据）."""
+    import sqlite3
+    conn = sqlite3.connect(db.db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    # 获取每个追踪项的最新快照
+    cursor.execute('''
+        SELECT market_hash_name, platform, price, quantity, recorded_at
+        FROM extreme_track_snapshots
+        WHERE id IN (
+            SELECT MAX(id) FROM extreme_track_snapshots
+            GROUP BY market_hash_name, platform
+        )
+        ORDER BY recorded_at DESC
+    ''')
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
+
+
 @router.get("/alerts", response_model=ExtremeAlertListResponse)
 def get_extreme_alerts(
     page: int = 1,

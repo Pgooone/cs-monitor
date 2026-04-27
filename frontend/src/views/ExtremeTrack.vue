@@ -83,20 +83,18 @@
         </div>
 
         <!-- 实时数据 -->
-        <div v-if="(item as any)._realtime?.length" class="track-card__realtime">
-          <div class="realtime-label">最近变动</div>
+        <div v-if="snapshots[rowKey(item)]" class="track-card__realtime">
+          <div class="realtime-label">最新数据</div>
           <div class="realtime-row">
             <span class="realtime-price">
-              ¥{{ (item as any)._realtime[0].curr_price?.toFixed(2) || '—' }}
+              ¥{{ snapshots[rowKey(item)]?.price?.toFixed(2) || '—' }}
             </span>
-            <span
-              v-if="(item as any)._realtime[0].price_change_percent != null"
-              class="realtime-change"
-              :style="{ color: (item as any)._realtime[0].price_change_percent >= 0 ? colorUp : colorDown }"
-            >
-              {{ (item as any)._realtime[0].price_change_percent >= 0 ? '+' : '' }}
-              {{ (item as any)._realtime[0].price_change_percent.toFixed(2) }}%
+            <span class="realtime-quantity">
+              {{ snapshots[rowKey(item)]?.quantity ?? '—' }} 个
             </span>
+          </div>
+          <div class="realtime-time">
+            {{ formatTime(snapshots[rowKey(item)]?.recorded_at) }}
           </div>
         </div>
 
@@ -286,7 +284,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import {
   NButton,
   NSpace,
@@ -307,9 +305,9 @@ import {
 } from 'naive-ui'
 import type { FormRules, FormInst } from 'naive-ui'
 import { AddOutline, TrailSignOutline } from '@vicons/ionicons5'
+import api from '@/api'
 import { useExtremeTrackStore } from '@/stores/extremeTrack'
 import type { ExtremeTrackConfig } from '@/api'
-import { WebSocketClient } from '@/utils/ws'
 import { useTheme } from '@/composables/useTheme'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import SkeletonCard from '@/components/base/SkeletonCard.vue'
@@ -318,51 +316,38 @@ const store = useExtremeTrackStore()
 const message = useMessage()
 const { colorUp, colorDown } = useTheme()
 
-const wsMap = new Map<string, WebSocketClient>()
+// 实时快照数据 { "marketHashName@platform": { price, quantity, recorded_at } }
+const snapshots = ref<Record<string, { price: number; quantity: number; recorded_at: string }>>({})
+let pollTimer: ReturnType<typeof setInterval> | null = null
 
 function rowKey(row: ExtremeTrackConfig) {
   return `${row.market_hash_name}@${row.platform}`
 }
 
-function buildWsUrl(marketHashName: string, platform: string) {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const host = window.location.host
-  return `${protocol}//${host}/ws/extreme-track/${encodeURIComponent(marketHashName)}/${encodeURIComponent(platform)}`
-}
-
-function connectWs(item: ExtremeTrackConfig) {
-  const key = `${item.market_hash_name}@${item.platform}`
-  if (wsMap.has(key)) return
-  const url = buildWsUrl(item.market_hash_name, item.platform)
-  const ws = new WebSocketClient({
-    url,
-    onMessage: (msg) => {
-      if (msg.type === 'extreme_track' && msg.data) {
-        store.updateRealtimeData(key, msg.data)
-      }
-    },
-  })
-  ws.connect()
-  wsMap.set(key, ws)
-}
-
-function disconnectWs(item: ExtremeTrackConfig) {
-  const key = `${item.market_hash_name}@${item.platform}`
-  const ws = wsMap.get(key)
-  if (ws) {
-    ws.close()
-    wsMap.delete(key)
+async function fetchSnapshots() {
+  try {
+    const { data } = await api.extremeTrackSnapshots()
+    const map: Record<string, { price: number; quantity: number; recorded_at: string }> = {}
+    for (const s of data) {
+      const key = `${s.market_hash_name}@${s.platform}`
+      map[key] = { price: s.price, quantity: s.quantity, recorded_at: s.recorded_at }
+    }
+    snapshots.value = map
+  } catch (e) {
+    console.error('Failed to fetch snapshots:', e)
   }
 }
 
-function syncWsConnections() {
-  store.items.forEach((item) => {
-    if (item.enabled) {
-      connectWs(item)
-    } else {
-      disconnectWs(item)
-    }
-  })
+function startPolling() {
+  fetchSnapshots()
+  pollTimer = setInterval(fetchSnapshots, 10000) // 每 10 秒轮询
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
 }
 
 // 追踪强度 = 基于开启的追踪项和阈值计算
@@ -378,6 +363,19 @@ function intensityPercent(item: ExtremeTrackConfig): number {
     if (item.quantity_change_mode === 'percent' && item.quantity_threshold_percent > 0) score += 10
   }
   return score
+}
+
+function formatTime(recordedAt?: string): string {
+  if (!recordedAt) return '—'
+  const date = new Date(recordedAt)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return '刚刚'
+  if (diffMin < 60) return `${diffMin} 分钟前`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour} 小时前`
+  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 }
 
 const modalVisible = ref(false)
@@ -561,19 +559,14 @@ async function handleToggle(item: ExtremeTrackConfig) {
   }
 }
 
-watch(() => store.items, () => {
-  syncWsConnections()
-}, { deep: true })
-
 onMounted(() => {
   store.fetchItems().then(() => {
-    syncWsConnections()
+    startPolling()
   })
 })
 
 onBeforeUnmount(() => {
-  wsMap.forEach((ws) => ws.close())
-  wsMap.clear()
+  stopPolling()
 })
 </script>
 
@@ -701,10 +694,17 @@ onBeforeUnmount(() => {
   color: var(--n-text-color-1);
 }
 
-.realtime-change {
+.realtime-quantity {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.8125rem;
   font-weight: 500;
+  color: var(--n-text-color-2);
+}
+
+.realtime-time {
+  font-size: 0.6875rem;
+  color: var(--n-text-color-3);
+  margin-top: 0.25rem;
 }
 
 .track-card__actions {

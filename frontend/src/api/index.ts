@@ -346,6 +346,9 @@ export default {
   extremeTrackList() {
     return api.get<ExtremeTrackConfig[]>('/extreme-track')
   },
+  extremeTrackSnapshots() {
+    return api.get<{ market_hash_name: string; platform: string; price: number; quantity: number; recorded_at: string }[]>('/extreme-track/snapshots')
+  },
   createExtremeTrack(payload: CreateExtremeTrackPayload) {
     return api.post<ExtremeTrackConfig>('/extreme-track', payload)
   },
