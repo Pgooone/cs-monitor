@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from api.steamdt import SteamDTClient, SteamDTConfig
+from api.steamdt import (
+    SteamDTBusinessError,
+    SteamDTError,
+    SteamDTRateLimitError,
+)
 from core.trend_analyzer import TrendAnalyzer
 from storage.database import Database
 from web.deps import get_config, get_db, require_auth
@@ -17,12 +21,49 @@ arbitrage_router = APIRouter(prefix="/arbitrage", tags=["arbitrage"])
 trends_router = APIRouter(prefix="/trends", tags=["trends"])
 
 
+def _normalize_kline(raw: list) -> list[dict[str, Any]]:
+    """把 SteamDT K 线数据规范化为前端 ECharts 期望的 OHLC 结构.
+
+    支持数组格式 [timestamp, open, high, low, close, volume]
+    和对象格式 {timestamp, open, high, low, close, volume}。
+    强制按 timestamp 升序排序。
+    """
+    out: list[dict[str, Any]] = []
+    for it in raw or []:
+        if isinstance(it, list) and len(it) >= 5:
+            ts, o, h, l, c = it[0], it[1], it[2], it[3], it[4]
+            v = it[5] if len(it) > 5 else None
+        elif isinstance(it, dict):
+            ts = it.get("timestamp") or it.get("time") or it.get("t")
+            o = it.get("open") or it.get("o")
+            h = it.get("high") or it.get("h")
+            l = it.get("low") or it.get("l")
+            c = it.get("close") or it.get("c")
+            v = it.get("volume") or it.get("v")
+        else:
+            continue
+        try:
+            out.append({
+                "timestamp": int(ts),
+                "open": float(o),
+                "high": float(h),
+                "low": float(l),
+                "close": float(c),
+                "volume": float(v) if v is not None else None,
+            })
+        except (TypeError, ValueError):
+            continue
+    # 强制按 timestamp 升序，避免依赖服务端顺序
+    out.sort(key=lambda x: x["timestamp"])
+    return out
+
+
 @router.get("/{market_hash_name}")
 def get_kline(
     market_hash_name: str,
     period: int = 2,
     count: int = 30,
-    config=Depends(get_config),
+    request: Request = None,  # type: ignore[assignment]
     user: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """查询饰品 K 线数据.
@@ -31,38 +72,34 @@ def get_kline(
         period: 1=时K, 2=日K, 3=周K
         count: 返回条数
     """
-    client = SteamDTClient(
-        SteamDTConfig(
-            api_key=config.api_key,
-            base_url=config.api_base_url,
-        )
-    )
+    client = request.app.state.steamdt_client
     try:
         resp = client.get_item_kline(
             market_hash_name=market_hash_name,
             kline_type=period,
         )
-    except Exception as e:
-        client.close()
-        raise HTTPException(status_code=502, detail=f"SteamDT API 错误: {e}") from e
-    finally:
-        client.close()
-
-    if not resp.get("success"):
+    except SteamDTRateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail={"retry_after": int(e.retry_after) + 1},
+        )
+    except SteamDTBusinessError as e:
         raise HTTPException(
             status_code=502,
-            detail=resp.get("errorMsg", "SteamDT API 返回失败"),
+            detail=f"[{e.code}] {e.error_msg}",
         )
+    except SteamDTError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
-    data = resp.get("data") or []
-    # 限制返回条数
-    if count and len(data) > count:
-        data = data[-count:]
+    raw = resp.get("data") or []
+    series = _normalize_kline(raw)
+    if count > 0:
+        series = series[-count:]
 
     return {
         "market_hash_name": market_hash_name,
         "period": period,
-        "data": data,
+        "data": series,
     }
 
 
