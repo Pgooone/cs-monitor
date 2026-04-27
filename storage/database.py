@@ -501,9 +501,11 @@ class Database:
             offset = (page - 1) * limit
             cursor.execute(
                 f"""
-                SELECT * FROM extreme_track_alerts
+                SELECT eta.*, COALESCE(i.name, i.display_name) AS display_name
+                FROM extreme_track_alerts eta
+                LEFT JOIN items i ON eta.market_hash_name = i.market_hash_name
                 WHERE {where_clause}
-                ORDER BY notified_at DESC
+                ORDER BY eta.notified_at DESC
                 LIMIT ? OFFSET ?
                 """,
                 tuple(params) + (limit, offset),
@@ -697,14 +699,21 @@ class Database:
             if enabled_only:
                 cursor.execute(
                     """
-                    SELECT * FROM extreme_track_config
-                    WHERE enabled = 1
-                    ORDER BY created_at
+                    SELECT etc.*, COALESCE(i.name, i.display_name) AS display_name
+                    FROM extreme_track_config etc
+                    LEFT JOIN items i ON etc.market_hash_name = i.market_hash_name
+                    WHERE etc.enabled = 1
+                    ORDER BY etc.created_at
                     """
                 )
             else:
                 cursor.execute(
-                    "SELECT * FROM extreme_track_config ORDER BY created_at"
+                    """
+                    SELECT etc.*, COALESCE(i.name, i.display_name) AS display_name
+                    FROM extreme_track_config etc
+                    LEFT JOIN items i ON etc.market_hash_name = i.market_hash_name
+                    ORDER BY etc.created_at
+                    """
                 )
             return [dict(row) for row in cursor.fetchall()]
 
@@ -945,9 +954,11 @@ class Database:
             offset = (page - 1) * limit
             cursor.execute(
                 f"""
-                SELECT * FROM alert_logs
+                SELECT a.*, w.display_name AS display_name
+                FROM alert_logs a
+                LEFT JOIN watchlist w ON a.market_hash_name = w.market_hash_name
                 WHERE {where_clause}
-                ORDER BY notified_at DESC
+                ORDER BY a.notified_at DESC
                 LIMIT ? OFFSET ?
                 """,
                 tuple(params) + (limit, offset),

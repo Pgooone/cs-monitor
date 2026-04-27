@@ -272,9 +272,13 @@ class ExtremeTracker:
         qty_change = changes.get("quantity_change", 0)
         qty_change_pct = changes.get("quantity_change_percent", 0)
 
+        item_info = self.db.get_item(market_hash_name)
+        display_name = (item_info.get("name") or item_info.get("display_name")) if item_info else None
+
         result = {
             "track_id": tid,
             "alert_type": alert_type,
+            "display_name": display_name,
             "prev_price": prev_price,
             "curr_price": curr_price,
             "price_change": price_change,

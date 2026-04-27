@@ -47,6 +47,7 @@ class NotificationManager:
             return False
 
         market_hash_name = alert["market_hash_name"]
+        display_name = alert.get("display_name") or market_hash_name
         alert_type = alert["alert_type"]
         current_price = alert["current_price"]
         baseline_price = alert["baseline_price"]
@@ -57,7 +58,7 @@ class NotificationManager:
 
         title = f"{emoji} CS2 饰品价格波动提醒 - {direction}"
         content = (
-            f"📦 饰品：{market_hash_name}\n"
+            f"📦 饰品：{display_name}\n"
             f"💰 当前价格：¥{current_price:.2f}\n"
             f"📊 7天均价：¥{baseline_price:.2f}\n"
             f"📈 波动幅度：{change_percent:+.2f}%\n"
@@ -76,6 +77,7 @@ class NotificationManager:
         if not self.channel:
             return False
 
+        display_name = alert.get("display_name") or market_hash_name
         alert_type = alert["alert_type"]
         prev_price = alert.get("prev_price")
         curr_price = alert.get("curr_price")
@@ -91,7 +93,7 @@ class NotificationManager:
         if alert_type == "both":
             title = "🎯 [极致追踪] 价格 & 数量同时变动！"
             content = (
-                f"📦 饰品：{market_hash_name}\n"
+                f"📦 饰品：{display_name}\n"
                 f"🏪 平台：{platform}\n\n"
                 f"💰 价格：¥{prev_price:.2f} → ¥{curr_price:.2f} "
                 f"（{price_change_percent:+.2f}%）\n"
@@ -103,7 +105,7 @@ class NotificationManager:
         elif alert_type == "price_change":
             title = "🎯 [极致追踪] 价格变动"
             content = (
-                f"📦 饰品：{market_hash_name}\n"
+                f"📦 饰品：{display_name}\n"
                 f"🏪 平台：{platform}\n"
                 f"💰 当前价格：¥{curr_price:.2f}\n"
                 f"💰 上次价格：¥{prev_price:.2f}\n"
@@ -114,7 +116,7 @@ class NotificationManager:
         else:  # quantity_change
             title = "🎯 [极致追踪] 在售数量变动"
             content = (
-                f"📦 饰品：{market_hash_name}\n"
+                f"📦 饰品：{display_name}\n"
                 f"🏪 平台：{platform}\n"
                 f"📉 当前在售：{curr_quantity} 件\n"
                 f"📊 上次在售：{prev_quantity} 件\n"

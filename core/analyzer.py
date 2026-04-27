@@ -172,8 +172,11 @@ class PriceAnalyzer:
                 if self._check_alert_cooldown(
                     market_hash_name, "price_surge"
                 ):
+                    wl_item = self.db.get_watchlist_item(market_hash_name)
+                    display_name = wl_item.get("display_name") if wl_item else None
                     alert_data = {
                         "market_hash_name": market_hash_name,
+                        "display_name": display_name,
                         "alert_type": "price_surge",
                         "current_price": current_price,
                         "baseline_price": baseline_price,
@@ -208,8 +211,11 @@ class PriceAnalyzer:
                 if self._check_alert_cooldown(
                     market_hash_name, "price_drop"
                 ):
+                    wl_item = self.db.get_watchlist_item(market_hash_name)
+                    display_name = wl_item.get("display_name") if wl_item else None
                     alert_data = {
                         "market_hash_name": market_hash_name,
+                        "display_name": display_name,
                         "alert_type": "price_drop",
                         "current_price": current_price,
                         "baseline_price": baseline_price,

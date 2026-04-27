@@ -39,6 +39,7 @@ class VolatileItem(BaseModel):
     """波动热度项."""
 
     market_hash_name: str
+    display_name: str | None = None
     current_price: float | None = None
     change_percent: float = 0.0
     sparkline: list[float] = Field(default_factory=list)
@@ -128,6 +129,7 @@ class AlertRecord(BaseModel):
 
     id: int
     market_hash_name: str
+    display_name: str | None = None
     alert_type: str
     current_price: float | None = None
     baseline_price: float | None = None
@@ -169,6 +171,7 @@ class ExtremeAlertRecord(BaseModel):
 
     id: int
     market_hash_name: str
+    display_name: str | None = None
     platform: str
     alert_type: str
     prev_price: float | None = None
@@ -238,6 +241,7 @@ class ExtremeTrackConfig(BaseModel):
 
     id: int
     market_hash_name: str
+    display_name: str | None = None
     platform: str
     interval_seconds: int = 60
     enabled: int = 1
