@@ -48,7 +48,7 @@ class PriceMonitor:
 
         logger.info(f"开始批量采集 {len(names)} 个饰品的价格...")
         try:
-            response = self.client.get_items_batch(names)
+            response = self.client.get_items_batch(names, use_throttle=False)
         except Exception as e:
             logger.error(f"批量查询价格失败: {e}")
             return {"records": [], "alerts": []}
