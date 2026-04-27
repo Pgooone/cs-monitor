@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Any
 
 from loguru import logger
 
-from api.steamdt import SteamDTClient
+from api.steamdt import (
+    SteamDTBusinessError,
+    SteamDTClient,
+    SteamDTError,
+    SteamDTRateLimitError,
+)
 from config import MonitorConfig
 from notify.manager import NotificationManager
 from storage.database import Database
@@ -25,31 +31,70 @@ class PriceAnalyzer:
         self.db = db
         self.config = config
         self.notifier = NotificationManager(config)
+        # 7 日均价缓存：{market_hash_name: (price, fetched_at)}，TTL 6h
+        self._avg_cache: dict[str, tuple[float, datetime]] = {}
+        self._avg_ttl = timedelta(hours=6)
 
     def _get_baseline_price(self, market_hash_name: str) -> float | None:
         """获取基准价.
 
-        优先使用 7 天均价，缺失时使用上一次采集价格.
+        优先使用 7 天均价（6h 缓存），缺失时 fallback 到 DB 最新价.
         """
-        try:
-            response = self.client.get_7day_average(market_hash_name)
-            if response.get("success"):
-                data = response.get("data") or {}
-                avg_price = data.get("avgPrice")
-                if avg_price is not None:
-                    logger.debug(
-                        f"{market_hash_name} 基准价使用 7天均价: {avg_price}"
-                    )
-                    return float(avg_price)
-        except Exception as e:
-            logger.warning(f"查询 {market_hash_name} 7天均价失败: {e}")
+        now = datetime.utcnow()
 
+        # 1) 缓存命中
+        cached = self._avg_cache.get(market_hash_name)
+        if cached and now - cached[1] < self._avg_ttl:
+            return cached[0]
+
+        # 2) 调用 API，三层异常分层
+        try:
+            resp = self.client.get_7day_average(market_hash_name)
+        except SteamDTRateLimitError as e:
+            logger.warning(
+                f"[analyzer] 7d avg 限流 {market_hash_name}: {e}, 退化到 DB 基线"
+            )
+            return self._fallback_to_db(market_hash_name)
+        except (SteamDTBusinessError, SteamDTError) as e:
+            logger.warning(
+                f"[analyzer] 7d avg 失败 {market_hash_name}: {e}, 退化到 DB 基线"
+            )
+            return self._fallback_to_db(market_hash_name)
+
+        # 3) 解析 success=false
+        if not resp.get("success"):
+            logger.warning(
+                f"[analyzer] 7d avg 返回 success=false {market_hash_name}, 退化到 DB 基线"
+            )
+            return self._fallback_to_db(market_hash_name)
+
+        # 4) 解析均价数据
+        data = resp.get("data") or {}
+        prices = [
+            float(p["avgPrice"])
+            for p in data.get("dataList", [])
+            if p.get("avgPrice")
+        ]
+        if not prices:
+            logger.debug(
+                f"{market_hash_name} 7天均价无有效数据，退化到 DB 基线"
+            )
+            return self._fallback_to_db(market_hash_name)
+
+        baseline = sum(prices) / len(prices)
+        self._avg_cache[market_hash_name] = (baseline, now)
+        logger.debug(f"{market_hash_name} 基准价使用 7天均价: {baseline:.2f}")
+        return baseline
+
+    def _fallback_to_db(self, market_hash_name: str) -> float | None:
+        """Fallback：从 DB 获取最新采集价."""
         latest = self.db.get_latest_price_any_platform(market_hash_name)
         if latest:
             price = latest["price"]
-            logger.debug(f"{market_hash_name} 基准价使用上次采集价格: {price}")
+            logger.debug(
+                f"{market_hash_name} 基准价使用 DB 最新采集价: {price}"
+            )
             return float(price)
-
         return None
 
     def _get_threshold(self, market_hash_name: str) -> float:
