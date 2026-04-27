@@ -278,6 +278,22 @@ export interface TrendAnalysisResponse {
   ma20: (number | null)[]
 }
 
+export interface RefreshItemResult {
+  market_hash_name: string
+  ok: boolean
+  latest_price: number | null
+  platform_count: number
+  error: string | null
+}
+
+export interface RefreshResponse {
+  total: number
+  success: number
+  failed: number
+  duration_ms: number
+  items: RefreshItemResult[]
+}
+
 /** 本地搜索结果项 */
 export interface SearchItemResult {
   market_hash_name: string
@@ -386,5 +402,10 @@ export default {
   /** 通过精确 marketHashName 查实时价格 */
   lookupItemPrice(marketHashName: string) {
     return api.get<ItemPriceResult>('/prices/lookup', { params: { market_hash_name: marketHashName } })
+  },
+  refreshWatchlist(marketHashNames?: string[] | null) {
+    return api.post<RefreshResponse>('/watchlist/refresh', {
+      market_hash_names: marketHashNames ?? null,
+    })
   },
 }

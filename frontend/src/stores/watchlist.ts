@@ -46,6 +46,12 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     await updateItem(item.market_hash_name, { enabled })
   }
 
+  async function refreshPrices(names?: string[] | null) {
+    const { data } = await api.refreshWatchlist(names ?? null)
+    await fetchItems()
+    return data
+  }
+
   return {
     items,
     loading,
@@ -55,5 +61,6 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     updateItem,
     removeItem,
     toggleEnabled,
+    refreshPrices,
   }
 })

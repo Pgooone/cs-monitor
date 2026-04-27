@@ -3,6 +3,14 @@
     <page-header title="监控清单">
       <template #actions>
         <n-space>
+          <n-button
+            :loading="refreshing"
+            :disabled="refreshButtonDisabled"
+            @click="handleRefresh()"
+            aria-label="刷新价格"
+          >
+            ⚡ {{ refreshButtonText }}
+          </n-button>
           <n-button-group>
             <n-button
               :type="viewMode === 'table' ? 'primary' : 'default'"
@@ -154,6 +162,14 @@
       <div v-if="checkedKeys.length > 0" class="batch-bar">
         <span class="batch-bar__count">已选 {{ checkedKeys.length }} 项</span>
         <n-space>
+          <n-button
+            size="small"
+            :loading="refreshing"
+            :disabled="refreshButtonDisabled"
+            @click="handleRefresh(checkedKeys)"
+          >
+            ⚡ 立即刷新 ({{ checkedKeys.length }})
+          </n-button>
           <n-button size="small" @click="batchToggle(true)">批量启用</n-button>
           <n-button size="small" @click="batchToggle(false)">批量禁用</n-button>
           <n-button size="small" type="error" @click="batchDelete">批量删除</n-button>
@@ -229,7 +245,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, h } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NCard,
@@ -282,6 +298,82 @@ const formData = ref({
   threshold_percent: 5.0,
   enabled: true,
 })
+
+// ─── 刷新状态 ───
+const refreshing = ref(false)
+const cooldownUntil = ref<number>(0)
+const cooldownSec = ref(0)
+let cooldownTimer: ReturnType<typeof setInterval> | null = null
+
+function startCooldown(seconds: number) {
+  cooldownUntil.value = Date.now() + seconds * 1000
+  cooldownSec.value = seconds
+  if (cooldownTimer) clearInterval(cooldownTimer)
+  cooldownTimer = setInterval(() => {
+    const left = Math.ceil((cooldownUntil.value - Date.now()) / 1000)
+    if (left <= 0) {
+      cooldownSec.value = 0
+      if (cooldownTimer) {
+        clearInterval(cooldownTimer)
+        cooldownTimer = null
+      }
+    } else {
+      cooldownSec.value = left
+    }
+  }, 1000)
+}
+
+async function handleRefresh(names?: string[]) {
+  if (refreshing.value || cooldownSec.value > 0) return
+  const targets = names ?? checkedKeys.value
+  if (targets.length === 0) {
+    const all = store.items.filter((i) => i.enabled).map((i) => i.market_hash_name)
+    if (all.length === 0) {
+      message.warning('监控清单为空')
+      return
+    }
+    if (all.length > 100) {
+      message.warning(`监控清单有 ${all.length} 个物品，单次最多刷新 100 个，请使用多选`)
+      return
+    }
+    return handleRefresh(all)
+  }
+  if (targets.length > 100) {
+    message.warning(`选中 ${targets.length} 个超过单次上限 100，请减少选中`)
+    return
+  }
+
+  refreshing.value = true
+  try {
+    const res = await store.refreshPrices(targets)
+    if (res.failed === 0) {
+      message.success(`已刷新 ${res.success} 个物品`)
+    } else {
+      message.warning(`刷新完成：成功 ${res.success} / 失败 ${res.failed}`)
+    }
+    startCooldown(60)
+  } catch (e: any) {
+    if (e?.response?.status === 429) {
+      const retryAfter = e.response.data?.detail?.retry_after ?? 60
+      message.error(`刷新过于频繁，${retryAfter}s 后再试`)
+      startCooldown(retryAfter)
+    } else {
+      message.error(e?.response?.data?.detail || '刷新失败')
+    }
+  } finally {
+    refreshing.value = false
+  }
+}
+
+const refreshButtonText = computed(() => {
+  if (cooldownSec.value > 0) return `${cooldownSec.value}s 后可刷新`
+  if (checkedKeys.value.length > 0) return `刷新选中 ${checkedKeys.value.length} 项`
+  return '刷新全部'
+})
+
+const refreshButtonDisabled = computed(
+  () => refreshing.value || cooldownSec.value > 0 || checkedKeys.value.length > 100,
+)
 
 const formRules: FormRules = {
   market_hash_name: [
