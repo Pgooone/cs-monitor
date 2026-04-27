@@ -486,9 +486,18 @@ function initLineChart() {
 function initKlineChart() {
   if (!chartInstance) return
   const raw = klineData.value
-  const dates = raw.map((d) => d.date)
+  // 后端返回 timestamp（Unix 秒），前端需要 date 字符串
+  const dates = raw.map((d) => {
+    if (d.date) return d.date
+    // timestamp 转日期字符串
+    const ts = (d as any).timestamp
+    if (ts) {
+      return new Date(ts * 1000).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+    }
+    return ''
+  })
   const data = raw.map((d) => [d.open, d.close, d.low, d.high])
-  const volumes = raw.map((d, i) => [i, d.volume, d.close > d.open ? 1 : -1])
+  const volumes = raw.map((d, i) => [i, d.volume || 0, d.close > d.open ? 1 : -1])
   const closePrices = raw.map((d) => d.close)
 
   const maSeries: any[] = []
