@@ -227,7 +227,8 @@ use([
 
 const route = useRoute()
 const marketHashName = computed(() => decodeURIComponent(route.params.name as string))
-const displayName = computed(() => marketHashName.value)
+const displayNameValue = ref<string | null>(null)
+const displayName = computed(() => displayNameValue.value || marketHashName.value)
 const { isDark, colorUp, colorDown } = useTheme()
 
 const loading = ref(false)
@@ -624,6 +625,7 @@ async function loadData() {
       api.platformPrices(name),
       api.alerts(1, 50, { market_hash_name: name }),
       api.trends(name, 30),
+      api.watchlist(),
     ]
     if (chartType.value === 'kline') {
       reqs.push(api.kline(name, klinePeriod.value))
@@ -634,8 +636,17 @@ async function loadData() {
     platformPrices.value = results[1].data
     alerts.value = results[2].data.items
     trendData.value = results[3].data
-    if (chartType.value === 'kline' && results[4]) {
-      klineData.value = results[4].data.data || []
+    if (chartType.value === 'kline' && results[5]) {
+      klineData.value = results[5].data.data || []
+    }
+
+    // 从 watchlist 获取 display_name
+    const watchlistData = results[4]?.data
+    if (Array.isArray(watchlistData)) {
+      const matched = watchlistData.find((w: any) => w.market_hash_name === name)
+      if (matched?.display_name) {
+        displayNameValue.value = matched.display_name
+      }
     }
 
     // 当前价

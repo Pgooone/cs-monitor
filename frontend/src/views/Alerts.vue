@@ -86,7 +86,7 @@
           >
             <div class="alert-card__left">
               <div class="alert-card__name">
-                {{ alert.market_hash_name }}
+                {{ alert.display_name || alert.market_hash_name }}
                 <span v-if="activeTab === 'extreme' && 'platform' in alert" class="alert-card__platform">
                   @{{ (alert as any).platform }}
                 </span>
@@ -442,7 +442,7 @@ const contextLoading = ref(false)
 
 const detailTitle = computed(() => {
   if (!selectedAlert.value) return '告警详情'
-  return selectedAlert.value.market_hash_name
+  return (selectedAlert.value as any).display_name || selectedAlert.value.market_hash_name
 })
 
 async function openDetail(alert: AlertRecord | ExtremeAlertRecord) {

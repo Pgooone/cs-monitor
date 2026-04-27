@@ -224,7 +224,7 @@
             class="heatmap-item"
           >
             <div class="heatmap-item__info">
-              <div class="heatmap-item__name">{{ item.market_hash_name }}</div>
+              <div class="heatmap-item__name">{{ item.display_name || item.market_hash_name }}</div>
               <div class="heatmap-item__price font-mono-num">
                 <AnimatedNumber
                   v-if="item.current_price != null"

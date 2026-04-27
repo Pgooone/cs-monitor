@@ -10,7 +10,7 @@
         >
           <div class="alert-feed__dot" :class="`alert-feed__dot--${item.alert_type}`" />
           <div class="alert-feed__content">
-            <div class="alert-feed__name">{{ item.market_hash_name }}</div>
+            <div class="alert-feed__name">{{ item.display_name || item.market_hash_name }}</div>
             <div class="alert-feed__meta">
               <span :class="changeClass(item.change_percent)">
                 {{ formatChange(item.change_percent) }}

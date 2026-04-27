@@ -35,7 +35,7 @@
       >
         <div class="track-card__header">
           <div class="track-card__title">
-            {{ item.market_hash_name }}
+            {{ item.display_name || item.market_hash_name }}
           </div>
           <n-tag
             :type="item.enabled ? 'success' : 'default'"
@@ -278,7 +278,7 @@
       :positive-loading="deleting"
       @positive-click="handleDeleteConfirm"
     >
-      确定要删除追踪项 "{{ itemToDelete?.market_hash_name }}@{{ itemToDelete?.platform }}" 吗？此操作不可恢复。
+      确定要删除追踪项 "{{ itemToDelete?.display_name || itemToDelete?.market_hash_name }}@{{ itemToDelete?.platform }}" 吗？此操作不可恢复。
     </n-modal>
   </div>
 </template>

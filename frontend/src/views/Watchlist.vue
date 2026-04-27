@@ -239,7 +239,7 @@
       :positive-loading="deleting"
       @positive-click="handleDeleteConfirm"
     >
-      确定要删除监控项 "{{ itemToDelete?.market_hash_name }}" 吗？此操作不可恢复。
+      确定要删除监控项 "{{ itemToDelete?.display_name || itemToDelete?.market_hash_name }}" 吗？此操作不可恢复。
     </n-modal>
   </div>
 </template>

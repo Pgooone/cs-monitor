@@ -52,6 +52,7 @@ api.interceptors.response.use(
 
 export interface VolatileItem {
   market_hash_name: string
+  display_name: string | null
   current_price: number | null
   change_percent: number
   sparkline: number[]
@@ -106,6 +107,7 @@ export interface WatchlistItemWithPrice {
 export interface AlertRecord {
   id: number
   market_hash_name: string
+  display_name: string | null
   alert_type: string
   current_price: number | null
   baseline_price: number | null
@@ -116,6 +118,7 @@ export interface AlertRecord {
 export interface ExtremeAlertRecord {
   id: number
   market_hash_name: string
+  display_name: string | null
   platform: string
   alert_type: string
   prev_price: number | null
@@ -184,6 +187,7 @@ export interface UpdateWatchlistPayload {
 export interface ExtremeTrackConfig {
   id: number
   market_hash_name: string
+  display_name: string | null
   platform: string
   interval_seconds: number
   enabled: number
@@ -303,6 +307,7 @@ export interface SearchItemResult {
 /** 实时价格查询结果 */
 export interface ItemPriceResult {
   market_hash_name: string
+  display_name: string | null
   dataList: { platform: string; sellPrice: number }[]
   in_watchlist: boolean
 }

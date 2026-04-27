@@ -31,9 +31,9 @@
         @click="selectCandidate(item)"
         @mouseenter="selectedIndex = idx"
       >
-        <span class="item-search__candidate-name">{{ item.market_hash_name }}</span>
+        <span class="item-search__candidate-name">{{ item.name || item.market_hash_name }}</span>
         <span v-if="item.name && item.name !== item.market_hash_name" class="item-search__candidate-alias">
-          {{ item.name }}
+          {{ item.market_hash_name }}
         </span>
       </div>
     </div>
@@ -42,7 +42,7 @@
     <n-card v-if="priceResult" class="item-search__result" size="small">
       <template #header>
         <div class="item-search__header">
-          <span class="item-search__name">{{ priceResult.market_hash_name }}</span>
+          <span class="item-search__name">{{ priceResult.display_name || priceResult.market_hash_name }}</span>
           <n-tag v-if="priceResult.in_watchlist" type="success" size="small">已在监控</n-tag>
         </div>
       </template>
