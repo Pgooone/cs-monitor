@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from api.steamdt import SteamDTClient, SteamDTConfig
-from config import MonitorConfig
+from api.steamdt import SteamDTClient, SteamDTBusinessError, SteamDTError, SteamDTRateLimitError
 from storage.database import Database
-from web.deps import get_config, get_db, require_auth
+from web.deps import get_db, require_auth
 from web.schemas import LatestPriceItem, PlatformPriceItem, PriceHistoryItem
 
 router = APIRouter(prefix="/prices", tags=["prices"])
@@ -33,48 +32,52 @@ def search_items_local(
 @router.get("/lookup")
 def lookup_item_price(
     market_hash_name: str = Query(..., description="精确的 marketHashName"),
+    request: Request = None,  # type: ignore[assignment]
     db: Database = Depends(get_db),
-    config: MonitorConfig = Depends(get_config),
     user: dict = Depends(require_auth),
 ) -> dict:
     """通过精确 marketHashName 查询饰品各平台实时价格."""
     if not market_hash_name.strip():
         raise HTTPException(status_code=400, detail="market_hash_name 不能为空")
 
-    steamdt_config = SteamDTConfig(
-        api_key=config.api_key,
-        base_url=config.api_base_url,
-        timeout=config.request_timeout,
-        max_retries=config.request_retry,
-    )
-    client = SteamDTClient(steamdt_config)
+    client: SteamDTClient = request.app.state.steamdt_client
+    name = market_hash_name.strip()
     try:
-        response = client.get_items_batch([market_hash_name.strip()])
-        if not response.get("success"):
-            raise HTTPException(
-                status_code=502,
-                detail=f"SteamDT API 错误: {response.get('errorMsg', '未知错误')}",
-            )
+        response = client.get_item_price_single(name)
+    except SteamDTRateLimitError as e:
+        retry_after = int(e.retry_after) + 1
+        raise HTTPException(
+            status_code=429,
+            detail={"error": "rate_limited", "retry_after": retry_after},
+            headers={"Retry-After": str(retry_after)},
+        )
+    except SteamDTBusinessError as e:
+        raise HTTPException(status_code=502, detail=f"[{e.code}] {e.error_msg}")
+    except SteamDTError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
-        data = response.get("data") or []
-        if not data:
-            return {
-                "market_hash_name": market_hash_name,
-                "dataList": [],
-                "in_watchlist": db.get_watchlist_item(market_hash_name) is not None,
-            }
+    if not response.get("success"):
+        raise HTTPException(
+            status_code=502,
+            detail=f"SteamDT API 错误: {response.get('errorMsg', '未知错误')}",
+        )
 
-        item = data[0]
-        in_wl = db.get_watchlist_item(
-            item.get("marketHashName", market_hash_name)
-        ) is not None
+    data = response.get("data")
+    if not data:
         return {
-            "market_hash_name": item.get("marketHashName", market_hash_name),
-            "dataList": item.get("dataList") or [],
-            "in_watchlist": in_wl,
+            "market_hash_name": market_hash_name,
+            "dataList": [],
+            "in_watchlist": db.get_watchlist_item(market_hash_name) is not None,
         }
-    finally:
-        client.close()
+
+    in_wl = db.get_watchlist_item(
+        data.get("marketHashName", market_hash_name)
+    ) is not None
+    return {
+        "market_hash_name": data.get("marketHashName", market_hash_name),
+        "dataList": data.get("dataList") or [],
+        "in_watchlist": in_wl,
+    }
 
 
 @router.get("/latest", response_model=list[LatestPriceItem])
