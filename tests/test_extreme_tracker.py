@@ -6,7 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from api.steamdt import SteamDTClient, SteamDTConfig
+from api.steamdt import (
+    SteamDTClient,
+    SteamDTConfig,
+    SteamDTRateLimitError,
+)
 from config import MonitorConfig
 from core.extreme_tracker import ExtremeTracker
 from storage.database import Database
@@ -60,12 +64,7 @@ class TestExtremeTracker:
         mock_response.json.return_value = {
             "success": True,
             "data": [
-                {
-                    "marketHashName": "AK-47 | Redline (Field-Tested)",
-                    "dataList": [
-                        {"platform": "BUFF", "sellPrice": 125.0, "sellCount": 42},
-                    ],
-                },
+                {"platform": "BUFF", "sellPrice": 125.0, "sellCount": 42},
             ],
         }
         tracker.client._client.request = MagicMock(return_value=mock_response)
@@ -90,12 +89,7 @@ class TestExtremeTracker:
         mock_response.json.return_value = {
             "success": True,
             "data": [
-                {
-                    "marketHashName": "AK-47 | Redline (Field-Tested)",
-                    "dataList": [
-                        {"platform": "BUFF", "sellPrice": 125.0, "sellCount": 42},
-                    ],
-                },
+                {"platform": "BUFF", "sellPrice": 125.0, "sellCount": 42},
             ],
         }
         tracker.client._client.request = MagicMock(return_value=mock_response)
@@ -108,12 +102,7 @@ class TestExtremeTracker:
         mock_response.json.return_value = {
             "success": True,
             "data": [
-                {
-                    "marketHashName": "AK-47 | Redline (Field-Tested)",
-                    "dataList": [
-                        {"platform": "BUFF", "sellPrice": 130.0, "sellCount": 42},
-                    ],
-                },
+                {"platform": "BUFF", "sellPrice": 130.0, "sellCount": 42},
             ],
         }
         mock_time.return_value = 1100
@@ -132,12 +121,7 @@ class TestExtremeTracker:
         mock_response.json.return_value = {
             "success": True,
             "data": [
-                {
-                    "marketHashName": "AK-47 | Redline (Field-Tested)",
-                    "dataList": [
-                        {"platform": "BUFF", "sellPrice": 125.0, "sellCount": 42},
-                    ],
-                },
+                {"platform": "BUFF", "sellPrice": 125.0, "sellCount": 42},
             ],
         }
         tracker.client._client.request = MagicMock(return_value=mock_response)
@@ -148,12 +132,7 @@ class TestExtremeTracker:
         mock_response.json.return_value = {
             "success": True,
             "data": [
-                {
-                    "marketHashName": "AK-47 | Redline (Field-Tested)",
-                    "dataList": [
-                        {"platform": "BUFF", "sellPrice": 130.0, "sellCount": 38},
-                    ],
-                },
+                {"platform": "BUFF", "sellPrice": 130.0, "sellCount": 38},
             ],
         }
         mock_time.return_value = 1100
@@ -177,12 +156,7 @@ class TestExtremeTracker:
         mock_response.json.return_value = {
             "success": True,
             "data": [
-                {
-                    "marketHashName": "AK-47 | Redline (Field-Tested)",
-                    "dataList": [
-                        {"platform": "BUFF", "sellPrice": 125.0, "sellCount": 42},
-                    ],
-                },
+                {"platform": "BUFF", "sellPrice": 125.0, "sellCount": 42},
             ],
         }
         tracker.client._client.request = MagicMock(return_value=mock_response)
@@ -192,12 +166,7 @@ class TestExtremeTracker:
         mock_response.json.return_value = {
             "success": True,
             "data": [
-                {
-                    "marketHashName": "AK-47 | Redline (Field-Tested)",
-                    "dataList": [
-                        {"platform": "BUFF", "sellPrice": 130.0, "sellCount": 42},
-                    ],
-                },
+                {"platform": "BUFF", "sellPrice": 130.0, "sellCount": 42},
             ],
         }
         mock_time.return_value = 1100
@@ -208,39 +177,23 @@ class TestExtremeTracker:
         mock_response.json.return_value = {
             "success": True,
             "data": [
-                {
-                    "marketHashName": "AK-47 | Redline (Field-Tested)",
-                    "dataList": [
-                        {"platform": "BUFF", "sellPrice": 135.0, "sellCount": 42},
-                    ],
-                },
+                {"platform": "BUFF", "sellPrice": 135.0, "sellCount": 42},
             ],
         }
         mock_time.return_value = 1200
         results2 = tracker.tick()
         assert len(results2) == 0
 
-    @patch("api.steamdt.time.sleep", return_value=None)
-    def test_tick_429_degradation(self, mock_sleep, tracker):
-        """测试 429 限流自动降频."""
-        import httpx
-
-        mock_response = MagicMock()
-        mock_response.status_code = 429
-        mock_response.text = "Too Many Requests"
-        error = httpx.HTTPStatusError(
-            "Rate limited",
-            request=MagicMock(),
-            response=mock_response,
+    @patch("core.extreme_tracker.time.sleep", return_value=None)
+    def test_tick_429_rate_limit(self, mock_sleep, tracker):
+        """测试 429 限流：捕获 SteamDTRateLimitError，sleep 后返回 None."""
+        tracker.client._request = MagicMock(
+            side_effect=SteamDTRateLimitError(retry_after=30.0, source="http")
         )
-        mock_response.raise_for_status.side_effect = error
-        tracker.client._client.request = MagicMock(return_value=mock_response)
 
         results = tracker.tick()
         assert len(results) == 0
-
-        tid = "AK-47 | Redline (Field-Tested)@BUFF"
-        assert tracker._current_intervals[tid] == 120  # 60 * 2
+        mock_sleep.assert_called_once_with(30.0)
 
     @patch("api.steamdt.time.sleep", return_value=None)
     def test_tick_disabled(self, mock_sleep, tracker):
