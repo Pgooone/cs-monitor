@@ -8,6 +8,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
+from notify.serverchan import ServerChanChannel
+from notify.telegram import TelegramChannel
 from notify.wecom import WeComChannel
 from storage.database import Database
 from web.deps import get_config, get_db, require_auth
@@ -67,6 +69,8 @@ def test_notify(
     channel = req.channel or (
         db.get_system_config("notify_channel") or config.notify_channel
     )
+    test_title = "CS2 Monitor 测试通知"
+    test_content = "这是一条来自 CS2 饰品监控系统的测试消息。"
 
     if channel == "wecom":
         url = req.extra.get("webhook_url") if req.extra else None
@@ -75,16 +79,40 @@ def test_notify(
         if not url:
             raise HTTPException(status_code=400, detail="企业微信 Webhook URL 未配置")
         ch = WeComChannel(webhook_url=url)
-        ok = ch.send_with_retry(
-            "CS2 Monitor 测试通知",
-            "这是一条来自 CS2 饰品监控系统的测试消息。",
-        )
+        ok = ch.send_with_retry(test_title, test_content)
         if not ok:
             raise HTTPException(status_code=500, detail="企业微信通知发送失败")
         return {"message": "测试通知已发送"}
 
-    # Telegram / ServerChan 暂未实现前端测试，预留接口
-    raise HTTPException(status_code=400, detail=f"渠道 '{channel}' 暂不支持测试")
+    if channel == "telegram":
+        bot_token = req.extra.get("bot_token") if req.extra else None
+        chat_id = req.extra.get("chat_id") if req.extra else None
+        if not bot_token:
+            bot_token = db.get_system_config("telegram_bot_token") or config.telegram_bot_token
+        if not chat_id:
+            chat_id = db.get_system_config("telegram_chat_id") or config.telegram_chat_id
+        if not bot_token or not chat_id:
+            raise HTTPException(status_code=400, detail="Telegram Bot Token 或 Chat ID 未配置")
+        proxy = db.get_system_config("telegram_proxy") or config.telegram_proxy or None
+        ch = TelegramChannel(bot_token=bot_token, chat_id=chat_id, proxy=proxy)
+        ok = ch.send(test_title, test_content)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Telegram 通知发送失败")
+        return {"message": "测试通知已发送"}
+
+    if channel == "serverchan":
+        sendkey = req.extra.get("sendkey") if req.extra else None
+        if not sendkey:
+            sendkey = db.get_system_config("serverchan_sendkey") or config.serverchan_sendkey
+        if not sendkey:
+            raise HTTPException(status_code=400, detail="Server 酱 SendKey 未配置")
+        ch = ServerChanChannel(sendkey=sendkey)
+        ok = ch.send(test_title, test_content)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Server 酱通知发送失败")
+        return {"message": "测试通知已发送"}
+
+    raise HTTPException(status_code=400, detail=f"不支持的通知渠道: '{channel}'")
 
 
 @router.get("/system")
