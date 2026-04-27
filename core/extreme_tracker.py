@@ -108,7 +108,7 @@ class ExtremeTracker:
 
         data = response.get("data") or []
         for p in data:
-            if p.get("platform") == platform:
+            if p.get("platform", "").lower() == platform.lower():
                 return {
                     "price": p.get("sellPrice"),
                     "quantity": p.get("sellCount"),
