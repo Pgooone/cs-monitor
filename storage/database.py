@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -18,10 +19,19 @@ class Database:
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._local = threading.local()
         self._init_tables()
 
     def _connect(self) -> sqlite3.Connection:
-        """创建数据库连接（启用 WAL 模式与性能优化）."""
+        """获取线程本地数据库连接（首次创建时执行 PRAGMA 优化）."""
+        conn = getattr(self._local, "connection", None)
+        if conn is not None:
+            try:
+                conn.execute("SELECT 1")
+                return conn
+            except sqlite3.ProgrammingError:
+                self._local.connection = None
+
         conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
@@ -30,6 +40,7 @@ class Database:
         conn.execute("PRAGMA busy_timeout = 5000")
         conn.execute("PRAGMA cache_size = -64000")
         conn.execute("PRAGMA temp_store = MEMORY")
+        self._local.connection = conn
         return conn
 
     @contextmanager
@@ -42,8 +53,6 @@ class Database:
         except Exception:
             conn.rollback()
             raise
-        finally:
-            conn.close()
 
     def _init_tables(self) -> None:
         """首次运行时自动建表."""
@@ -338,14 +347,13 @@ class Database:
     ) -> list[dict[str, Any]]:
         """查询最近 N 小时内的同类告警记录."""
         with self._cursor() as cursor:
-            # SQLite 不支持在字符串字面量中用参数绑定，使用字符串拼接
-            sql = f"""
+            sql = """
                 SELECT * FROM alert_logs
                 WHERE market_hash_name = ? AND alert_type = ?
-                  AND notified_at >= datetime('now', '-{hours} hours')
+                  AND notified_at >= datetime('now', ?)
                 ORDER BY notified_at DESC
             """
-            cursor.execute(sql, (market_hash_name, alert_type))
+            cursor.execute(sql, (market_hash_name, alert_type, f"-{hours} hours"))
             return [dict(row) for row in cursor.fetchall()]
 
     # ------------------------------------------------------------------
@@ -455,13 +463,13 @@ class Database:
     ) -> list[dict[str, Any]]:
         """查询最近 N 秒内的同类极致追踪告警记录."""
         with self._cursor() as cursor:
-            sql = f"""
+            sql = """
                 SELECT * FROM extreme_track_alerts
                 WHERE market_hash_name = ? AND platform = ? AND alert_type = ?
-                  AND notified_at >= datetime('now', '-{seconds} seconds')
+                  AND notified_at >= datetime('now', ?)
                 ORDER BY notified_at DESC
             """
-            cursor.execute(sql, (market_hash_name, platform, alert_type))
+            cursor.execute(sql, (market_hash_name, platform, alert_type, f"-{seconds} seconds"))
             return [dict(row) for row in cursor.fetchall()]
 
     def get_extreme_alerts(
@@ -1222,10 +1230,11 @@ class Database:
             conditions.append("platform = ?")
             params.append(platform)
 
-        where_clause = " AND ".join(conditions)
-        # SQLite datetime 表达式不支持参数绑定间隔值，需字符串拼接
         if days:
-            where_clause += f" AND recorded_at >= datetime('now', '-{days} days')"
+            conditions.append("recorded_at >= datetime('now', ?)")
+            params.append(f"-{days} days")
+
+        where_clause = " AND ".join(conditions)
 
         with self._cursor() as cursor:
             cursor.execute(
@@ -1369,9 +1378,11 @@ class Database:
             conditions.append("platform = ?")
             params.append(platform)
 
-        where_clause = " AND ".join(conditions)
         if days:
-            where_clause += f" AND date >= date('now', '-{days} days')"
+            conditions.append("date >= date('now', ?)")
+            params.append(f"-{days} days")
+
+        where_clause = " AND ".join(conditions)
 
         with self._cursor() as cursor:
             cursor.execute(
