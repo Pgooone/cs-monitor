@@ -1237,26 +1237,36 @@ onBeforeUnmount(() => {
 .search-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.75rem;
   padding: 10px 14px;
   cursor: pointer;
   transition: background 0.15s;
+  overflow: hidden;
 }
 
 .search-item:hover {
-  background: rgba(46, 91, 255, 0.08);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .search-item-name {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--n-text-color-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .search-item-alias {
   font-size: 0.75rem;
   color: var(--n-text-color-3);
-  margin-left: 0.5rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .selected-item-hint {

@@ -238,27 +238,37 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 .item-search__candidate {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.75rem;
   padding: 10px 14px;
   cursor: pointer;
   transition: background 0.15s;
+  overflow: hidden;
 }
 
 .item-search__candidate:hover,
 .item-search__candidate--active {
-  background: rgba(46, 91, 255, 0.08);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .item-search__candidate-name {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--cs-text-primary, #333);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .item-search__candidate-alias {
   font-size: 0.75rem;
   color: var(--cs-text-secondary, #999);
-  margin-left: 0.5rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-search__result {

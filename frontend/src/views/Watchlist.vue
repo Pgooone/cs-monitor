@@ -165,10 +165,42 @@
         label-width="100"
       >
         <n-form-item label="饰品名称" path="market_hash_name">
+          <div class="watchlist-search-wrapper" v-if="!isEditing">
+            <n-input
+              v-model:value="searchQuery"
+              placeholder="输入饰品名称搜索，如 AK-47、红线..."
+              clearable
+              :loading="searchLoading"
+              @update:value="onSearchInput"
+              @blur="onSearchBlur"
+            />
+            <div
+              v-if="showSearchDropdown && searchResults.length > 0"
+              class="watchlist-search-dropdown"
+            >
+              <div
+                v-for="item in searchResults"
+                :key="item.market_hash_name"
+                class="watchlist-search-item"
+                @mousedown.prevent="selectSearchResult(item)"
+              >
+                <span class="watchlist-search-item-name">{{ item.name || item.market_hash_name }}</span>
+                <span
+                  v-if="item.name && item.name !== item.market_hash_name"
+                  class="watchlist-search-item-alias"
+                >
+                  {{ item.market_hash_name }}
+                </span>
+              </div>
+            </div>
+            <div v-if="formData.market_hash_name" class="watchlist-selected-hint">
+              已选: {{ formData.market_hash_name }}
+            </div>
+          </div>
           <n-input
-            v-model:value="formData.market_hash_name"
-            placeholder="请输入饰品市场名称"
-            :disabled="isEditing"
+            v-else
+            :value="formData.market_hash_name"
+            disabled
           />
         </n-form-item>
         <n-form-item label="显示名称" path="display_name">
@@ -233,6 +265,7 @@ import {
 import type { FormRules, FormInst } from 'naive-ui'
 import { Scan, MoreHorizontal, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-vue-next'
 import { useWatchlistStore } from '@/stores/watchlist'
+import api from '@/api'
 import type { WatchlistItemWithPrice } from '@/api'
 import MiniSparkline from '@/components/business/MiniSparkline.vue'
 import SteamItemImage from '@/components/business/SteamItemImage.vue'
@@ -270,6 +303,48 @@ const formData = ref({
   threshold_percent: 5.0,
   enabled: true,
 })
+
+// ─── 搜索饰品（用于添加弹窗）───
+const searchQuery = ref('')
+const searchResults = ref<Array<{ market_hash_name: string; name: string | null }>>([])
+const showSearchDropdown = ref(false)
+const searchLoading = ref(false)
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function onSearchInput(val: string) {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchResults.value = []
+  showSearchDropdown.value = false
+
+  const q = val.trim()
+  if (!q) return
+
+  searchDebounceTimer = setTimeout(async () => {
+    searchLoading.value = true
+    try {
+      const { data } = await api.searchItems(q)
+      searchResults.value = data || []
+      showSearchDropdown.value = searchResults.value.length > 0
+    } catch {
+      searchResults.value = []
+    } finally {
+      searchLoading.value = false
+    }
+  }, 300)
+}
+
+function selectSearchResult(item: { market_hash_name: string; name: string | null }) {
+  formData.value.market_hash_name = item.market_hash_name
+  searchQuery.value = item.name || item.market_hash_name
+  showSearchDropdown.value = false
+  searchResults.value = []
+}
+
+function onSearchBlur() {
+  setTimeout(() => {
+    showSearchDropdown.value = false
+  }, 200)
+}
 
 // ─── 刷新状态 ───
 const refreshing = ref(false)
@@ -364,6 +439,9 @@ function resetForm() {
 function openCreateModal() {
   isEditing.value = false
   resetForm()
+  searchQuery.value = ''
+  searchResults.value = []
+  showSearchDropdown.value = false
   modalVisible.value = true
 }
 
@@ -1116,5 +1194,67 @@ html:not(.dark) .skeleton-line {
 
 html:not(.dark) .skeleton-card:hover {
   border-color: #e2e8f0 !important;
+}
+
+/* ─── 添加弹窗搜索下拉 ─── */
+.watchlist-search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.watchlist-search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  margin-top: 4px;
+  background: var(--n-color, #fff);
+  border: 1px solid var(--n-border-color, #e0e0e6);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.watchlist-search-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  overflow: hidden;
+}
+
+.watchlist-search-item:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.watchlist-search-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--n-text-color-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.watchlist-search-item-alias {
+  font-size: 0.75rem;
+  color: var(--n-text-color-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.watchlist-selected-hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--n-text-color-3);
 }
 </style>
