@@ -45,16 +45,20 @@
         </div>
         <div class="item-hero__platforms">
           <n-tag
-            v-for="p in platformPrices"
+            v-for="p in sortedPlatformPrices"
             :key="p.platform"
             size="small"
-            :type="p.price === minPlatformPrice ? 'primary' : 'default'"
             :bordered="false"
-            class="item-hero__platform-tag"
+            :class="[
+              'item-hero__platform-tag',
+              p.price === maxPlatformPrice ? 'platform-tag--highest' : 'platform-tag--normal'
+            ]"
           >
-            {{ p.platform }} ¥{{ p.price.toFixed(0) }}
+            <span class="platform-tag__content">
+              {{ p.platform }} ¥{{ p.price.toFixed(0) }}
+            </span>
           </n-tag>
-          <span v-if="!platformPrices.length" class="text-gray-400 text-sm">暂无平台数据</span>
+          <span v-if="!sortedPlatformPrices.length" class="text-gray-400 text-sm">暂无平台数据</span>
         </div>
       </div>
       <div class="item-hero__right">
@@ -285,9 +289,17 @@ const wearClass = computed(() => {
   return map[match[1]] || ''
 })
 
-const minPlatformPrice = computed(() => {
-  if (!platformPrices.value.length) return undefined
-  return Math.min(...platformPrices.value.map((p) => p.price))
+const sortedPlatformPrices = computed(() => {
+  const valid = platformPrices.value.filter((p) => p.price > 0)
+  const zero = platformPrices.value.filter((p) => p.price === 0)
+  valid.sort((a, b) => b.price - a.price)
+  zero.sort((a, b) => a.platform.localeCompare(b.platform))
+  return [...valid, ...zero]
+})
+
+const maxPlatformPrice = computed(() => {
+  const valid = platformPrices.value.filter((p) => p.price > 0)
+  return valid.length ? Math.max(...valid.map((p) => p.price)) : undefined
 })
 
 const trendLabel = computed(() => {
@@ -852,12 +864,15 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 1rem;
   padding: 1.25rem;
-  background: var(--n-card-color, #fff);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 1rem;
   border: 1px solid rgba(0, 0, 0, 0.06);
   margin-bottom: 1rem;
 }
 html.dark .item-hero {
+  background: rgba(15, 15, 18, 0.6);
   border-color: rgba(255, 255, 255, 0.06);
 }
 
@@ -938,11 +953,87 @@ html.dark .wear--bs {
 
 .item-hero__platforms {
   display: flex;
-  gap: 0.375rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
 }
+
+/* 覆盖 naive-ui n-tag 的默认样式 */
 .item-hero__platform-tag {
   font-family: 'JetBrains Mono', monospace;
+  transition: all 200ms ease;
+}
+
+/* 普通平台标签 - 透明底 + 细边框 */
+.item-hero__platform-tag.platform-tag--normal {
+  background: transparent !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #475569 !important;
+}
+
+html.dark .item-hero__platform-tag.platform-tag--normal {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #94a3b8 !important;
+}
+
+/* 最高价标签 - 科技脉搏特效 */
+.item-hero__platform-tag.platform-tag--highest {
+  background: rgba(239, 68, 68, 0.06) !important;
+  border: 1px solid rgba(239, 68, 68, 0.45) !important;
+  color: #dc2626 !important;
+  animation: highest-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  position: relative;
+  padding-left: 1.5rem !important;
+}
+
+html.dark .item-hero__platform-tag.platform-tag--highest {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+/* LED 指示点 */
+.platform-tag--highest .platform-tag__content::before {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px 1px rgba(239, 68, 68, 0.7);
+  animation: led-blink 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+html.dark .platform-tag--highest .platform-tag__content::before {
+  background: #f87171;
+  box-shadow: 0 0 8px 2px rgba(248, 113, 113, 0.6);
+}
+
+/* 呼吸光晕动画 */
+@keyframes highest-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.12),
+                inset 0 0 4px rgba(239, 68, 68, 0.03);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.25),
+                inset 0 0 8px rgba(239, 68, 68, 0.08);
+  }
+}
+
+/* LED 微闪动画 */
+@keyframes led-blink {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.15);
+  }
 }
 
 .item-hero__right {
