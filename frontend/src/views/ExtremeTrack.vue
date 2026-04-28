@@ -1,121 +1,161 @@
 <template>
-  <div>
-    <page-header title="极致追踪">
-      <template #actions>
-        <n-button type="primary" @click="openCreateModal">
-          <template #icon><AddOutline /></template>
-          添加追踪
-        </n-button>
-      </template>
-    </page-header>
-
-    <!-- 空态 -->
-    <div v-if="store.loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      <skeleton-card v-for="i in 4" :key="i" />
+  <div class="extreme-track">
+    <!-- 标题区 -->
+    <div class="extreme-track__header">
+      <div>
+        <h2 class="extreme-track__title">极致追踪模式</h2>
+        <p class="extreme-track__desc">高频轮询模式，针对极稀有饰品进行毫秒级价格监控。</p>
+      </div>
+      <button class="btn-primary text-xs h-9 px-4" @click="openCreateModal">
+        <Plus class="w-4 h-4" />
+        添加追踪
+      </button>
     </div>
 
-    <div v-else-if="store.items.length === 0" class="empty-state">
-      <n-empty description="暂无追踪配置" size="huge">
-        <template #icon>
-          <TrailSignOutline style="font-size: 48px; opacity: 0.4" />
-        </template>
-        <template #extra>
-          <n-button type="primary" @click="openCreateModal">添加第一个追踪</n-button>
-        </template>
-      </n-empty>
+    <!-- 骨架屏 -->
+    <div v-if="store.loading" class="extreme-track__grid">
+      <div v-for="n in 4" :key="n" class="glass-card skeleton-card track-card">
+        <div class="track-card__head">
+          <div class="skeleton-line" style="width: 4rem; height: 4rem; border-radius: 0.75rem;" />
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 0.375rem;">
+            <div class="skeleton-line" style="width: 70%; height: 1.25rem;" />
+            <div class="skeleton-line" style="width: 40%; height: 0.75rem;" />
+          </div>
+        </div>
+        <div class="skeleton-line" style="width: 100%; height: 2.5rem; margin-top: 0.75rem;" />
+        <div class="skeleton-line" style="width: 100%; height: 0.5rem; margin-top: 0.75rem;" />
+        <div class="skeleton-line" style="width: 100%; height: 2rem; margin-top: 0.75rem;" />
+        <div class="skeleton-line" style="width: 100%; height: 3rem; margin-top: 0.75rem;" />
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+          <div class="skeleton-line" style="flex: 1; height: 2rem; border-radius: 0.5rem;" />
+          <div class="skeleton-line" style="flex: 1; height: 2rem; border-radius: 0.5rem;" />
+        </div>
+      </div>
     </div>
 
     <!-- 卡片网格 -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div v-else class="extreme-track__grid">
       <div
         v-for="item in store.items"
         :key="rowKey(item)"
-        class="track-card"
-        :class="{ 'track-card--disabled': !item.enabled }"
+        class="glass-card track-card"
+        :class="item.enabled ? 'track-card--enabled' : 'track-card--disabled'"
       >
-        <div class="track-card__header">
-          <div class="track-card__title">
-            {{ item.display_name || item.market_hash_name }}
+        <!-- 头部：图片 + 名称 + 状态 -->
+        <div class="track-card__head">
+          <div class="track-card__image">
+            <span v-if="item.enabled" class="track-card__image-pulse" />
+            <span class="track-card__weapon">{{ getWeaponEmoji(item.market_hash_name) }}</span>
           </div>
-          <n-tag
-            :type="item.enabled ? 'success' : 'default'"
-            size="small"
-            round
-          >
-            {{ item.enabled ? '运行中' : '已停止' }}
-          </n-tag>
-        </div>
-
-        <div class="track-card__platform">
-          <span class="platform-badge">{{ item.platform }}</span>
-          <span class="interval-text">{{ item.interval_seconds }}s 轮询</span>
-        </div>
-
-        <!-- 追踪强度进度条 -->
-        <div class="track-card__progress">
-          <div class="progress-label">
-            <span>追踪强度</span>
-            <span>{{ intensityPercent(item) }}%</span>
+          <div class="track-card__info">
+            <h4 class="track-card__name">{{ item.display_name || item.market_hash_name }}</h4>
+            <div class="track-card__meta">
+              <span class="track-card__platform-badge">{{ item.platform }}</span>
+              <span v-if="item.enabled" class="track-card__status track-card__status--active">
+                <span class="track-card__status-dot track-card__status-dot--active" />
+                运行中
+              </span>
+              <span v-else class="track-card__status">
+                <span class="track-card__status-dot" />
+                已停止
+              </span>
+            </div>
           </div>
-          <n-progress
-            :percentage="intensityPercent(item)"
-            :show-indicator="false"
-            :color="item.enabled ? '#3b82f6' : '#a3a3a3'"
-            :height="6"
-            :border-radius="3"
-          />
         </div>
 
-        <!-- 价格追踪配置 -->
+        <!-- 轮询信息栏 -->
+        <div class="track-card__poll-info">
+          <div class="track-card__poll-item">
+            <span class="track-card__poll-label">轮询频率</span>
+            <span class="track-card__poll-value">{{ item.interval_seconds }}s / 次</span>
+          </div>
+          <div v-if="item.alert_cooldown_seconds > 0" class="track-card__poll-item track-card__poll-item--right">
+            <span class="track-card__poll-label">冷却间隔</span>
+            <span class="track-card__poll-value track-card__poll-value--orange">{{ (item.alert_cooldown_seconds / 60).toFixed(0) }}m</span>
+          </div>
+        </div>
+
+        <!-- 雷达强度进度条 -->
+        <div class="track-card__radar">
+          <div class="track-card__radar-header">
+            <span class="track-card__radar-label">雷达强度 (Radar)</span>
+            <span class="track-card__radar-value" :class="item.enabled ? 'track-card__radar-value--active' : ''">{{ intensityPercent(item) }}%</span>
+          </div>
+          <div class="track-card__radar-bar">
+            <div v-if="item.enabled" class="track-card__radar-shimmer" />
+            <div
+              class="track-card__radar-fill"
+              :class="item.enabled ? 'track-card__radar-fill--active' : 'track-card__radar-fill--inactive'"
+              :style="{ width: `${intensityPercent(item)}%` }"
+            >
+              <div v-if="item.enabled" class="track-card__radar-tip" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 配置行 -->
         <div class="track-card__config">
-          <div class="config-row">
-            <span class="config-label">价格追踪</span>
-            <span class="config-value">
-              {{ item.price_track_enabled ? (item.price_change_mode === 'any' ? '任何变动' : `超 ${item.price_threshold_percent}%`) : '关闭' }}
+          <div class="track-card__config-row">
+            <span class="track-card__config-label">价格异常捕获</span>
+            <span class="track-card__config-value">
+              {{ item.price_track_enabled ? (item.price_change_mode === 'any' ? '任何波动' : `> ${item.price_threshold_percent}%`) : '已关闭' }}
             </span>
           </div>
-          <div class="config-row">
-            <span class="config-label">数量追踪</span>
-            <span class="config-value">
-              {{ item.quantity_track_enabled ? (item.quantity_change_mode === 'any' ? '任何变动' : `超 ${item.quantity_threshold_percent}%`) : '关闭' }}
+          <div class="track-card__config-row track-card__config-row--bordered">
+            <span class="track-card__config-label">成交量突增监控</span>
+            <span class="track-card__config-value">
+              {{ item.quantity_track_enabled ? (item.quantity_change_mode === 'any' ? '任何波动' : `> ${item.quantity_threshold_percent}%`) : '已关闭' }}
             </span>
           </div>
         </div>
 
-        <!-- 实时数据 -->
-        <div v-if="snapshots[rowKey(item)]" class="track-card__realtime">
-          <div class="realtime-label">最新数据</div>
-          <div class="realtime-row">
-            <span class="realtime-price">
-              ¥{{ snapshots[rowKey(item)]?.price?.toFixed(2) || '—' }}
-            </span>
-            <span class="realtime-quantity">
-              {{ snapshots[rowKey(item)]?.quantity ?? '—' }} 个
-            </span>
+        <!-- 内存快照区 -->
+        <div class="track-card__snapshot">
+          <div class="track-card__snapshot-header">
+            <span class="track-card__snapshot-label">内存快照 (Snapshot)</span>
+            <span v-if="item.enabled" class="track-card__snapshot-pulse" />
           </div>
-          <div class="realtime-time">
-            {{ formatTime(snapshots[rowKey(item)]?.recorded_at) }}
+          <div class="track-card__snapshot-content">
+            <div class="track-card__snapshot-price font-mono-num">
+              ¥{{ snapshots[rowKey(item)]?.price?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '—' }}
+            </div>
+            <div class="track-card__snapshot-qty font-mono-num">
+              {{ snapshots[rowKey(item)]?.quantity ?? '—' }} <span class="track-card__snapshot-qty-label">在售</span>
+            </div>
           </div>
         </div>
 
-        <!-- 操作 -->
+        <!-- 操作按钮 -->
         <div class="track-card__actions">
-          <n-button
-            text
-            size="small"
-            :type="item.enabled ? 'warning' : 'success'"
+          <button
+            class="track-card__action-btn"
+            :class="item.enabled ? 'track-card__action-btn--stop' : 'track-card__action-btn--start'"
             @click="handleToggle(item)"
           >
-            {{ item.enabled ? '停止' : '启动' }}
-          </n-button>
-          <n-button text size="small" type="primary" @click="openEditModal(item)">
-            编辑
-          </n-button>
-          <n-button text size="small" type="error" @click="openDeleteModal(item)">
-            删除
-          </n-button>
+            {{ item.enabled ? '暂停进程' : '启动追踪' }}
+          </button>
+          <button class="track-card__action-btn track-card__action-btn--reload" @click="openEditModal(item)">
+            重载配置
+          </button>
+          <button
+            class="track-card__action-btn track-card__action-btn--delete"
+            @click="openDeleteModal(item)"
+            aria-label="删除追踪"
+          >
+            <Trash2 class="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
+    </div>
+
+    <!-- 底部等待区 -->
+    <div v-if="!store.loading && store.items.length === 0" class="glass-card extreme-track__empty">
+      <Terminal class="extreme-track__empty-icon" />
+      <p class="extreme-track__empty-text">等待极致配置载入...</p>
+      <button class="btn-primary text-xs h-10 px-5 mt-4" @click="openCreateModal">
+        <Plus class="w-4 h-4" />
+        添加追踪
+      </button>
     </div>
 
     <!-- 分步骤添加/编辑弹窗 -->
@@ -314,7 +354,6 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import {
   NButton,
   NSpace,
-  NTag,
   NModal,
   NForm,
   NFormItem,
@@ -324,19 +363,15 @@ import {
   NSelect,
   NSteps,
   NStep,
-  NProgress,
   NTimePicker,
-  NEmpty,
   useMessage,
 } from 'naive-ui'
 import type { FormRules, FormInst } from 'naive-ui'
-import { AddOutline, TrailSignOutline } from '@vicons/ionicons5'
+import { Terminal, Plus, Trash2 } from 'lucide-vue-next'
 import api from '@/api'
 import { useExtremeTrackStore } from '@/stores/extremeTrack'
 import type { ExtremeTrackConfig } from '@/api'
 import { useTheme } from '@/composables/useTheme'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import SkeletonCard from '@/components/base/SkeletonCard.vue'
 
 const store = useExtremeTrackStore()
 const message = useMessage()
@@ -376,32 +411,54 @@ function stopPolling() {
   }
 }
 
-// 追踪强度 = 基于开启的追踪项和阈值计算
+// 雷达强度 = max(10, 100 - interval_seconds / 2)
 function intensityPercent(item: ExtremeTrackConfig): number {
-  let score = 0
-  if (item.enabled) score += 30
-  if (item.price_track_enabled) {
-    score += 25
-    if (item.price_change_mode === 'percent' && item.price_threshold_percent > 0) score += 10
-  }
-  if (item.quantity_track_enabled) {
-    score += 25
-    if (item.quantity_change_mode === 'percent' && item.quantity_threshold_percent > 0) score += 10
-  }
-  return score
+  return Math.max(10, 100 - (item.interval_seconds / 2))
 }
 
-function formatTime(recordedAt?: string): string {
-  if (!recordedAt) return '—'
-  const date = new Date(recordedAt)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return '刚刚'
-  if (diffMin < 60) return `${diffMin} 分钟前`
-  const diffHour = Math.floor(diffMin / 60)
-  if (diffHour < 24) return `${diffHour} 小时前`
-  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+// 武器类型 emoji 映射
+function getWeaponEmoji(name: string): string {
+  const n = name.toLowerCase()
+  if (n.includes('knife') || n.includes('karambit') || n.includes('bayonet') || n.includes('butterfly')) return '🗡️'
+  if (n.includes('glove')) return '🧤'
+  if (n.includes('ak-47')) return 'AK'
+  if (n.includes('awp')) return 'AWP'
+  if (n.includes('m4a4') || n.includes('m4a1')) return 'M4'
+  if (n.includes('desert eagle') || n.includes('deagle')) return 'DE'
+  if (n.includes('usp')) return 'USP'
+  if (n.includes('glock')) return 'G'
+  if (n.includes('p250')) return 'P'
+  if (n.includes('five-seven')) return '5-7'
+  if (n.includes('tec-9')) return 'T9'
+  if (n.includes('p90')) return 'P90'
+  if (n.includes('scar')) return 'SCAR'
+  if (n.includes('famas')) return 'FAMAS'
+  if (n.includes('galil')) return 'GALIL'
+  if (n.includes('sg')) return 'SG'
+  if (n.includes('aug')) return 'AUG'
+  if (n.includes('ssg')) return 'SSG'
+  if (n.includes('g3sg1')) return 'G3'
+  if (n.includes('mac-10')) return 'MAC'
+  if (n.includes('mp9')) return 'MP9'
+  if (n.includes('mp7')) return 'MP7'
+  if (n.includes('ump')) return 'UMP'
+  if (n.includes('pp-bizon')) return 'PP'
+  if (n.includes('nova')) return 'NOVA'
+  if (n.includes('xm1014')) return 'XM'
+  if (n.includes('sawed-off')) return 'SAW'
+  if (n.includes('mag-7')) return 'MAG'
+  if (n.includes('negev')) return 'NEG'
+  if (n.includes('m249')) return 'M249'
+  if (n.includes('r8')) return 'R8'
+  if (n.includes('cz75')) return 'CZ'
+  if (n.includes('dual')) return 'D'
+  if (n.includes('revolver')) return 'R'
+  if (n.includes('sticker')) return '🏷️'
+  if (n.includes('case') || n.includes('capsule')) return '📦'
+  if (n.includes('agent')) return '👤'
+  if (n.includes('patch')) return '🔖'
+  if (n.includes('music')) return '🎵'
+  return '🔫'
 }
 
 const modalVisible = ref(false)
@@ -507,6 +564,7 @@ function openEditModal(item: ExtremeTrackConfig) {
   modalVisible.value = true
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function openDeleteModal(item: ExtremeTrackConfig) {
   itemToDelete.value = item
   deleteModalVisible.value = true
@@ -649,13 +707,497 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.empty-state {
-  padding: 4rem 0;
+/* ===== 页面布局 ===== */
+.extreme-track {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 80rem;
+  margin: 0 auto;
 }
 
-/* 搜索下拉框 */
+.extreme-track__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.extreme-track__title {
+  font-size: 1.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0;
+}
+
+.extreme-track__desc {
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0 0;
+}
+
+/* ===== 网格 ===== */
+.extreme-track__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .extreme-track__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .extreme-track__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .extreme-track__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ===== 卡片基础 ===== */
+.track-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  transition: all 300ms;
+}
+
+.track-card--enabled {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
+}
+
+.track-card--disabled {
+  opacity: 0.7;
+  filter: grayscale(0.3);
+}
+
+/* ===== 头部 ===== */
+.track-card__head {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.track-card__image {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.75rem;
+  background: #16161d;
+  border: 1px solid #1f1f23;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 300ms;
+}
+
+.track-card:hover .track-card__image {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.track-card__image-pulse {
+  position: absolute;
+  inset: 0;
+  background: rgba(99, 102, 241, 0.1);
+  animation: card-pulse 2s infinite;
+  z-index: 0;
+}
+
+@keyframes card-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.track-card__weapon {
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: #94a3b8;
+  opacity: 0.5;
+  position: relative;
+  z-index: 1;
+}
+
+.track-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.track-card__name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.375rem 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+
+.track-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.track-card__platform-badge {
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.track-card__status {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.track-card__status--active {
+  color: #22c55e;
+}
+
+.track-card__status-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.track-card__status-dot--active {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  animation: card-pulse 2s infinite;
+}
+
+/* ===== 轮询信息栏 ===== */
+.track-card__poll-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  background: #16161d;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(31, 31, 35, 0.5);
+}
+
+.track-card__poll-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.track-card__poll-item--right {
+  text-align: right;
+}
+
+.track-card__poll-label {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.track-card__poll-value {
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: #6366f1;
+}
+
+.track-card__poll-value--orange {
+  color: #fb923c;
+}
+
+/* ===== 雷达强度 ===== */
+.track-card__radar {
+  margin-bottom: 1rem;
+}
+
+.track-card__radar-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.05em;
+}
+
+.track-card__radar-label {
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.track-card__radar-value {
+  font-family: 'JetBrains Mono', monospace;
+  color: #94a3b8;
+}
+
+.track-card__radar-value--active {
+  color: #6366f1;
+}
+
+.track-card__radar-bar {
+  height: 0.5rem;
+  width: 100%;
+  background: #16161d;
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(31, 31, 35, 0.5);
+}
+
+.track-card__radar-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  animation: radar-shimmer 2s infinite linear;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+  z-index: 10;
+}
+
+@keyframes radar-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.track-card__radar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 1000ms;
+  position: relative;
+}
+
+.track-card__radar-fill--active {
+  background: linear-gradient(to right, rgba(99, 102, 241, 0.8), #06b6d4);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+}
+
+.track-card__radar-fill--inactive {
+  background: rgba(113, 113, 122, 0.5);
+}
+
+.track-card__radar-tip {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 0.25rem;
+  background: #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 0 5px #fff;
+}
+
+/* ===== 配置行 ===== */
+.track-card__config {
+  margin-bottom: 0.75rem;
+  font-size: 0.6875rem;
+}
+
+.track-card__config-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.track-card__config-row--bordered {
+  border-top: 1px solid rgba(31, 31, 35, 0.3);
+}
+
+.track-card__config-label {
+  color: #94a3b8;
+}
+
+.track-card__config-value {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* ===== 内存快照 ===== */
+.track-card__snapshot {
+  border-top: 1px solid rgba(31, 31, 35, 0.5);
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.track-card__snapshot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.track-card__snapshot-label {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.track-card__snapshot-pulse {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: #6366f1;
+  animation: snapshot-ping 1s infinite;
+}
+
+@keyframes snapshot-ping {
+  0% { transform: scale(1); opacity: 1; }
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+.track-card__snapshot-content {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.track-card__snapshot-price {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #22c55e;
+  letter-spacing: -0.02em;
+}
+
+.track-card__snapshot-qty {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: right;
+}
+
+.track-card__snapshot-qty-label {
+  font-size: 10px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: inherit;
+}
+
+/* ===== 操作按钮 ===== */
+.track-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.track-card__action-btn {
+  flex: 1;
+  height: 2rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 200ms;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.track-card__action-btn--stop {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.track-card__action-btn--stop:hover {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.track-card__action-btn--start {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.track-card__action-btn--start:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.track-card__action-btn--reload {
+  background: #16161d;
+  color: #ffffff;
+  border-color: #1f1f23;
+}
+
+.track-card__action-btn--reload:hover {
+  color: #6366f1;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.track-card__action-btn--delete {
+  flex: 0 0 2rem;
+  width: 2rem;
+  background: transparent;
+  color: #71717a;
+  border-color: transparent;
+}
+
+.track-card__action-btn--delete:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* ===== 空态 ===== */
+.extreme-track__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  border: 2px dashed #1f1f23;
+  background: rgba(15, 15, 18, 0.2);
+  opacity: 0.5;
+}
+
+.extreme-track__empty-icon {
+  width: 2rem;
+  height: 2rem;
+  color: #94a3b8;
+  margin-bottom: 0.75rem;
+}
+
+.extreme-track__empty-text {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #94a3b8;
+}
+
+/* ===== 搜索下拉框 ===== */
 .search-wrapper {
   position: relative;
   width: 100%;
@@ -707,147 +1249,155 @@ onBeforeUnmount(() => {
   color: var(--n-text-color-3);
 }
 
-.track-card {
-  background: var(--n-card-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  transition: all 200ms ease;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+/* ===== 骨架屏 ===== */
+.skeleton-card {
+  cursor: default !important;
 }
 
-.track-card:hover {
-  border-color: var(--n-primary-color);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
-  transform: translateY(-2px);
+.skeleton-card:hover {
+  transform: none !important;
+  border-color: #1f1f23 !important;
+  box-shadow: none !important;
 }
 
-.track-card--disabled {
-  opacity: 0.65;
+.skeleton-line {
+  height: 0.875rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: cs-skeleton-shimmer 1.5s infinite ease-in-out;
 }
 
-.track-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
+/* ===== 浅色模式 ===== */
+html:not(.dark) .extreme-track__title {
+  color: #0f172a;
 }
 
-.track-card__title {
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: var(--n-text-color-1);
-  line-height: 1.3;
-  word-break: break-all;
+html:not(.dark) .extreme-track__desc {
+  color: #64748b;
 }
 
-.track-card__platform {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+html:not(.dark) .track-card__name {
+  color: #0f172a;
 }
 
-.platform-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem 0.5rem;
-  background: var(--n-primary-color-suppl);
-  color: var(--n-primary-color);
-  font-size: 0.75rem;
-  font-weight: 500;
-  border-radius: 9999px;
+html:not(.dark) .track-card__image {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
 }
 
-.interval-text {
-  font-size: 0.75rem;
-  color: var(--n-text-color-3);
+html:not(.dark) .track-card__weapon {
+  color: #64748b;
 }
 
-.track-card__progress {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+html:not(.dark) .track-card__poll-info {
+  background: #f8fafc;
+  border-color: #e2e8f0;
 }
 
-.progress-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--n-text-color-3);
+html:not(.dark) .track-card__poll-value {
+  color: #4f46e5;
 }
 
-.track-card__config {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+html:not(.dark) .track-card__radar-label {
+  color: #64748b;
 }
 
-.config-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8125rem;
+html:not(.dark) .track-card__radar-value {
+  color: #64748b;
 }
 
-.config-label {
-  color: var(--n-text-color-3);
+html:not(.dark) .track-card__radar-value--active {
+  color: #4f46e5;
 }
 
-.config-value {
-  color: var(--n-text-color-2);
-  font-weight: 500;
+html:not(.dark) .track-card__radar-bar {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
 }
 
-.track-card__realtime {
-  background: var(--n-hover-color);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+html:not(.dark) .track-card__config-label {
+  color: #64748b;
 }
 
-.realtime-label {
-  font-size: 0.6875rem;
-  color: var(--n-text-color-3);
-  margin-bottom: 0.25rem;
+html:not(.dark) .track-card__config-value {
+  color: #0f172a;
 }
 
-.realtime-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+html:not(.dark) .track-card__snapshot {
+  border-color: #e2e8f0;
 }
 
-.realtime-price {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--n-text-color-1);
+html:not(.dark) .track-card__snapshot-label {
+  color: #64748b;
 }
 
-.realtime-quantity {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--n-text-color-2);
+html:not(.dark) .track-card__snapshot-price {
+  color: #10b981;
 }
 
-.realtime-time {
-  font-size: 0.6875rem;
-  color: var(--n-text-color-3);
-  margin-top: 0.25rem;
+html:not(.dark) .track-card__snapshot-qty {
+  color: #0f172a;
 }
 
-.track-card__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.25rem;
-  margin-top: auto;
-  padding-top: 0.25rem;
+html:not(.dark) .track-card__snapshot-qty-label {
+  color: #64748b;
 }
 
-@media (max-width: 639px) {
-  .track-card__actions {
-    opacity: 1;
-  }
+html:not(.dark) .track-card__status {
+  color: #64748b;
+}
+
+html:not(.dark) .track-card__action-btn--reload {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+html:not(.dark) .track-card__action-btn--reload:hover {
+  color: #4f46e5;
+  border-color: rgba(79, 70, 229, 0.3);
+}
+
+html:not(.dark) .track-card__action-btn--delete {
+  color: #94a3b8;
+}
+
+html:not(.dark) .track-card__action-btn--delete:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+html:not(.dark) .track-card__empty {
+  border-color: #e2e8f0;
+  background: rgba(248, 250, 252, 0.5);
+}
+
+html:not(.dark) .track-card__empty-icon {
+  color: #64748b;
+}
+
+html:not(.dark) .track-card__empty-text {
+  color: #64748b;
+}
+
+html:not(.dark) .skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 25%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.06) 75%
+  );
+  background-size: 200% 100%;
+}
+
+html:not(.dark) .skeleton-card:hover {
+  border-color: #e2e8f0 !important;
 }
 </style>
