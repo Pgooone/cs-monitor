@@ -620,11 +620,16 @@ async function loadData() {
 
   loading.value = true
   try {
+    // trends 单独请求，数据不足时会 500，不应阻塞整个页面
+    api.trends(name, 30).then(
+      (res) => { trendData.value = res.data },
+      () => { trendData.value = null },
+    )
+
     const reqs: any[] = [
       api.priceHistory(name, historyDays.value),
       api.platformPrices(name),
       api.alerts(1, 50, { market_hash_name: name }),
-      api.trends(name, 30),
       api.watchlist(),
     ]
     if (chartType.value === 'kline') {
@@ -635,13 +640,12 @@ async function loadData() {
     priceHistory.value = results[0].data
     platformPrices.value = results[1].data
     alerts.value = results[2].data.items
-    trendData.value = results[3].data
-    if (chartType.value === 'kline' && results[5]) {
-      klineData.value = results[5].data.data || []
+    if (chartType.value === 'kline' && results[4]) {
+      klineData.value = results[4].data.data || []
     }
 
     // 从 watchlist 获取 display_name
-    const watchlistData = results[4]?.data
+    const watchlistData = results[3]?.data
     if (Array.isArray(watchlistData)) {
       const matched = watchlistData.find((w: any) => w.market_hash_name === name)
       if (matched?.display_name) {
