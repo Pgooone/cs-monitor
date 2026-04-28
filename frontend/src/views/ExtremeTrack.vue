@@ -45,7 +45,13 @@
         <div class="track-card__head">
           <div class="track-card__image">
             <span v-if="item.enabled" class="track-card__image-pulse" />
-            <span class="track-card__weapon">{{ getWeaponEmoji(item.market_hash_name) }}</span>
+            <SteamItemImage
+              :market-hash-name="item.market_hash_name"
+              :icon-url="item.icon_url"
+              :alt="item.display_name || item.market_hash_name"
+              class-name="track-card__real-img"
+              :fallback-emoji="getWeaponEmoji(item.market_hash_name)"
+            />
           </div>
           <div class="track-card__info">
             <h4 class="track-card__name">{{ item.display_name || item.market_hash_name }}</h4>
@@ -371,6 +377,7 @@ import { Terminal, Plus, Trash2 } from 'lucide-vue-next'
 import api from '@/api'
 import { useExtremeTrackStore } from '@/stores/extremeTrack'
 import type { ExtremeTrackConfig } from '@/api'
+import SteamItemImage from '@/components/business/SteamItemImage.vue'
 import { useTheme } from '@/composables/useTheme'
 
 const store = useExtremeTrackStore()
@@ -827,6 +834,15 @@ onBeforeUnmount(() => {
   font-family: 'JetBrains Mono', monospace;
   color: #94a3b8;
   opacity: 0.5;
+  position: relative;
+  z-index: 1;
+}
+
+.track-card__real-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
   position: relative;
   z-index: 1;
 }

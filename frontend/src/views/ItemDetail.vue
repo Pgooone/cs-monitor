@@ -30,7 +30,12 @@
     <div class="item-hero">
       <div class="item-hero__left">
         <div class="item-hero__title-row">
-          <span class="item-hero__emoji">🔫</span>
+          <SteamItemImage
+            :market-hash-name="marketHashName"
+            :icon-url="iconUrl"
+            :alt="displayName"
+            class-name="item-hero__emoji-img"
+          />
           <h1 class="item-hero__title">{{ displayName }}</h1>
           <span
             v-if="wearLabel"
@@ -209,6 +214,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import SkeletonChart from '@/components/base/SkeletonChart.vue'
 import SkeletonTable from '@/components/base/SkeletonTable.vue'
 import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
+import SteamItemImage from '@/components/business/SteamItemImage.vue'
 import { getChartTheme } from '@/charts/theme'
 import { useTheme } from '@/composables/useTheme'
 
@@ -229,6 +235,7 @@ const route = useRoute()
 const marketHashName = computed(() => decodeURIComponent(route.params.name as string))
 const displayNameValue = ref<string | null>(null)
 const displayName = computed(() => displayNameValue.value || marketHashName.value)
+const iconUrl = ref<string | null>(null)
 const { isDark, colorUp, colorDown } = useTheme()
 
 const loading = ref(false)
@@ -644,12 +651,15 @@ async function loadData() {
       klineData.value = results[4].data.data || []
     }
 
-    // 从 watchlist 获取 display_name
+    // 从 watchlist 获取 display_name 和 icon_url
     const watchlistData = results[3]?.data
     if (Array.isArray(watchlistData)) {
       const matched = watchlistData.find((w: any) => w.market_hash_name === name)
       if (matched?.display_name) {
         displayNameValue.value = matched.display_name
+      }
+      if (matched?.icon_url) {
+        iconUrl.value = matched.icon_url
       }
     }
 
@@ -865,6 +875,12 @@ html.dark .item-hero {
 }
 .item-hero__emoji {
   font-size: 2rem;
+}
+.item-hero__emoji-img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
 }
 .item-hero__title {
   font-size: 1.5rem;

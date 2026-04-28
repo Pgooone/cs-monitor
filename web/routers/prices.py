@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from api.steam_images import fetch_icon_url, fetch_icon_urls_batch
 from api.steamdt import SteamDTClient, SteamDTBusinessError, SteamDTError, SteamDTRateLimitError
 from storage.database import Database
 from web.deps import get_db, require_auth
@@ -113,3 +114,53 @@ def get_price_by_platforms(
 ) -> list[dict]:
     """获取指定饰品在各平台的最新价格."""
     return db.get_price_by_platforms(market_hash_name)
+
+
+@router.get("/items/{market_hash_name:path}/icon")
+async def get_item_icon(market_hash_name: str, db: Database = Depends(get_db)):
+    """获取饰品图标 URL，优先从数据库缓存读取.
+
+    若数据库无缓存则从 Steam 社区市场获取并写入数据库。
+    """
+    icon_url = db.get_item_icon_url(market_hash_name)
+    if not icon_url:
+        icon_url = await fetch_icon_url(market_hash_name)
+        if icon_url:
+            db.update_item_icon_url(market_hash_name, icon_url)
+    return {"market_hash_name": market_hash_name, "icon_url": icon_url}
+
+
+@router.post("/items/icons/sync")
+async def sync_item_icons(db: Database = Depends(get_db)):
+    """批量同步所有缺少图标的饰品 icon_url.
+
+    查询 items 表中 icon_url 为空的记录，逐个从 Steam 社区市场获取并更新。
+    """
+    with db._cursor() as cursor:
+        # 从 items 和 watchlist 两张表获取需要同步图标的饰品
+        cursor.execute(
+            """
+            SELECT DISTINCT market_hash_name FROM (
+                SELECT market_hash_name FROM items WHERE icon_url IS NULL OR icon_url = ''
+                UNION
+                SELECT market_hash_name FROM watchlist WHERE market_hash_name NOT IN (
+                    SELECT market_hash_name FROM items WHERE icon_url IS NOT NULL AND icon_url != ''
+                )
+            )
+            """
+        )
+        items = cursor.fetchall()
+
+    if not items:
+        return {"synced": 0, "total": 0, "message": "所有饰品已有图标"}
+
+    names = [row[0] for row in items]
+    results = await fetch_icon_urls_batch(names)
+
+    synced = 0
+    for name, url in results.items():
+        if url:
+            db.update_item_icon_url(name, url)
+            synced += 1
+
+    return {"synced": synced, "total": len(names)}

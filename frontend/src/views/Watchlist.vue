@@ -75,7 +75,13 @@
 
         <!-- 图片区 -->
         <div class="watchlist-card__image">
-          <span class="watchlist-card__weapon-icon">{{ getWeaponEmoji(item.market_hash_name) }}</span>
+          <SteamItemImage
+            :market-hash-name="item.market_hash_name"
+            :icon-url="item.icon_url"
+            :alt="item.display_name || item.market_hash_name"
+            class-name="watchlist-card__real-img"
+            :fallback-emoji="getWeaponEmoji(item.market_hash_name)"
+          />
           <div v-if="!item.enabled" class="watchlist-card__paused-overlay">
             <span class="watchlist-card__paused-badge">已暂停</span>
           </div>
@@ -229,6 +235,7 @@ import { Scan, MoreHorizontal, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-
 import { useWatchlistStore } from '@/stores/watchlist'
 import type { WatchlistItemWithPrice } from '@/api'
 import MiniSparkline from '@/components/business/MiniSparkline.vue'
+import SteamItemImage from '@/components/business/SteamItemImage.vue'
 import { useTheme } from '@/composables/useTheme'
 import { useI18n } from 'vue-i18n'
 
@@ -709,6 +716,15 @@ onMounted(() => {
   font-family: 'JetBrains Mono', monospace;
   color: #94a3b8;
   opacity: 0.3;
+  z-index: 1;
+}
+
+.watchlist-card__real-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+  position: relative;
   z-index: 1;
 }
 

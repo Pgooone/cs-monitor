@@ -118,6 +118,7 @@ class WatchlistItemWithPrice(BaseModel):
     platform_prices: list[PlatformPriceMini] = Field(
         default_factory=list, description="各平台最新价格"
     )
+    icon_url: str | None = Field(None, description="饰品图标 URL")
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -254,6 +255,7 @@ class ExtremeTrackConfig(BaseModel):
     alert_cooldown_seconds: int = 0
     quiet_hours_start: str | None = None
     quiet_hours_end: str | None = None
+    icon_url: str | None = Field(None, description="饰品图标 URL")
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

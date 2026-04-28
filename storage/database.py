@@ -81,6 +81,10 @@ class Database:
                 )
                 logger.info("items 表已添加 last_synced_at 列")
 
+            if "icon_url" not in columns:
+                cursor.execute("ALTER TABLE items ADD COLUMN icon_url TEXT")
+                logger.info("items 表已添加 icon_url 列")
+
     # ------------------------------------------------------------------
     # items 表操作
     # ------------------------------------------------------------------
@@ -124,17 +128,19 @@ class Database:
             for item in items:
                 mhn = item.get("marketHashName", "")
                 name = item.get("name", "")
+                icon_url = item.get("icon_url")
                 if not mhn:
                     continue
                 cursor.execute(
                     """
-                    INSERT INTO items (market_hash_name, name, last_synced_at)
-                    VALUES (?, ?, datetime('now'))
+                    INSERT INTO items (market_hash_name, name, icon_url, last_synced_at)
+                    VALUES (?, ?, ?, datetime('now'))
                     ON CONFLICT(market_hash_name) DO UPDATE SET
                         name = excluded.name,
+                        icon_url = COALESCE(excluded.icon_url, items.icon_url),
                         last_synced_at = datetime('now')
                     """,
-                    (mhn, name),
+                    (mhn, name, icon_url),
                 )
                 count += 1
         logger.info(f"批量写入/更新 {count} 条饰品基础信息")
@@ -164,7 +170,7 @@ class Database:
             # 策略 1：精确子串匹配
             cursor.execute(
                 """
-                SELECT market_hash_name, name
+                SELECT market_hash_name, name, icon_url
                 FROM items
                 WHERE market_hash_name LIKE ? COLLATE NOCASE
                    OR name LIKE ? COLLATE NOCASE
@@ -202,7 +208,7 @@ class Database:
             # 排序：以 token 开头的优先 > 非 Sticker 优先 > 短名称优先
             first_token = tokens[0]
             sql = f"""
-                SELECT market_hash_name, name
+                SELECT market_hash_name, name, icon_url
                 FROM items
                 WHERE {' AND '.join(conditions)}
                 ORDER BY
@@ -216,6 +222,31 @@ class Database:
             cursor.execute(sql, params)
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
+
+    def update_item_icon_url(self, market_hash_name: str, icon_url: str) -> bool:
+        """更新指定饰品的图标 URL，不存在则插入."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO items (market_hash_name, icon_url, last_synced_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(market_hash_name) DO UPDATE SET
+                    icon_url = excluded.icon_url,
+                    last_synced_at = CURRENT_TIMESTAMP
+                """,
+                (market_hash_name, icon_url),
+            )
+            return cursor.rowcount > 0
+
+    def get_item_icon_url(self, market_hash_name: str) -> str | None:
+        """获取指定饰品的图标 URL."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                "SELECT icon_url FROM items WHERE market_hash_name = ?",
+                (market_hash_name,),
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
 
     def get_items_count(self) -> int:
         """获取 items 表记录数."""
@@ -707,7 +738,8 @@ class Database:
             if enabled_only:
                 cursor.execute(
                     """
-                    SELECT etc.*, COALESCE(i.name, i.display_name) AS display_name
+                    SELECT etc.*, COALESCE(i.name, i.display_name) AS display_name,
+                           i.icon_url
                     FROM extreme_track_config etc
                     LEFT JOIN items i ON etc.market_hash_name = i.market_hash_name
                     WHERE etc.enabled = 1
@@ -717,7 +749,8 @@ class Database:
             else:
                 cursor.execute(
                     """
-                    SELECT etc.*, COALESCE(i.name, i.display_name) AS display_name
+                    SELECT etc.*, COALESCE(i.name, i.display_name) AS display_name,
+                           i.icon_url
                     FROM extreme_track_config etc
                     LEFT JOIN items i ON etc.market_hash_name = i.market_hash_name
                     ORDER BY etc.created_at
@@ -1046,7 +1079,8 @@ class Database:
                     SELECT w.*,
                            pr.price AS latest_price,
                            pr.platform,
-                           pr.recorded_at AS price_updated_at
+                           pr.recorded_at AS price_updated_at,
+                           i.icon_url
                     FROM watchlist w
                     LEFT JOIN (
                         SELECT market_hash_name, platform, price, recorded_at
@@ -1061,6 +1095,7 @@ class Database:
                         ) ranked
                         WHERE ranked.rn = 1
                     ) pr ON w.market_hash_name = pr.market_hash_name
+                    LEFT JOIN items i ON w.market_hash_name = i.market_hash_name
                     WHERE w.enabled = 1
                     ORDER BY w.created_at
                     """
@@ -1071,7 +1106,8 @@ class Database:
                     SELECT w.*,
                            pr.price AS latest_price,
                            pr.platform,
-                           pr.recorded_at AS price_updated_at
+                           pr.recorded_at AS price_updated_at,
+                           i.icon_url
                     FROM watchlist w
                     LEFT JOIN (
                         SELECT market_hash_name, platform, price, recorded_at
@@ -1086,6 +1122,7 @@ class Database:
                         ) ranked
                         WHERE ranked.rn = 1
                     ) pr ON w.market_hash_name = pr.market_hash_name
+                    LEFT JOIN items i ON w.market_hash_name = i.market_hash_name
                     ORDER BY w.created_at
                     """
                 )

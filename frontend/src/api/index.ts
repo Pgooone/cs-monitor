@@ -100,6 +100,7 @@ export interface WatchlistItemWithPrice {
   change_24h: number | null
   sparkline: number[]
   platform_prices: PlatformPriceMini[]
+  icon_url?: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -200,6 +201,7 @@ export interface ExtremeTrackConfig {
   alert_cooldown_seconds: number
   quiet_hours_start: string | null
   quiet_hours_end: string | null
+  icon_url?: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -302,6 +304,7 @@ export interface RefreshResponse {
 export interface SearchItemResult {
   market_hash_name: string
   name: string | null
+  icon_url?: string | null
 }
 
 /** 实时价格查询结果 */
@@ -415,5 +418,15 @@ export default {
     return api.post<RefreshResponse>('/watchlist/refresh', {
       market_hash_names: marketHashNames ?? null,
     })
+  },
+  /** 获取饰品图标 URL（优先数据库缓存） */
+  getItemIcon(marketHashName: string) {
+    return api.get<{ market_hash_name: string; icon_url: string | null }>(
+      `/prices/items/${encodeURIComponent(marketHashName)}/icon`,
+    )
+  },
+  /** 批量同步所有缺少图标的饰品 */
+  syncItemIcons() {
+    return api.post<{ synced: number; total: number; message?: string }>('/prices/items/icons/sync')
   },
 }
