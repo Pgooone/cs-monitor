@@ -44,6 +44,7 @@ import {
   ListOrdered,
   Zap,
   Bell,
+  LineChart,
   Settings,
   Scan,
 } from 'lucide-vue-next'
@@ -59,6 +60,7 @@ const menuItems = [
   { id: 'Watchlist', label: '监控清单', icon: ListOrdered },
   { id: 'ExtremeTrack', label: '极致追踪', icon: Zap },
   { id: 'Alerts', label: '历史告警', icon: Bell },
+  { id: 'Stats', label: '数据分析', icon: LineChart },
   { id: 'Settings', label: '系统设置', icon: Settings },
 ]
 
