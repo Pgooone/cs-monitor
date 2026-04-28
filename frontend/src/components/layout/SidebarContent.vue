@@ -6,7 +6,7 @@
         <div class="sidebar-logo__icon">
           <Scan class="w-5 h-5 text-white" />
         </div>
-        <div class="sidebar-logo__text">
+        <div class="sidebar-logo__text sidebar-logo__text--desktop">
           <h1 class="sidebar-logo__title">CS<span class="text-brand">MONITOR</span></h1>
           <p class="sidebar-logo__subtitle">Trading Terminal</p>
         </div>
@@ -22,15 +22,23 @@
         @click="navigate(item.id)"
       >
         <component :is="item.icon" class="w-5 h-5 shrink-0" />
-        <span class="sidebar-nav__label">{{ item.label }}</span>
+        <span class="sidebar-nav__label sidebar-nav__label--desktop">{{ item.label }}</span>
       </button>
     </nav>
 
-    <!-- 底部状态 -->
+    <!-- 底部区域 -->
     <div class="sidebar-footer">
-      <div class="sidebar-status">
-        <div class="sidebar-status__dot" />
-        <span class="sidebar-status__text">API 已连接</span>
+      <button class="nav-item sidebar-help-btn">
+        <HelpCircle class="w-5 h-5 shrink-0" />
+        <span class="sidebar-nav__label sidebar-nav__label--desktop">帮助中心</span>
+      </button>
+      <div class="sidebar-divider" />
+      <div class="sidebar-status sidebar-status--desktop">
+        <div class="sidebar-status__label">服务状态</div>
+        <div class="sidebar-status__row">
+          <div class="sidebar-status__dot" />
+          <span class="sidebar-status__text">API 已连接</span>
+        </div>
       </div>
     </div>
   </div>
@@ -47,6 +55,7 @@ import {
   LineChart,
   Settings,
   Scan,
+  HelpCircle,
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -101,6 +110,16 @@ function navigate(name: string) {
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
 }
 
+.sidebar-logo__text--desktop {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-logo__text--desktop {
+    display: block;
+  }
+}
+
 .sidebar-logo__title {
   font-size: 0.875rem;
   font-weight: 800;
@@ -130,15 +149,60 @@ function navigate(name: string) {
   gap: 0.5rem;
 }
 
+.sidebar-nav__label--desktop {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-nav__label--desktop {
+    display: block;
+  }
+}
+
 .sidebar-footer {
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar-help-btn {
+  width: 100%;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: #1f1f23;
+  margin: 0 0.5rem;
+}
+
+.sidebar-status--desktop {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-status--desktop {
+    display: block;
+  }
 }
 
 .sidebar-status {
+  padding: 1rem 0.75rem;
+}
+
+.sidebar-status__label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-status__row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0 0.75rem;
 }
 
 .sidebar-status__dot {
@@ -161,6 +225,10 @@ html:not(.dark) .sidebar-logo__title {
 
 html:not(.dark) .sidebar-logo__subtitle {
   color: #64748b;
+}
+
+html:not(.dark) .sidebar-divider {
+  background: #e2e8f0;
 }
 
 html:not(.dark) .sidebar-status__text {

@@ -33,7 +33,7 @@ defineEmits<{
 
 <style scoped>
 .sidebar {
-  width: 16rem;
+  width: 5rem;
   height: 100vh;
   flex-shrink: 0;
   border-right: 1px solid #1f1f23;
@@ -44,6 +44,12 @@ defineEmits<{
   flex-direction: column;
   z-index: 50;
   transition: all 300ms;
+}
+
+@media (min-width: 1024px) {
+  .sidebar {
+    width: 16rem;
+  }
 }
 
 .sidebar--mobile {
