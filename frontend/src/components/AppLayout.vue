@@ -1,33 +1,33 @@
 <template>
-  <n-layout has-sider style="height: 100vh">
+  <div class="app-layout">
     <Sidebar
       :collapsed="collapsed"
       :is-mobile="isMobile"
       :mobile-drawer-open="mobileDrawerOpen"
       @update:mobile-drawer-open="mobileDrawerOpen = $event"
     />
-    <n-layout>
+    <div class="app-layout__main">
+      <!-- 背景装饰光晕 -->
+      <div class="app-layout__glow" />
       <TopBar
         :collapsed="collapsed"
         :is-mobile="isMobile"
         @toggle-collapse="toggleCollapse"
         @toggle-mobile-drawer="mobileDrawerOpen = !mobileDrawerOpen"
       />
-      <n-layout-content
-        class="app-layout__content"
-        :native-scrollbar="false"
-      >
-        <div class="app-layout__main">
-          <router-view />
-        </div>
-      </n-layout-content>
-    </n-layout>
-  </n-layout>
+      <main class="app-layout__content scrollbar-hide">
+        <router-view v-slot="{ Component, route: viewRoute }">
+          <transition name="page" mode="out-in">
+            <component :is="Component" :key="viewRoute.path" />
+          </transition>
+        </router-view>
+      </main>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { NLayout, NLayoutContent } from 'naive-ui'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import TopBar from '@/components/layout/TopBar.vue'
 
@@ -62,29 +62,83 @@ onUnmounted(() => {
 })
 </script>
 
-<style>
-.app-layout__content {
-  background: var(--n-body-color);
+<style scoped>
+.app-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #050505;
+  color: #ffffff;
 }
 
 .app-layout__main {
-  padding: 1.5rem;
-  min-height: 100%;
-  max-width: 1440px;
-  margin: 0 auto;
-  transition: padding 200ms ease;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
 
-@media (max-width: 639px) {
-  .app-layout__main {
-    padding: 1rem;
-  }
+.app-layout__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
 }
 
-@media (min-width: 1536px) {
-  .app-layout__main {
-    max-width: 1440px;
-    margin: 0 auto;
-  }
+.app-layout__glow::before,
+.app-layout__glow::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+}
+
+.app-layout__glow::before {
+  top: -10%;
+  left: -10%;
+  width: 40%;
+  height: 40%;
+  background: rgba(99, 102, 241, 0.05);
+  filter: blur(120px);
+}
+
+.app-layout__glow::after {
+  bottom: -10%;
+  right: -10%;
+  width: 30%;
+  height: 30%;
+  background: rgba(99, 102, 241, 0.1);
+  filter: blur(100px);
+}
+
+.app-layout__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* 页面过渡动画 */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),
+              transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(15px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-15px);
+}
+
+html:not(.dark) .app-layout {
+  background: #f8fafc;
+  color: #0f172a;
 }
 </style>
