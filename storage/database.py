@@ -978,7 +978,7 @@ class Database:
             conditions.append("notified_at <= ?")
             params.append(f"{end_date} 23:59:59")
         if market_hash_name:
-            conditions.append("market_hash_name LIKE ?")
+            conditions.append("a.market_hash_name LIKE ?")
             params.append(f"%{market_hash_name}%")
 
         where_clause = " AND ".join(conditions)
@@ -986,7 +986,7 @@ class Database:
         with self._cursor() as cursor:
             # 总条数
             cursor.execute(
-                f"SELECT COUNT(*) FROM alert_logs WHERE {where_clause}",
+                f"SELECT COUNT(*) FROM alert_logs a WHERE {where_clause}",
                 tuple(params),
             )
             total = cursor.fetchone()[0]
