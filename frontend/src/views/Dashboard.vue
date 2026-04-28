@@ -3,600 +3,442 @@
     <!-- 骨架屏 -->
     <template v-if="dashboard.loading">
       <div class="dashboard__skeleton-header">
-        <div class="skeleton-line skeleton-line--title" style="width: 40%; height: 1.75rem;" />
-        <div class="skeleton-line" style="width: 30%; height: 1rem; margin-top: 0.5rem;" />
+        <div class="cs-skeleton" style="width: 40%; height: 1.75rem;" />
+        <div class="cs-skeleton" style="width: 30%; height: 1rem; margin-top: 0.5rem;" />
       </div>
-      <n-grid :x-gap="16" :y-gap="16" cols="1 640:2 1024:4">
-        <n-gi v-for="n in 4" :key="n">
-          <div class="skeleton-kpi">
-            <div class="skeleton-line" style="width: 60%; height: 1rem;" />
-            <div class="skeleton-line" style="width: 40%; height: 2.5rem; margin-top: 1rem;" />
+      <div class="dashboard__grid-main">
+        <div class="glass-card dashboard__hero-card">
+          <div class="cs-skeleton" style="width: 50%; height: 0.75rem;" />
+          <div class="cs-skeleton" style="width: 30%; height: 3rem; margin-top: 1rem;" />
+          <div class="dashboard__bars">
+            <div v-for="n in 12" :key="n" class="cs-skeleton" style="flex: 1; height: 100%;" />
           </div>
-        </n-gi>
-      </n-grid>
-      <n-grid :x-gap="16" :y-gap="16" cols="1 1024:3" class="dashboard__main">
-        <n-gi :span="2">
-          <SkeletonChart />
-        </n-gi>
-        <n-gi>
-          <div class="skeleton-feed">
-            <div class="skeleton-line" style="width: 40%; height: 1rem; margin-bottom: 1rem;" />
-            <div v-for="n in 5" :key="n" class="skeleton-line" style="width: 100%; height: 2.5rem; margin-bottom: 0.5rem;" />
-          </div>
-        </n-gi>
-      </n-grid>
+        </div>
+        <div class="glass-card dashboard__actions-card">
+          <div class="cs-skeleton" style="width: 40%; height: 0.75rem;" />
+          <div v-for="n in 3" :key="n" class="cs-skeleton" style="width: 100%; height: 2.25rem; margin-top: 0.5rem;" />
+          <div class="cs-skeleton" style="width: 60%; height: 1.5rem; margin-top: 1rem;" />
+        </div>
+      </div>
+      <div class="dashboard__grid-stats">
+        <div v-for="n in 3" :key="n" class="glass-card dashboard__stat-card">
+          <div class="cs-skeleton" style="width: 50%; height: 0.75rem;" />
+          <div class="cs-skeleton" style="width: 40%; height: 1.5rem; margin-top: 0.75rem;" />
+        </div>
+      </div>
     </template>
 
     <!-- 真实内容 -->
     <template v-else>
-      <!-- 饰品搜索框 -->
-      <ItemSearch @add-to-watchlist="onItemAdded" />
-
-      <!-- 欢迎语 + 状态栏 -->
-      <div class="dashboard__welcome">
-        <h1 class="dashboard__greeting">{{ greeting }}，{{ t('dashboard.greeting') }}</h1>
-        <div class="dashboard__status-bar">
-          <span class="dashboard__status-item">
-            <span class="dashboard__status-icon">🔄</span>
-            {{ t('dashboard.todayCollections') }} <strong class="font-mono-num">{{ dashboard.todayCollectionCount }}</strong> {{ t('dashboard.times') }}
-          </span>
-          <span class="dashboard__status-item">
-            <span class="dashboard__status-icon">🔔</span>
-            {{ t('dashboard.todayAlerts') }} <strong class="font-mono-num">{{ dashboard.todayAlertCount }}</strong> {{ t('dashboard.items') }}
-          </span>
-          <span class="dashboard__status-item">
-            <span class="dashboard__status-icon">🕐</span>
-            {{ t('dashboard.lastUpdate') }} {{ formattedLastUpdate }}
-          </span>
+      <!-- 1. 顶部标题区 -->
+      <div class="dashboard__header">
+        <div class="dashboard__header-left">
+          <h2 class="dashboard__title">终端概览</h2>
+          <p class="dashboard__desc">实时监控 SteamDT API 饰品价格波动与趋势。</p>
+        </div>
+        <div class="dashboard__api-status">
+          <div class="dashboard__api-dot-wrap">
+            <div class="dashboard__api-dot" />
+            <span class="dashboard__api-label">API 生命周期</span>
+          </div>
+          <span class="dashboard__api-value">活跃 ({{ dashboard.lastUpdate || '0ms' }})</span>
         </div>
       </div>
 
-      <!-- 4 张 KPI 卡 -->
-      <n-grid :x-gap="16" :y-gap="16" cols="1 640:2 1024:4">
-        <!-- 监控饰品数 -->
-        <n-gi>
-          <KpiCard
-            title="监控饰品"
-            :value="dashboard.activeWatchlistCount"
-            icon="📋"
-            :icon-color="brand[500]"
-            :icon-bg="`${brand[500]}1F`"
-            variant="default"
-            glass
-          >
-            <template #extra>
-              <MiniSparkline
-                :data="sparklineData"
-                :color="brand[500]"
-                :width="120"
-                :height="36"
-              />
-            </template>
-          </KpiCard>
-        </n-gi>
-
-        <!-- 今日告警 -->
-        <n-gi>
-          <KpiCard
-            title="今日告警"
-            :value="dashboard.todayAlertCount"
-            icon="🔔"
-            :icon-color="semantic.error.light"
-            :icon-bg="`${semantic.error.light}1F`"
-            variant="default"
-            glass
-          >
-            <template #extra>
-              <div class="kpi-compare">
-                <span
-                  class="kpi-compare__badge"
-                  :class="dashboard.alertDiff.up ? 'kpi-compare__badge--up' : 'kpi-compare__badge--down'"
-                >
-                  {{ dashboard.alertDiff.up ? '▲' : '▼' }} {{ Math.abs(dashboard.alertDiff.percent) }}%
-                </span>
-                <span class="kpi-compare__label">较昨日</span>
-              </div>
-            </template>
-          </KpiCard>
-        </n-gi>
-
-        <!-- 极致追踪 -->
-        <n-gi>
-          <KpiCard
-            title="极致追踪"
-            :value="dashboard.extremeTrackCount"
-            icon="🎯"
-            :icon-color="semantic.success.light"
-            :icon-bg="`${semantic.success.light}1F`"
-            variant="default"
-            glass
-          >
-            <template #extra>
-              <div class="kpi-status">
-                <span
-                  class="kpi-status__dot"
-                  :class="{ 'kpi-status__dot--active': dashboard.extremeTrackCount > 0 }"
-                />
-                <span class="kpi-status__text">
-                  {{ dashboard.extremeTrackCount > 0 ? '运行中' : '未启用' }}
-                </span>
-              </div>
-            </template>
-          </KpiCard>
-        </n-gi>
-
-        <!-- API 配额 -->
-        <n-gi>
-          <KpiCard
-            title="API 配额"
-            :value="`${Math.round(dashboard.apiQuotaPercent)}%`"
-            icon="⚡"
-            :icon-color="semantic.warning.light"
-            :icon-bg="`${semantic.warning.light}1F`"
-            variant="default"
-            glass
-          >
-            <template #extra>
-              <div class="ring-progress">
-                <svg width="40" height="40" viewBox="0 0 40 40">
-                  <circle
-                    cx="20" cy="20" r="16"
-                    fill="none"
-                    stroke="rgba(0,0,0,0.08)"
-                    stroke-width="3"
-                  />
-                  <circle
-                    cx="20" cy="20" r="16"
-                    fill="none"
-                    :stroke="quotaColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    :stroke-dasharray="`${quotaArc} 100.5`"
-                    transform="rotate(-90 20 20)"
-                    style="transition: stroke-dasharray 600ms ease;"
-                  />
-                </svg>
-              </div>
-            </template>
-          </KpiCard>
-        </n-gi>
-      </n-grid>
-
-      <!-- 主图区：组合价值曲线 + 今日告警流 -->
-      <n-grid :x-gap="16" :y-gap="16" cols="1 1024:3" class="dashboard__main">
-        <n-gi :span="2">
-          <n-card
-            title="组合价值趋势（30天）"
-            class="dashboard__chart-card"
-            :bordered="false"
-            size="small"
-          >
-            <PortfolioChart
-              v-if="dashboard.portfolioHistory.length >= 2"
-              :data="dashboard.portfolioHistory"
-              :is-dark="isDark"
-            />
-            <EmptyState
-              v-else
-              title="暂无趋势数据"
-              description="监控饰品的价格数据不足，开始采集后将自动生成趋势图"
-              emoji="📈"
-              compact
-            />
-          </n-card>
-        </n-gi>
-        <n-gi>
-          <n-card
-            class="dashboard__feed-card"
-            :bordered="false"
-            size="small"
-          >
-            <template #header>
-              <div class="feed-card-header">
-                <span class="feed-card-header__title">今日告警流</span>
-                <n-badge :value="dashboard.alerts.length" :max="99" />
-              </div>
-            </template>
-            <AlertFeed :alerts="dashboard.alerts" />
-          </n-card>
-        </n-gi>
-      </n-grid>
-
-      <!-- 热度榜 -->
-      <n-card
-        title="24h 波动热度榜"
-        class="dashboard__heatmap"
-        :bordered="false"
-        size="small"
-      >
-        <div v-if="dashboard.topVolatile.length === 0" class="dashboard__heatmap-empty">
-          <EmptyState
-            title="暂无波动数据"
-            description="监控饰品的价格波动数据不足，采集更多数据后将显示热度榜"
-            emoji="🔥"
-            compact
-          />
-        </div>
-        <div v-else class="heatmap-grid">
-          <div
-            v-for="item in dashboard.topVolatile"
-            :key="item.market_hash_name"
-            class="heatmap-item"
-          >
-            <div class="heatmap-item__info">
-              <div class="heatmap-item__name">{{ item.display_name || item.market_hash_name }}</div>
-              <div class="heatmap-item__price font-mono-num">
-                <AnimatedNumber
-                  v-if="item.current_price != null"
-                  :value="item.current_price"
-                  :precision="2"
-                  prefix="¥"
-                />
-                <span v-else>—</span>
-              </div>
+      <!-- 2. 主区域 2:1 -->
+      <div class="dashboard__grid-main">
+        <!-- 左大卡片 -->
+        <div class="glass-card dashboard__hero-card">
+          <div class="dashboard__hero-glow" />
+          <div class="dashboard__hero-content">
+            <span class="dashboard__hero-label">监控饰品总数量</span>
+            <div class="dashboard__hero-value-wrap">
+              <span class="dashboard__hero-value">{{ dashboard.activeWatchlistCount }}</span>
+              <span class="dashboard__hero-extreme">极致追踪: {{ dashboard.extremeTrackCount }}</span>
             </div>
-            <div class="heatmap-item__chart">
-              <MiniSparkline
-                v-if="item.sparkline.length >= 2"
-                :data="item.sparkline"
-                :color="item.change_percent >= 0 ? colorUp : colorDown"
-                :width="80"
-                :height="28"
-              />
-              <div
-                v-else
-                class="heatmap-item__bar"
-                :class="item.change_percent >= 0 ? 'heatmap-item__bar--up' : 'heatmap-item__bar--down'"
-                :style="{ width: `${Math.min(100, Math.abs(item.change_percent) * 3)}%` }"
-              />
-            </div>
+          </div>
+          <div class="dashboard__bars">
             <div
-              class="heatmap-item__change font-mono-num"
-              :class="item.change_percent >= 0 ? 'heatmap-item__change--up' : 'heatmap-item__change--down'"
-            >
-              {{ item.change_percent >= 0 ? '+' : '' }}{{ item.change_percent.toFixed(2) }}%
+              v-for="(h, i) in barHeights"
+              :key="i"
+              class="dashboard__bar"
+              :style="{ height: animatedBars[i] ? `${h}%` : '0%', transitionDelay: `${i * 50}ms` }"
+            />
+          </div>
+        </div>
+
+        <!-- 右卡片 -->
+        <div class="glass-card dashboard__actions-card">
+          <div class="dashboard__actions-header">
+            <span class="dashboard__actions-label">核心功能</span>
+            <Zap class="w-4 h-4 text-brand" />
+          </div>
+          <div class="dashboard__actions-list">
+            <button class="btn-outline w-full justify-start text-xs py-2 h-9 px-3" @click="$router.push({ name: 'ExtremeTrack' })">
+              <LayoutGrid class="w-3 h-3" />
+              极致追踪配置
+            </button>
+            <button class="btn-outline w-full justify-start text-xs py-2 h-9 px-3" @click="handleRefresh">
+              <RefreshCw class="w-3 h-3" />
+              全量刷新数据
+            </button>
+            <button class="btn-outline w-full justify-start text-xs py-2 h-9 px-3">
+              <Terminal class="w-3 h-3" />
+              查看运行日志
+            </button>
+          </div>
+          <div class="dashboard__actions-footer">
+            <span class="dashboard__actions-alert-label">今日警报活跃</span>
+            <div class="dashboard__actions-alert-value">
+              <Bell class="w-5 h-5 text-rise mr-2" />
+              <span>{{ dashboard.todayAlertCount }} 起警报</span>
             </div>
           </div>
         </div>
-      </n-card>
+      </div>
 
-      <!-- 采集状态 -->
-      <CollectionStatus
-        :last-update="dashboard.lastUpdate"
-        :check-interval-minutes="dashboard.checkIntervalMinutes"
-        :today-collection-count="dashboard.todayCollectionCount"
-      />
+      <!-- 3. 底部统计卡片 -->
+      <div class="dashboard__grid-stats">
+        <div class="glass-card dashboard__stat-card">
+          <span class="dashboard__stat-label">总价格记录数</span>
+          <span class="dashboard__stat-value">{{ (dashboard.summary?.latest_price_count || 0).toLocaleString() }}</span>
+        </div>
+        <div class="glass-card dashboard__stat-card">
+          <div class="dashboard__stat-header">
+            <span class="dashboard__stat-label">今日采集次数</span>
+            <span class="dashboard__stat-badge">活跃中</span>
+          </div>
+          <span class="dashboard__stat-value">{{ (dashboard.todayCollectionCount || 0).toLocaleString() }}</span>
+        </div>
+        <div class="glass-card dashboard__stat-card">
+          <span class="dashboard__stat-label">昨日告警数</span>
+          <span class="dashboard__stat-value">{{ dashboard.summary?.yesterday_alert_count || 0 }}</span>
+        </div>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { NGrid, NGi, NCard, NBadge } from 'naive-ui'
+import { ref, onMounted } from 'vue'
+import { Zap, LayoutGrid, RefreshCw, Terminal, Bell } from 'lucide-vue-next'
 import { useDashboardStore } from '@/stores/dashboard'
-import { useTheme } from '@/composables/useTheme'
 import { toastSuccess } from '@/composables/useToast'
-import { brand, semantic } from '@/styles/tokens'
-import KpiCard from '@/components/business/KpiCard.vue'
-import MiniSparkline from '@/components/business/MiniSparkline.vue'
-import PortfolioChart from '@/components/business/PortfolioChart.vue'
-import AlertFeed from '@/components/business/AlertFeed.vue'
-import CollectionStatus from '@/components/business/CollectionStatus.vue'
-import SkeletonChart from '@/components/base/SkeletonChart.vue'
-import EmptyState from '@/components/base/EmptyState.vue'
-import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
-import ItemSearch from '@/components/business/ItemSearch.vue'
 
 const dashboard = useDashboardStore()
-const { isDark, colorUp, colorDown } = useTheme()
-const { t } = useI18n()
 
-const greeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 6) return t('dashboard.night')
-  if (hour < 12) return t('dashboard.morning')
-  if (hour < 18) return t('dashboard.afternoon')
-  return t('dashboard.evening')
-})
-
-const formattedLastUpdate = computed(() => {
-  const t = dashboard.lastUpdate
-  if (!t || t === '-') return '—'
-  try {
-    const d = new Date(t)
-    return d.toLocaleString('zh-CN', {
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return t
-  }
-})
-
-const sparklineData = computed(() => {
-  const data = dashboard.watchlistSparkline
-  return data.length >= 2 ? data : [0, 0]
-})
-
-const quotaColor = computed(() => {
-  const p = dashboard.apiQuotaPercent
-  if (p < 50) return semantic.success.light
-  if (p < 80) return semantic.warning.light
-  return semantic.error.light
-})
-
-const quotaArc = computed(() => {
-  const p = Math.min(100, Math.max(0, dashboard.apiQuotaPercent))
-  return (p / 100) * 100.5
-})
-
-// 饰品添加回调
-function onItemAdded(name: string) {
-  dashboard.loadAll()
-  toastSuccess(`已添加 "${name}" 到监控清单`)
-}
+// 柱状图高度（伪数据，12 根柱子）
+const barHeights = [30, 50, 40, 60, 45, 70, 65, 80, 75, 95, 85, 100]
+const animatedBars = ref<boolean[]>(new Array(12).fill(false))
 
 onMounted(() => {
   dashboard.loadAll()
+  // 延迟触发动画
+  setTimeout(() => {
+    animatedBars.value = new Array(12).fill(true)
+  }, 100)
 })
 
-onUnmounted(() => {
-})
+function handleRefresh() {
+  dashboard.loadAll()
+  toastSuccess('全量刷新已触发')
+}
 </script>
 
 <style scoped>
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
+  max-width: 80rem;
+  margin: 0 auto;
 }
 
-.feed-card-header {
+/* ===== 顶部标题区 ===== */
+.dashboard__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-}
-.feed-card-header__title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--cs-text-primary);
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-/* ===== 欢迎语区域 ===== */
-.dashboard__welcome {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.25rem 0;
-}
-.dashboard__greeting {
+.dashboard__title {
   font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0;
-  color: var(--cs-text-primary);
+  font-weight: 800;
   letter-spacing: -0.02em;
-  line-height: 1.3;
+  color: #ffffff;
+  margin: 0;
 }
-.dashboard__status-bar {
+
+.dashboard__desc {
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0 0;
+}
+
+.dashboard__api-status {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  background: rgba(15, 15, 18, 0.5);
+  border: 1px solid #1f1f23;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
 }
-.dashboard__status-item {
+
+.dashboard__api-dot-wrap {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.875rem;
-  color: var(--cs-text-secondary);
-  transition: color var(--cs-transition-fast);
-}
-.dashboard__status-item strong {
-  color: var(--cs-text-primary);
-  font-weight: 600;
-}
-.dashboard__status-icon {
-  font-size: 0.875rem;
-  opacity: 0.85;
 }
 
-/* ===== KPI 对比 ===== */
-.kpi-compare {
+.dashboard__api-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.dashboard__api-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.dashboard__api-value {
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #6366f1;
+}
+
+/* ===== 主区域 Grid ===== */
+.dashboard__grid-main {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .dashboard__grid-main {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* ===== 左大卡片 ===== */
+.dashboard__hero-card {
+  position: relative;
+  height: 16rem;
   display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.dashboard__hero-glow {
+  position: absolute;
+  top: -20%;
+  right: -5%;
+  width: 16rem;
+  height: 16rem;
+  background: rgba(99, 102, 241, 0.1);
+  filter: blur(80px);
+  border-radius: 50%;
+  transition: background 500ms;
+  pointer-events: none;
+}
+
+.dashboard__hero-card:hover .dashboard__hero-glow {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.dashboard__hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard__hero-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.dashboard__hero-value-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.dashboard__hero-value {
+  font-size: 3rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: #ffffff;
+}
+
+.dashboard__hero-extreme {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #22c55e;
+  margin-bottom: 0.5rem;
+}
+
+/* ===== 柱状图 ===== */
+.dashboard__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  height: 6rem;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard__bar {
+  flex: 1;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 2px 2px 0 0;
+  transition: height 800ms ease-out;
+  cursor: pointer;
+}
+
+.dashboard__bar:hover {
+  background: #6366f1;
+}
+
+/* ===== 右卡片 ===== */
+.dashboard__actions-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.dashboard__actions-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dashboard__actions-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.dashboard__actions-list {
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
 }
-.kpi-compare__badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.125rem 0.5rem;
-  border-radius: 999px;
-  font-family: 'JetBrains Mono', monospace;
-  transition: all var(--cs-transition-fast);
-}
-.kpi-compare__badge--up {
-  background: v-bind('colorUp') + '22';
-  color: v-bind('colorUp');
-}
-.kpi-compare__badge--down {
-  background: v-bind('colorDown') + '22';
-  color: v-bind('colorDown');
-}
-.kpi-compare__label {
-  font-size: 0.75rem;
-  color: var(--cs-text-muted);
+
+.dashboard__actions-footer {
+  padding-top: 1rem;
+  border-top: 1px solid #1f1f23;
+  margin-top: 1rem;
 }
 
-/* ===== KPI 状态 ===== */
-.kpi-status {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-.kpi-status__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--cs-text-muted);
-  transition: background var(--cs-transition-fast);
-}
-.kpi-status__dot--active {
-  background: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
-  animation: pulse-dot 2s infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25); }
-  50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1); }
-}
-.kpi-status__text {
-  font-size: 0.75rem;
-  color: var(--cs-text-muted);
-}
-
-/* ===== 环形进度 ===== */
-.ring-progress {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-/* ===== 主图区 ===== */
-.dashboard__main {
-  margin-top: 0.25rem;
-}
-.dashboard__chart-card,
-.dashboard__feed-card,
-.dashboard__heatmap {
-  border-radius: 1rem;
-  background: var(--cs-bg-card);
-  border: 1px solid var(--cs-border-light);
-  overflow: hidden;
-  box-shadow: var(--cs-shadow-sm);
-  transition: box-shadow var(--cs-transition-base);
-}
-.dashboard__chart-card:hover,
-.dashboard__feed-card:hover,
-.dashboard__heatmap:hover {
-  box-shadow: var(--cs-shadow-md);
-}
-
-/* ===== 热度榜 ===== */
-.heatmap-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 0.875rem;
-}
-.heatmap-item {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  padding: 1rem 1.125rem;
-  border-radius: 0.875rem;
-  background: var(--cs-bg-card);
-  border: 1px solid var(--cs-border-light);
-  transition: transform var(--cs-transition-base), box-shadow var(--cs-transition-base);
-}
-.heatmap-item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--cs-shadow-md);
-}
-.heatmap-item__info {
-  flex: 1;
-  min-width: 0;
-}
-.heatmap-item__name {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 0.25rem;
-  color: var(--cs-text-primary);
-}
-.heatmap-item__price {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--cs-text-secondary);
-}
-.heatmap-item__chart {
-  width: 80px;
-  flex-shrink: 0;
-}
-.heatmap-item__bar {
-  height: 4px;
-  border-radius: 2px;
-  background: currentColor;
-  transition: width 600ms ease;
-}
-.heatmap-item__bar--up {
-  background: v-bind('colorUp');
-}
-.heatmap-item__bar--down {
-  background: v-bind('colorDown');
-}
-.heatmap-item__change {
-  font-size: 0.875rem;
+.dashboard__actions-alert-label {
+  font-size: 10px;
   font-weight: 700;
-  width: 72px;
-  text-align: right;
-  flex-shrink: 0;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.75rem;
+  display: block;
 }
-.heatmap-item__change--up {
-  color: v-bind('colorUp');
+
+.dashboard__actions-alert-value {
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #ffffff;
 }
-.heatmap-item__change--down {
-  color: v-bind('colorDown');
+
+/* ===== 底部统计卡片 ===== */
+.dashboard__grid-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .dashboard__grid-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dashboard__stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dashboard__stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard__stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.dashboard__stat-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
+.dashboard__stat-value {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ===== 骨架屏 ===== */
 .dashboard__skeleton-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   margin-bottom: 0.5rem;
 }
-.skeleton-kpi {
-  border-radius: 1rem;
-  padding: 1.25rem;
-  background: var(--cs-bg-card);
-  border: 1px solid var(--cs-border-light);
+
+/* ===== 浅色模式覆盖 ===== */
+html:not(.dark) .dashboard__title { color: #0f172a; }
+html:not(.dark) .dashboard__desc { color: #64748b; }
+html:not(.dark) .dashboard__api-status {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: #e2e8f0;
 }
-.skeleton-line {
-  height: 0.875rem;
-  border-radius: 0.25rem;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0.06) 25%,
-    rgba(0, 0, 0, 0.10) 50%,
-    rgba(0, 0, 0, 0.06) 75%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s infinite;
-}
-html.dark .skeleton-line {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.08) 25%,
-    rgba(255, 255, 255, 0.14) 50%,
-    rgba(255, 255, 255, 0.08) 75%
-  );
-  background-size: 200% 100%;
-}
-.dashboard__heatmap-empty {
-  padding: 2rem 0;
-}
-.skeleton-feed {
-  border-radius: 1rem;
-  padding: 1rem;
-  background: var(--cs-bg-card);
-  border: 1px solid var(--cs-border-light);
-}
-@keyframes skeleton-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
+html:not(.dark) .dashboard__hero-value { color: #0f172a; }
+html:not(.dark) .dashboard__stat-value { color: #0f172a; }
+html:not(.dark) .dashboard__actions-footer { border-color: #e2e8f0; }
+html:not(.dark) .dashboard__actions-alert-value { color: #0f172a; }
 </style>

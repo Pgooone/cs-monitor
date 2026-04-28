@@ -224,6 +224,9 @@ html.dark .cs-glass-card:hover {
 .cs-text-primary { color: var(--cs-text-primary); }
 .cs-text-secondary { color: var(--cs-text-secondary); }
 .cs-text-muted { color: var(--cs-text-muted); }
+.text-brand { color: #6366f1; }
+.text-rise { color: #ef4444; }
+.text-on-muted { color: #94a3b8; }
 
 /* ===== 等宽数字 ===== */
 .font-mono-num {
