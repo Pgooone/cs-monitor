@@ -1,18 +1,18 @@
 /**
- * Naive UI Theme Overrides — Trading Terminal Pro
+ * Naive UI Theme Overrides — 极客黑（Geek Black）
  *
  * 将 Design Tokens 映射到 Naive UI 的 themeOverrides 结构。
  * light / dark 两套配置，与 useTheme 联动。
  */
 
 import type { GlobalThemeOverrides } from 'naive-ui'
-import { brand, semantic, neutral, fontFamily } from './tokens'
+import { semantic, neutral, fontFamily } from './tokens'
 
 const lightCommon: GlobalThemeOverrides['common'] = {
-  primaryColor: brand[500],
-  primaryColorHover: brand[400],
-  primaryColorPressed: brand[600],
-  primaryColorSuppl: brand[500],
+  primaryColor: '#6366f1',
+  primaryColorHover: '#818cf8',
+  primaryColorPressed: '#4f46e5',
+  primaryColorSuppl: '#6366f1',
 
   infoColor: semantic.info.light,
   infoColorHover: '#60a5fa',
@@ -39,7 +39,7 @@ const lightCommon: GlobalThemeOverrides['common'] = {
   textColor2: neutral.light[600],
   textColor3: neutral.light[400],
 
-  bodyColor: '#f0f2f7',
+  bodyColor: '#f8fafc',
   cardColor: '#ffffff',
   modalColor: '#ffffff',
   popoverColor: '#ffffff',
@@ -70,10 +70,10 @@ const lightCommon: GlobalThemeOverrides['common'] = {
 }
 
 const darkCommon: GlobalThemeOverrides['common'] = {
-  primaryColor: '#6b7ff8',
-  primaryColorHover: '#7e91fa',
-  primaryColorPressed: '#4a5cf2',
-  primaryColorSuppl: '#6b7ff8',
+  primaryColor: '#6366f1',
+  primaryColorHover: '#818cf8',
+  primaryColorPressed: '#4f46e5',
+  primaryColorSuppl: '#6366f1',
 
   infoColor: '#60a5fa',
   infoColorHover: '#93c5fd',
@@ -95,21 +95,21 @@ const darkCommon: GlobalThemeOverrides['common'] = {
   errorColorPressed: '#ef4444',
   errorColorSuppl: '#f87171',
 
-  textColorBase: '#dce6f2',
-  textColor1: '#dce6f2',
-  textColor2: '#8da4c8',
-  textColor3: '#5a7ba5',
+  textColorBase: '#ffffff',
+  textColor1: '#ffffff',
+  textColor2: '#94a3b8',
+  textColor3: '#71717a',
 
-  bodyColor: '#080c16',
-  cardColor: '#0d1320',
-  modalColor: '#131b2e',
-  popoverColor: '#131b2e',
-  dividerColor: 'rgba(255,255,255,0.06)',
-  borderColor: 'rgba(255,255,255,0.08)',
-  tableHeaderColor: '#0d1320',
+  bodyColor: '#050505',
+  cardColor: '#0f0f12',
+  modalColor: '#16161d',
+  popoverColor: '#16161d',
+  dividerColor: '#1f1f23',
+  borderColor: '#1f1f23',
+  tableHeaderColor: '#0f0f12',
 
-  hoverColor: 'rgba(255,255,255,0.04)',
-  pressedColor: 'rgba(255,255,255,0.06)',
+  hoverColor: 'rgba(255,255,255,0.05)',
+  pressedColor: 'rgba(255,255,255,0.08)',
 
   fontFamily: fontFamily.sans,
   fontFamilyMono: fontFamily.mono,
@@ -137,7 +137,7 @@ export const lightThemeOverrides: GlobalThemeOverrides = {
   },
   Card: {
     borderRadius: '12px',
-    borderColor: '#e2e6ef',
+    borderColor: '#e2e8f0',
   },
   DataTable: {
     borderRadius: '12px',
@@ -159,22 +159,22 @@ export const darkThemeOverrides: GlobalThemeOverrides = {
   },
   Card: {
     borderRadius: '12px',
-    borderColor: 'rgba(255,255,255,0.06)',
-    color: '#0d1320',
+    borderColor: '#1f1f23',
+    color: '#0f0f12',
   },
   DataTable: {
     borderRadius: '12px',
     thFontSize: '12px',
     tdFontSize: '13px',
-    thColor: '#0d1320',
+    thColor: '#0f0f12',
     tdColor: 'transparent',
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: '#1f1f23',
   },
   Input: {
     borderRadius: '8px',
-    color: 'rgba(255,255,255,0.04)',
-    borderColor: 'rgba(255,255,255,0.08)',
-    colorFocus: 'rgba(255,255,255,0.06)',
+    color: 'rgba(255,255,255,0.03)',
+    borderColor: '#1f1f23',
+    colorFocus: 'rgba(255,255,255,0.05)',
   },
   Tag: {
     borderRadius: '6px',

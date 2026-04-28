@@ -340,7 +340,7 @@ import SkeletonCard from '@/components/base/SkeletonCard.vue'
 
 const store = useExtremeTrackStore()
 const message = useMessage()
-const { colorUp, colorDown } = useTheme()
+useTheme()
 
 // 实时快照数据 { "marketHashName@platform": { price, quantity, recorded_at } }
 const snapshots = ref<Record<string, { price: number; quantity: number; recorded_at: string }>>({})

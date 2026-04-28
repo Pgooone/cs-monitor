@@ -1,25 +1,24 @@
 /**
- * Design Tokens — CS2 Monitor 设计系统 v2
+ * Design Tokens — CS2 Monitor 设计系统 v3
  *
- * 设计方向：Trading Terminal Pro
- * 参考 BUFF.163.com 等专业饰品交易平台的深色交易界面
- * 深空蓝底 + 电光橙强调 + 高信息密度 + 终端感数字排版
+ * 设计方向：极客黑（Geek Black）
+ * 参考 React 版视觉效果：近纯黑底 + Indigo 品牌色 + 玻璃拟态
  */
 
 // ===== 品牌色 =====
-// 深空蓝系 — 从深邃到明亮，营造专业交易终端氛围
+// Indigo 紫蓝系 — 现代极客风格
 export const brand = {
   50: '#eef2ff',
-  100: '#dce4ff',
-  200: '#bfcbff',
-  300: '#93a7fd',
-  400: '#6b7ff8',
-  500: '#4a5cf2',
-  600: '#3a3fe6',
-  700: '#2f32cc',
-  800: '#2a2da5',
-  900: '#282c83',
-  950: '#1a1b4f',
+  100: '#e0e7ff',
+  200: '#c7d2fe',
+  300: '#a5b4fc',
+  400: '#818cf8',   // 深色模式主色
+  500: '#6366f1',   // 浅色模式主色 (Indigo-500)
+  600: '#4f46e5',
+  700: '#4338ca',
+  800: '#3730a3',
+  900: '#312e81',
+  950: '#1e1b4b',
 } as const
 
 // ===== 功能色 =====
@@ -42,22 +41,7 @@ export const semantic = {
   },
 } as const
 
-// ===== 电光橙强调色 =====
-export const accent = {
-  50: '#fff7ed',
-  100: '#ffedd5',
-  200: '#fed7aa',
-  300: '#fdba74',
-  400: '#fb923c',
-  500: '#f97316',
-  600: '#ea580c',
-  700: '#c2410c',
-  800: '#9a3412',
-  900: '#7c2d12',
-  950: '#431407',
-} as const
-
-// ===== 中性色阶 — 深空蓝调 =====
+// ===== 中性色阶 — 极客黑调 =====
 export const neutral = {
   light: {
     50: '#f8fafc',
@@ -73,17 +57,17 @@ export const neutral = {
     950: '#020617',
   },
   dark: {
-    50: '#080c16',   // 最深底色 — 深空蓝黑
-    100: '#0d1320',  // 卡片底色
-    200: '#131b2e',  // 悬浮/弹窗底色
-    300: '#1a2540',  // 边框/分割
-    400: '#243352',  // hover 状态
-    500: '#3b5078',  // 禁用/占位
-    600: '#5a7ba5',  // 次要文字
-    700: '#8da4c8',  // 正文文字
-    800: '#b8c9e2',  // 标题文字
-    900: '#dce6f2',  // 高亮文字
-    950: '#f0f4fa',  // 最亮文字
+    50: '#050505',    // 页面背景（近纯黑）
+    100: '#0f0f12',   // 卡片背景
+    200: '#16161d',   // 悬停表面
+    300: '#1f1f23',   // 边框
+    400: '#2d2d35',   // 高亮边框
+    500: '#3f3f46',   // 禁用/占位
+    600: '#71717a',   // 次要文字
+    700: '#94a3b8',   // 正文次要文字 (on-muted)
+    800: '#cbd5e1',   // 标题文字
+    900: '#ffffff',   // 主文字 (on-bg)
+    950: '#ffffff',
   },
 } as const
 
@@ -91,14 +75,14 @@ export const neutral = {
 export const riseFall = {
   china: {
     up: '#ef4444',       // 涨 — 红
-    down: '#10b981',     // 跌 — 绿
+    down: '#22c55e',     // 跌 — 绿
     upBg: 'rgba(239,68,68,0.12)',
-    downBg: 'rgba(16,185,129,0.12)',
+    downBg: 'rgba(34,197,94,0.12)',
   },
   international: {
-    up: '#10b981',
+    up: '#22c55e',
     down: '#ef4444',
-    upBg: 'rgba(16,185,129,0.12)',
+    upBg: 'rgba(34,197,94,0.12)',
     downBg: 'rgba(239,68,68,0.12)',
   },
 } as const
@@ -170,8 +154,8 @@ export const shadow = {
   xl: '0 24px 48px -8px rgb(0 0 0 / 0.16), 0 8px 16px -6px rgb(0 0 0 / 0.1)',
   inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.06)',
   glass: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
-  glow: '0 0 20px rgba(74, 92, 242, 0.15)',
-  glowAccent: '0 0 20px rgba(249, 115, 22, 0.2)',
+  glow: '0 0 15px rgba(99, 102, 241, 0.4)',
+  glowAccent: '0 0 15px rgba(99, 102, 241, 0.2)',
 } as const
 
 export const shadowDark = {
@@ -183,8 +167,8 @@ export const shadowDark = {
   xl: '0 24px 48px -8px rgb(0 0 0 / 0.5), 0 8px 16px -6px rgb(0 0 0 / 0.4)',
   inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.3)',
   glass: '0 8px 32px 0 rgba(0, 0, 0, 0.4)',
-  glow: '0 0 24px rgba(107, 127, 248, 0.15)',
-  glowAccent: '0 0 24px rgba(251, 146, 60, 0.2)',
+  glow: '0 0 15px rgba(99, 102, 241, 0.4)',
+  glowAccent: '0 0 15px rgba(99, 102, 241, 0.2)',
 } as const
 
 // ===== 动效 =====
@@ -197,16 +181,16 @@ export const transition = {
   spring: '400ms cubic-bezier(0.34, 1.56, 0.64, 1)',
 } as const
 
-// ===== ECharts 颜色序列 — 专业交易配色 =====
+// ===== ECharts 颜色序列 =====
 export const chartColors = [
-  '#6b7ff8',  // 品牌蓝
-  '#fb923c',  // 电光橙
-  '#34d399',  // 翠绿
-  '#f87171',  // 涨红
-  '#a78bfa',  // 紫罗兰
-  '#38bdf8',  // 天蓝
-  '#f472b6',  // 玫瑰
-  '#facc15',  // 金黄
+  '#6366f1',  // 品牌紫
+  '#06b6d4',  // 青色
+  '#22c55e',  // 绿色
+  '#ef4444',  // 红色
+  '#a855f7',  // 紫色
+  '#3b82f6',  // 蓝色
+  '#ec4899',  // 粉色
+  '#eab308',  // 黄色
 ] as const
 
 // ===== Z-Index =====

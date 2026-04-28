@@ -1,32 +1,31 @@
 /**
- * 全局 CSS — Trading Terminal Pro 设计系统
+ * 全局 CSS — 极客黑（Geek Black）设计系统
  *
- * 深空蓝底 + 电光橙强调 + 高信息密度
- * 参考 BUFF.163.com 等专业饰品交易平台
+ * 近纯黑底 + Indigo 品牌色 + 玻璃拟态
+ * 参考 React 版视觉效果
  */
 
 /* ===== Light Mode ===== */
 html {
-  --cs-bg-page: #f0f2f7;
+  --cs-bg-page: #f8fafc;
   --cs-bg-card: #ffffff;
   --cs-bg-elevated: #ffffff;
   --cs-bg-hover: rgba(0, 0, 0, 0.03);
   --cs-bg-glass: rgba(255, 255, 255, 0.78);
   --cs-bg-subtle: #f8f9fc;
 
-  --cs-border: #e2e6ef;
+  --cs-border: #e2e8f0;
   --cs-border-light: rgba(0, 0, 0, 0.05);
-  --cs-border-focus: #4a5cf2;
+  --cs-border-focus: #6366f1;
 
   --cs-text-primary: #0f172a;
   --cs-text-secondary: #475569;
   --cs-text-muted: #94a3b8;
   --cs-text-on-brand: #ffffff;
 
-  --cs-brand-primary: #4a5cf2;
-  --cs-brand-primary-hover: #3a3fe6;
-  --cs-brand-accent: #f97316;
-  --cs-brand-accent-hover: #ea580c;
+  --cs-brand-primary: #6366f1;
+  --cs-brand-primary-hover: #818cf8;
+  --cs-brand-primary-pressed: #4f46e5;
 
   --cs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --cs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -44,28 +43,27 @@ html {
   --cs-radius-xl: 16px;
 }
 
-/* ===== Dark Mode — 深空蓝交易终端 ===== */
+/* ===== Dark Mode — 极客黑终端 ===== */
 html.dark {
-  --cs-bg-page: #080c16;
-  --cs-bg-card: #0d1320;
-  --cs-bg-elevated: #131b2e;
-  --cs-bg-hover: rgba(255, 255, 255, 0.04);
-  --cs-bg-glass: rgba(13, 19, 32, 0.82);
-  --cs-bg-subtle: #111827;
+  --cs-bg-page: #050505;
+  --cs-bg-card: #0f0f12;
+  --cs-bg-elevated: #16161d;
+  --cs-bg-hover: rgba(255, 255, 255, 0.05);
+  --cs-bg-glass: rgba(15, 15, 18, 0.82);
+  --cs-bg-subtle: #0f0f12;
 
-  --cs-border: rgba(255, 255, 255, 0.06);
+  --cs-border: #1f1f23;
   --cs-border-light: rgba(255, 255, 255, 0.04);
-  --cs-border-focus: #6b7ff8;
+  --cs-border-focus: #818cf8;
 
-  --cs-text-primary: #dce6f2;
-  --cs-text-secondary: #8da4c8;
-  --cs-text-muted: #5a7ba5;
+  --cs-text-primary: #ffffff;
+  --cs-text-secondary: #94a3b8;
+  --cs-text-muted: #71717a;
   --cs-text-on-brand: #ffffff;
 
-  --cs-brand-primary: #6b7ff8;
-  --cs-brand-primary-hover: #7e91fa;
-  --cs-brand-accent: #fb923c;
-  --cs-brand-accent-hover: #fdba74;
+  --cs-brand-primary: #6366f1;
+  --cs-brand-primary-hover: #818cf8;
+  --cs-brand-primary-pressed: #4f46e5;
 
   --cs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.15);
   --cs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -121,7 +119,7 @@ html.dark body::before {
   transform: translateY(-4px);
 }
 
-/* ===== 自定义滚动条 — 终端风格 ===== */
+/* ===== 自定义滚动条 — 极客风格 ===== */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -190,18 +188,18 @@ html.dark .cs-skeleton {
 .cs-glass-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--cs-shadow-lg);
-  border-color: rgba(74, 92, 242, 0.15);
+  border-color: rgba(99, 102, 241, 0.15);
 }
 
 html.dark .cs-glass-card:hover {
-  border-color: rgba(107, 127, 248, 0.15);
+  border-color: rgba(129, 140, 248, 0.15);
 }
 
-/* ===== 渐变 KPI 卡片 — 更深沉的渐变 ===== */
+/* ===== 渐变 KPI 卡片 ===== */
 .cs-kpi-gradient--brand {
-  background: linear-gradient(135deg, #4a5cf2 0%, #2f32cc 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(74, 92, 242, 0.25);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25);
 }
 
 .cs-kpi-gradient--success {
@@ -220,13 +218,6 @@ html.dark .cs-glass-card:hover {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
   box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
-}
-
-/* ===== 电光橙强调卡 ===== */
-.cs-kpi-gradient--accent {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.25);
 }
 
 /* ===== 文字工具类 ===== */
@@ -250,7 +241,7 @@ html.dark .cs-glass-card:hover {
 
 @keyframes cs-price-flash-down {
   0% { background-color: transparent; }
-  25% { background-color: rgba(16, 185, 129, 0.15); }
+  25% { background-color: rgba(34, 197, 94, 0.15); }
   100% { background-color: transparent; }
 }
 
@@ -285,10 +276,153 @@ html.dark .cs-glass-card:hover {
 
 /* ===== 选中颜色 ===== */
 ::selection {
-  background: rgba(74, 92, 242, 0.2);
+  background: rgba(99, 102, 241, 0.2);
   color: var(--cs-text-primary);
 }
 
 html.dark ::selection {
-  background: rgba(107, 127, 248, 0.25);
+  background: rgba(129, 140, 248, 0.25);
+}
+
+/* ===== React 版组件类对齐 ===== */
+
+/* 玻璃拟态卡片 */
+.glass-card {
+  background: rgba(15, 15, 18, 0.5);
+  border: 1px solid #1f1f23;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 300ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+.glass-card:hover {
+  border-color: #2d2d35;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+}
+html:not(.dark) .glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: #e2e8f0;
+}
+html:not(.dark) .glass-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 主按钮 */
+.btn-primary {
+  background: #6366f1;
+  color: #fff;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 200ms;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+}
+.btn-primary:hover {
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* 轮廓按钮 */
+.btn-outline {
+  border: 1px solid #1f1f23;
+  background: rgba(15, 15, 18, 0.3);
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 200ms;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #ffffff;
+}
+.btn-outline:hover {
+  background: #16161d;
+  border-color: #2d2d35;
+}
+html:not(.dark) .btn-outline {
+  border-color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.3);
+  color: #0f172a;
+}
+html:not(.dark) .btn-outline:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* 导航项 */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 200ms;
+  color: #94a3b8;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+html:not(.dark) .nav-item {
+  color: #64748b;
+}
+html:not(.dark) .nav-item:hover {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.nav-item-active {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 200ms;
+  background: rgba(255, 255, 255, 0.05);
+  color: #6366f1;
+  box-shadow: inset 0 0 10px rgba(99, 102, 241, 0.1);
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+html:not(.dark) .nav-item-active {
+  background: rgba(99, 102, 241, 0.08);
+  color: #6366f1;
+}
+
+/* Shimmer 扫光动画 */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
+
+/* 滚动条隐藏 */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
