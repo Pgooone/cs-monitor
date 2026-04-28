@@ -41,7 +41,7 @@
             <div class="dashboard__api-dot" />
             <span class="dashboard__api-label">API 生命周期</span>
           </div>
-          <span class="dashboard__api-value">活跃 ({{ dashboard.lastUpdate || '0ms' }})</span>
+          <span class="dashboard__api-value">活跃 ({{ formatUTCToLocal(dashboard.lastUpdate) }})</span>
         </div>
       </div>
 
@@ -124,6 +124,7 @@ import { ref, onMounted } from 'vue'
 import { Zap, LayoutGrid, RefreshCw, Terminal, Bell } from 'lucide-vue-next'
 import { useDashboardStore } from '@/stores/dashboard'
 import { toastSuccess } from '@/composables/useToast'
+import { formatUTCToLocal } from '@/utils/date'
 
 const dashboard = useDashboardStore()
 

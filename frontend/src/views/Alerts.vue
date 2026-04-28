@@ -77,6 +77,7 @@ import { NPagination } from 'naive-ui'
 import { Bell, TrendingDown, TrendingUp, AlertCircle, Zap } from 'lucide-vue-next'
 import api, { type AlertRecord } from '@/api'
 import { toastError } from '@/composables/useToast'
+import { formatUTCToLocal } from '@/utils/date'
 
 const items = ref<AlertRecord[]>([])
 const total = ref(0)
@@ -119,10 +120,7 @@ function getTypeBadgeClass(type: string): string {
 }
 
 function formatDateTime(iso: string): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return formatUTCToLocal(iso)
 }
 
 async function fetchData() {

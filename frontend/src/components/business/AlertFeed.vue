@@ -31,6 +31,7 @@
 import { computed, watch, ref, nextTick } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import type { AlertRecord } from '@/api'
+import { formatUTCTime } from '@/utils/date'
 
 interface DisplayAlert extends AlertRecord {
   _isNew?: boolean
@@ -89,12 +90,7 @@ function changeClass(v: number | null) {
 }
 
 function formatTime(t: string) {
-  try {
-    const d = new Date(t)
-    return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return t
-  }
+  return formatUTCTime(t)
 }
 </script>
 

@@ -221,6 +221,7 @@ import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
 import SteamItemImage from '@/components/business/SteamItemImage.vue'
 import { getChartTheme } from '@/charts/theme'
 import { useTheme } from '@/composables/useTheme'
+import { formatUTCDate } from '@/utils/date'
 
 use([
   LineChart,
@@ -391,7 +392,7 @@ function initLineChart() {
       (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
     )
     const dates = sorted.map((item) =>
-      new Date(item.recorded_at).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
+      formatUTCDate(item.recorded_at),
     )
     const prices = sorted.map((item) => item.price)
     xData.push(...dates)
@@ -448,7 +449,7 @@ function initLineChart() {
       )
       if (!sorted.length) continue
       const dates = sorted.map((item) =>
-        new Date(item.recorded_at).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
+        formatUTCDate(item.recorded_at),
       )
       const prices = sorted.map((item) => item.price)
       platformData[platform] = { dates, prices }

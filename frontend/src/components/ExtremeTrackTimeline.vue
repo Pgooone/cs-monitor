@@ -44,6 +44,7 @@
 import { computed } from 'vue'
 import { NEmpty, NTimeline, NTimelineItem, NTag, NSpace, NText } from 'naive-ui'
 import type { ExtremeTrackConfig } from '@/api'
+import { formatUTCToLocal } from '@/utils/date'
 
 const props = defineProps<{
   item: ExtremeTrackConfig
@@ -102,7 +103,6 @@ function qtyChangeText(curr: number, prev: number) {
 }
 
 function formatTime(ts: string) {
-  if (!ts) return '-'
-  return new Date(ts).toLocaleString('zh-CN')
+  return formatUTCToLocal(ts)
 }
 </script>
