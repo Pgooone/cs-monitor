@@ -1,332 +1,173 @@
 <template>
-  <div class="settings-page">
-    <page-header title="系统设置" />
-
-    <div class="settings-layout">
-      <!-- 左侧子导航 -->
-      <div class="settings-nav">
-        <n-menu
-          v-model:value="activeSection"
-          :options="menuOptions"
-          :collapsed-width="64"
-          :icon-size="20"
-          @update:value="activeSection = $event"
-        />
-      </div>
-
-      <!-- 右侧内容 -->
-      <div class="settings-content">
-        <!-- 通用 -->
-        <div v-if="activeSection === 'general'">
-          <n-card title="外观设置" class="settings-card">
-            <!-- 主题模式 -->
-            <div class="setting-section">
-              <div class="setting-section__label">主题模式</div>
-              <div class="theme-selector">
-                <div
-                  v-for="mode in themeModes"
-                  :key="mode.value"
-                  class="theme-option"
-                  :class="{ 'theme-option--active': themeMode === mode.value }"
-                  @click="setTheme(mode.value)"
-                >
-                  <div class="theme-option__icon" :style="{ background: mode.bg, color: mode.color }"">
-                    <component :is="mode.icon" />
-                  </div>
-                  <div class="theme-option__label">{{ mode.label }}</div>
-                </div>
-              </div>
-            </div>
-
-            <n-divider />
-
-            <!-- 涨跌颜色 -->
-            <div class="setting-section">
-              <div class="setting-section__label">涨跌颜色</div>
-              <div class="rise-fall-selector">
-                <div
-                  v-for="mode in riseFallModes"
-                  :key="mode.value"
-                  class="rise-fall-option"
-                  :class="{ 'rise-fall-option--active': riseFallMode === mode.value }"
-                  @click="setRiseFall(mode.value)"
-                >
-                  <div class="rise-fall-option__preview">
-                    <span class="rise-fall-option__up" :style="{ color: mode.upColor }"
-                    >&#9650; +2.5%</span>
-                    <span class="rise-fall-option__down" :style="{ color: mode.downColor }"
-                    >&#9660; -1.8%</span>
-                  </div>
-                  <div class="rise-fall-option__label">{{ mode.label }}</div>
-                </div>
-              </div>
-            </div>
-          </n-card>
-        </div>
-
-        <!-- 通知 -->
-        <div v-if="activeSection === 'notify'">
-          <n-card title="通知配置">
-            <!-- 步骤条 -->
-            <n-steps :current="notifyStep" size="small" class="mb-6">
-              <n-step title="选择渠道" />
-              <n-step title="填写配置" />
-              <n-step title="测试发送" />
-            </n-steps>
-
-            <div class="notify-layout">
-              <div class="notify-form">
-                <n-spin :show="loading">
-                  <n-form
-                    ref="notifyFormRef"
-                    :model="formData"
-                    label-placement="left"
-                    label-width="120"
-                  >
-                    <!-- Step 1 -->
-                    <div v-if="notifyStep === 0">
-                      <n-form-item label="默认渠道">
-                        <n-radio-group v-model:value="formData.notify_channel">
-                          <n-space vertical>
-                            <n-radio value="wecom">
-                              <span class="radio-with-icon">
-                                <ChatbubbleOutline class="radio-icon" />
-                                企业微信机器人
-                              </span>
-                            </n-radio>
-                            <n-radio value="telegram">
-                              <span class="radio-with-icon">
-                                <PaperPlaneOutline class="radio-icon" />
-                                Telegram Bot
-                              </span>
-                            </n-radio>
-                            <n-radio value="serverchan">
-                              <span class="radio-with-icon">
-                                <NotificationsOutline class="radio-icon" />
-                                Server 酱
-                              </span>
-                            </n-radio>
-                          </n-space>
-                        </n-radio-group>
-                      </n-form-item>
-                    </div>
-
-                    <!-- Step 2 -->
-                    <div v-if="notifyStep === 1">
-                      <div v-if="formData.notify_channel === 'wecom'">
-                        <n-form-item label="Webhook URL">
-                          <n-input
-                            v-model:value="formData.wecom_webhook_url"
-                            type="textarea"
-                            placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
-                            :rows="2"
-                          />
-                        </n-form-item>
-                      </div>
-
-                      <div v-else-if="formData.notify_channel === 'telegram'">
-                        <n-form-item label="Bot Token">
-                          <n-input
-                            v-model:value="formData.telegram_bot_token"
-                            placeholder="123456:ABC-DEF..."
-                          />
-                        </n-form-item>
-                        <n-form-item label="Chat ID">
-                          <n-input
-                            v-model:value="formData.telegram_chat_id"
-                            placeholder="如 @channelname 或 数字 ID"
-                          />
-                        </n-form-item>
-                      </div>
-
-                      <div v-else-if="formData.notify_channel === 'serverchan'">
-                        <n-form-item label="SendKey">
-                          <n-input
-                            v-model:value="formData.serverchan_sendkey"
-                            placeholder="SCTxxxxx..."
-                          />
-                        </n-form-item>
-                      </div>
-                    </div>
-
-                    <!-- Step 3 -->
-                    <div v-if="notifyStep === 2">
-                      <n-alert type="info" title="测试通知" class="mb-4">
-                        配置完成后，点击下方按钮发送一条测试消息，确认通知渠道正常工作。
-                      </n-alert>
-                      <n-button
-                        :loading="testing"
-                        type="primary"
-                        block
-                        @click="handleTest"
-                      >
-                        <template #icon><SendOutline /></template>
-                        发送测试通知
-                      </n-button>
-                    </div>
-                  </n-form>
-                </n-spin>
-
-                <n-space class="mt-4" justify="space-between">
-                  <n-space>
-                    <n-button v-if="notifyStep > 0" @click="notifyStep--">上一步</n-button>
-                  </n-space>
-                  <n-space>
-                    <n-button v-if="notifyStep < 2" type="primary" @click="notifyStep++">下一步</n-button>
-                    <n-button
-                      v-else
-                      :loading="saving"
-                      type="primary"
-                      @click="handleSave"
-                    >
-                      保存配置
-                    </n-button>
-                  </n-space>
-                </n-space>
-              </div>
-
-              <!-- 实时预览 -->
-              <div class="notify-preview">
-                <div class="preview-label">配置预览</div>
-                <div class="preview-card">
-                  <div class="preview-header">
-                    <span class="preview-channel">{{ channelLabel }}</span>
-                    <n-tag
-                      :type="isChannelConfigured ? 'success' : 'warning'"
-                      size="small"
-                      round
-                    >
-                      {{ isChannelConfigured ? '已配置' : '未配置' }}
-                    </n-tag>
-                  </div>
-                  <div class="preview-body">
-                    <div v-if="formData.notify_channel === 'wecom'">
-                      <div class="preview-field">
-                        <span class="preview-field-label">Webhook</span>
-                        <span class="preview-field-value">
-                          {{ maskSecret(formData.wecom_webhook_url) || '未填写' }}
-                        </span>
-                      </div>
-                    </div>
-                    <div v-else-if="formData.notify_channel === 'telegram'">
-                      <div class="preview-field">
-                        <span class="preview-field-label">Token</span>
-                        <span class="preview-field-value">
-                          {{ maskSecret(formData.telegram_bot_token) || '未填写' }}
-                        </span>
-                      </div>
-                      <div class="preview-field">
-                        <span class="preview-field-label">Chat ID</span>
-                        <span class="preview-field-value">
-                          {{ formData.telegram_chat_id || '未填写' }}
-                        </span>
-                      </div>
-                    </div>
-                    <div v-else-if="formData.notify_channel === 'serverchan'">
-                      <div class="preview-field">
-                        <span class="preview-field-label">SendKey</span>
-                        <span class="preview-field-value">
-                          {{ maskSecret(formData.serverchan_sendkey) || '未填写' }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </n-card>
-        </div>
-
-        <!-- 监控 -->
-        <div v-if="activeSection === 'monitor'">
-          <n-card title="监控概览">
-            <div v-if="systemLoading" class="space-y-4">
-              <skeleton-card v-for="i in 2" :key="i" />
-            </div>
-            <div v-else class="monitor-stats">
-              <div class="stat-item">
-                <div class="stat-value">{{ systemInfo?.watchlist_count || 0 }}</div>
-                <div class="stat-label">监控清单项</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ systemInfo?.extreme_track_count || 0 }}</div>
-                <div class="stat-label">极致追踪项</div>
-              </div>
-            </div>
-          </n-card>
-        </div>
-
-        <!-- 数据 -->
-        <div v-if="activeSection === 'data'">
-          <n-card title="数据目录">
-            <div v-if="systemLoading" class="space-y-4">
-              <skeleton-card />
-            </div>
-            <div v-else
-              >
-              <div class="data-info">
-                <div class="data-field">
-                  <span class="data-field-label">数据库路径</span>
-                  <span class="data-field-value">{{ systemInfo?.db_path || '—' }}</span>
-                </div>
-                <div class="data-field">
-                  <span class="data-field-label">数据目录</span>
-                  <span class="data-field-value">{{ systemInfo?.data_dir || '—' }}</span>
-                </div>
-                <div class="data-field">
-                  <span class="data-field-label">数据库大小</span>
-                  <span class="data-field-value">{{ systemInfo?.db_size_human || '—' }}</span>
-                </div>
-              </div>
-
-              <n-space class="mt-4">
-                <n-button @click="handleExportDb">
-                  <template #icon><DownloadOutline /></template>
-                  导出数据库
-                </n-button>
-              </n-space>
-
-              <n-divider />
-
-              <!-- 危险操作 -->
-              <div class="danger-zone">
-                <div class="danger-title"><WarningOutline /> 危险操作</div>
-                <n-button
-                  type="error"
-                  ghost
-                  @click="showClearConfirm = true"
-                >
-                  <template #icon><TrashOutline /></template>
-                  清空所有监控数据
-                </n-button>
-              </div>
-            </div>
-          </n-card>
-        </div>
-
-        <!-- 关于 -->
-        <div v-if="activeSection === 'about'">
-          <n-card title="关于 CS2 Monitor">
-            <div class="about-content">
-              <div class="about-logo">
-                <div class="about-logo-icon">CM</div>
-              </div>
-              <div class="about-version">版本 {{ systemInfo?.version || '1.0.0' }}</div>
-              <div class="about-desc">
-                CS2 饰品价格波动监控系统 — 基于 SteamDT API 的价格监控工具，支持 CLI 监控 + Web 仪表盘双模式。
-              </div>
-              <n-divider />
-              <div class="about-links">
-                <n-button text tag="a" href="https://github.com" target="_blank">
-                  <template #icon><LogoGithub /></template>
-                  GitHub
-                </n-button>
-              </div>
-            </div>
-          </n-card>
-        </div>
-      </div>
+  <div class="settings">
+    <!-- 大标题 -->
+    <div class="settings__hero">
+      <h2 class="settings__title">系统<span class="text-brand">配置</span></h2>
+      <p class="settings__desc">管理 SteamDT API 令牌、WebHook 推送地址以及终端偏好。</p>
     </div>
+
+    <!-- API 访问令牌 -->
+    <section class="settings__section">
+      <div class="settings__section-header">
+        <Zap class="w-4 h-4 text-brand" />
+        <h3 class="settings__section-title">API 访问令牌</h3>
+      </div>
+      <div class="glass-card settings__section-card">
+        <div class="settings__field">
+          <label class="settings__field-label">SteamDT API Token</label>
+          <div class="settings__token-row">
+            <input
+              type="password"
+              :value="systemInfo?.api_token_masked || 'sk-xxxxxxxxxxxxxxxxxxxxxxxx'"
+              class="settings__token-input font-mono-num"
+              readonly
+            />
+            <button class="btn-outline px-6">配置令牌</button>
+          </div>
+        </div>
+        <div class="settings__divider" />
+        <div class="settings__toggle-row">
+          <div>
+            <div class="settings__toggle-title">数据库持久化 (SQLite)</div>
+            <p class="settings__toggle-desc">启用后本地记录饰品历史价格数据。</p>
+          </div>
+          <div class="settings__toggle settings__toggle--on">
+            <div class="settings__toggle-knob" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 消息通知配置 -->
+    <section class="settings__section">
+      <div class="settings__section-header">
+        <Bell class="w-4 h-4 text-brand" />
+        <h3 class="settings__section-title">消息通知配置</h3>
+      </div>
+      <div class="settings__notify-grid">
+        <div class="glass-card settings__notify-card">
+          <div class="settings__notify-header">
+            <h4 class="settings__notify-name">Telegram Bot</h4>
+            <div
+              class="settings__status-dot"
+              :class="isTelegramConfigured ? 'settings__status-dot--active' : ''"
+            />
+          </div>
+          <p class="settings__notify-status">
+            推送状态: {{ isTelegramConfigured ? '活跃' : '未启用' }}
+          </p>
+          <button class="btn-outline w-full py-2" @click="handleTest('telegram')">测试通道</button>
+        </div>
+        <div class="glass-card settings__notify-card">
+          <div class="settings__notify-header">
+            <h4 class="settings__notify-name">企业微信 / Server酱</h4>
+            <div
+              class="settings__status-dot"
+              :class="isWecomConfigured ? 'settings__status-dot--active' : ''"
+            />
+          </div>
+          <p class="settings__notify-status">
+            推送状态: {{ isWecomConfigured ? '活跃' : '未启用' }}
+          </p>
+          <button class="btn-outline w-full py-2" @click="handleTest('wecom')">测试通道</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 界面显示效果 -->
+    <section class="settings__section">
+      <div class="settings__section-header">
+        <LayoutGrid class="w-4 h-4 text-brand" />
+        <h3 class="settings__section-title">界面显示效果</h3>
+      </div>
+      <div class="glass-card settings__display-card">
+        <div class="settings__toggle-row">
+          <div>
+            <div class="settings__toggle-title">深色模式</div>
+            <p class="settings__toggle-desc">启用暗色主题以减少眼部疲劳。</p>
+          </div>
+          <div
+            class="settings__toggle"
+            :class="{ 'settings__toggle--on': isDark }"
+            @click="setTheme(isDark ? 'light' : 'dark')"
+          >
+            <div class="settings__toggle-knob" />
+          </div>
+        </div>
+        <div class="settings__divider" />
+        <div class="settings__toggle-row">
+          <div>
+            <div class="settings__toggle-title">等宽数字模式 (Tabular Nums)</div>
+            <p class="settings__toggle-desc">饰品价格变动时，数字布局将保持绝对对齐。</p>
+          </div>
+          <div class="settings__toggle settings__toggle--on">
+            <div class="settings__toggle-knob" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 涨跌颜色设置 -->
+    <section class="settings__section">
+      <div class="settings__section-header">
+        <Palette class="w-4 h-4 text-brand" />
+        <h3 class="settings__section-title">涨跌颜色习惯</h3>
+      </div>
+      <div class="glass-card settings__section-card">
+        <div class="settings__rise-fall-selector">
+          <div
+            v-for="mode in riseFallModes"
+            :key="mode.value"
+            class="settings__rise-fall-option"
+            :class="{ 'settings__rise-fall-option--active': riseFallMode === mode.value }"
+            @click="setRiseFall(mode.value)"
+          >
+            <div class="settings__rise-fall-preview">
+              <span :style="{ color: mode.upColor }">&#9650; +2.5%</span>
+              <span :style="{ color: mode.downColor }">&#9660; -1.8%</span>
+            </div>
+            <div class="settings__rise-fall-label">{{ mode.label }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 数据管理 -->
+    <section class="settings__section">
+      <div class="settings__section-header">
+        <Database class="w-4 h-4 text-brand" />
+        <h3 class="settings__section-title">数据管理</h3>
+      </div>
+      <div class="glass-card settings__section-card">
+        <div class="settings__data-info">
+          <div class="settings__data-field">
+            <span class="settings__data-label">数据库路径</span>
+            <span class="settings__data-value font-mono-num">{{ systemInfo?.db_path || '—' }}</span>
+          </div>
+          <div class="settings__data-field">
+            <span class="settings__data-label">数据库大小</span>
+            <span class="settings__data-value font-mono-num">{{ systemInfo?.db_size_human || '—' }}</span>
+          </div>
+        </div>
+        <div class="settings__data-actions">
+          <button class="btn-outline" @click="handleExportDb">
+            <Download class="w-4 h-4" />
+            导出数据库
+          </button>
+        </div>
+        <div class="settings__divider" />
+        <div class="settings__danger">
+          <div class="settings__danger-title">
+            <AlertTriangle class="w-4 h-4" />
+            危险操作
+          </div>
+          <button class="settings__danger-btn" @click="showClearConfirm = true">
+            <Trash2 class="w-4 h-4" />
+            清空所有监控数据
+          </button>
+        </div>
+      </div>
+    </section>
 
     <!-- 清空确认弹窗 -->
     <n-modal
@@ -340,9 +181,9 @@
       @positive-click="handleClearDb"
     >
       <div class="clear-confirm-content">
-        <n-alert type="error">
+        <p class="settings__danger-warn">
           此操作将清空所有价格记录、告警记录和归档数据，但保留监控清单和追踪配置。该操作不可恢复！
-        </n-alert>
+        </p>
         <div class="mt-4">
           请输入 <strong>CONFIRM</strong> 以确认：
           <n-input v-model:value="clearConfirmText" class="mt-2" placeholder="CONFIRM" />
@@ -353,74 +194,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, markRaw } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import {
-  NCard,
-  NForm,
-  NFormItem,
   NInput,
-  NButton,
-  NSpace,
-  NRadio,
-  NRadioGroup,
-  NTag,
-  NMenu,
-  NSteps,
-  NStep,
-  NSpin,
-  NDivider,
-  NAlert,
   NModal,
   useMessage,
 } from 'naive-ui'
-import type { MenuOption } from 'naive-ui'
 import {
-  SunnyOutline,
-  MoonOutline,
-  DesktopOutline,
-  ChatbubbleOutline,
-  PaperPlaneOutline,
-  NotificationsOutline,
-  SendOutline,
-  DownloadOutline,
-  WarningOutline,
-  TrashOutline,
-  LogoGithub,
-  SettingsOutline,
-  PulseOutline,
-  FolderOpenOutline,
-  InformationCircleOutline,
-} from '@vicons/ionicons5'
-import { h } from 'vue'
+  Zap,
+  Bell,
+  LayoutGrid,
+  Database,
+  Download,
+  Trash2,
+  AlertTriangle,
+  Palette,
+} from 'lucide-vue-next'
 import api from '@/api'
 import { useTheme } from '@/composables/useTheme'
 import { toastSuccess, toastError } from '@/composables/useToast'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import SkeletonCard from '@/components/base/SkeletonCard.vue'
-
-const themeModes = [
-  {
-    value: 'light' as const,
-    label: '浅色',
-    icon: markRaw(SunnyOutline),
-    bg: '#fef3c7',
-    color: '#d97706',
-  },
-  {
-    value: 'dark' as const,
-    label: '深色',
-    icon: markRaw(MoonOutline),
-    bg: '#1e1b4b',
-    color: '#a5b4fc',
-  },
-  {
-    value: 'system' as const,
-    label: '跟随系统',
-    icon: markRaw(DesktopOutline),
-    bg: '#e0e7ff',
-    color: '#4f46e5',
-  },
-]
 
 const riseFallModes = [
   {
@@ -438,15 +230,8 @@ const riseFallModes = [
 ]
 
 const message = useMessage()
-const { themeMode, riseFallMode, setTheme, setRiseFall } = useTheme()
-
-const activeSection = ref('general')
-const notifyStep = ref(0)
-
-const loading = ref(false)
-const saving = ref(false)
+const { riseFallMode, isDark, setTheme, setRiseFall } = useTheme()
 const testing = ref(false)
-const systemLoading = ref(false)
 const clearing = ref(false)
 const showClearConfirm = ref(false)
 const clearConfirmText = ref('')
@@ -459,6 +244,7 @@ const systemInfo = ref<{
   data_dir: string
   watchlist_count: number
   extreme_track_count: number
+  api_token_masked?: string
 } | null>(null)
 
 const formData = ref({
@@ -469,58 +255,15 @@ const formData = ref({
   serverchan_sendkey: '',
 })
 
-const menuOptions: MenuOption[] = [
-  {
-    label: '通用',
-    key: 'general',
-    icon: () => h(SettingsOutline),
-  },
-  {
-    label: '通知',
-    key: 'notify',
-    icon: () => h(NotificationsOutline),
-  },
-  {
-    label: '监控',
-    key: 'monitor',
-    icon: () => h(PulseOutline),
-  },
-  {
-    label: '数据',
-    key: 'data',
-    icon: () => h(FolderOpenOutline),
-  },
-  {
-    label: '关于',
-    key: 'about',
-    icon: () => h(InformationCircleOutline),
-  },
-]
-
-const channelLabel = computed(() => {
-  const map: Record<string, string> = {
-    wecom: '企业微信',
-    telegram: 'Telegram',
-    serverchan: 'Server 酱',
-  }
-  return map[formData.value.notify_channel] || formData.value.notify_channel
+const isTelegramConfigured = computed(() => {
+  return !!formData.value.telegram_bot_token && !!formData.value.telegram_chat_id
 })
 
-const isChannelConfigured = computed(() => {
-  if (formData.value.notify_channel === 'wecom') return !!formData.value.wecom_webhook_url
-  if (formData.value.notify_channel === 'telegram') return !!formData.value.telegram_bot_token && !!formData.value.telegram_chat_id
-  if (formData.value.notify_channel === 'serverchan') return !!formData.value.serverchan_sendkey
-  return false
+const isWecomConfigured = computed(() => {
+  return !!formData.value.wecom_webhook_url || !!formData.value.serverchan_sendkey
 })
-
-function maskSecret(str: string): string {
-  if (!str) return ''
-  if (str.length <= 12) return '***'
-  return str.slice(0, 6) + '...' + str.slice(-4)
-}
 
 async function loadSettings() {
-  loading.value = true
   try {
     const { data } = await api.getNotifySettings()
     formData.value = {
@@ -530,47 +273,24 @@ async function loadSettings() {
       telegram_chat_id: data.telegram_chat_id || '',
       serverchan_sendkey: data.serverchan_sendkey || '',
     }
-  } catch (e) {
+  } catch {
     toastError('加载配置失败')
-  } finally {
-    loading.value = false
   }
 }
 
 async function loadSystemInfo() {
-  systemLoading.value = true
   try {
     const { data } = await api.systemInfo()
     systemInfo.value = data
   } catch (e) {
     console.error(e)
-  } finally {
-    systemLoading.value = false
   }
 }
 
-async function handleSave() {
-  saving.value = true
-  try {
-    await api.updateNotifySettings({
-      notify_channel: formData.value.notify_channel,
-      wecom_webhook_url: formData.value.wecom_webhook_url,
-      telegram_bot_token: formData.value.telegram_bot_token,
-      telegram_chat_id: formData.value.telegram_chat_id,
-      serverchan_sendkey: formData.value.serverchan_sendkey,
-    })
-    toastSuccess('配置已保存')
-  } catch (e: any) {
-    toastError(e?.response?.data?.detail || '保存失败')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function handleTest() {
+async function handleTest(channel: string) {
   testing.value = true
   try {
-    await api.testNotify(formData.value.notify_channel)
+    await api.testNotify(channel)
     toastSuccess('测试通知已发送')
   } catch (e: any) {
     toastError(e?.response?.data?.detail || '测试通知发送失败')
@@ -609,283 +329,297 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.settings-page {
+.settings {
   display: flex;
   flex-direction: column;
+  gap: 3rem;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding-bottom: 5rem;
 }
 
-.settings-layout {
-  display: flex;
-  gap: 1.5rem;
+/* 大标题 */
+.settings__hero {
+  margin-bottom: 0;
 }
 
-.settings-nav {
-  flex-shrink: 0;
-  width: 200px;
+.settings__title {
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: #ffffff;
+  margin: 0;
 }
 
-.settings-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.settings-card {
-  background: var(--cs-bg-card);
-  border: 1px solid var(--cs-border-light);
-  border-radius: 1rem;
-}
-
-/* ===== 设置项区域 ===== */
-.setting-section {
-  padding: 0.5rem 0;
-}
-
-.setting-section__label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--cs-text-primary);
-  margin-bottom: 1rem;
-}
-
-/* ===== 主题选择器 ===== */
-.theme-selector {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.theme-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-radius: 0.875rem;
-  border: 2px solid var(--cs-border-light);
-  background: var(--cs-bg-card);
-  cursor: pointer;
-  transition: all var(--cs-transition-fast);
-  min-width: 100px;
-}
-
-.theme-option:hover {
-  border-color: var(--cs-brand-primary);
-  transform: translateY(-1px);
-}
-
-.theme-option--active {
-  border-color: var(--cs-brand-primary);
-  box-shadow: 0 0 0 3px rgba(46, 91, 255, 0.15);
-}
-
-.theme-option__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-}
-
-.theme-option__label {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--cs-text-secondary);
-}
-
-.theme-option--active .theme-option__label {
-  color: var(--cs-brand-primary);
-  font-weight: 600;
-}
-
-/* ===== 涨跌颜色选择器 ===== */
-.rise-fall-selector {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.rise-fall-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-radius: 0.875rem;
-  border: 2px solid var(--cs-border-light);
-  background: var(--cs-bg-card);
-  cursor: pointer;
-  transition: all var(--cs-transition-fast);
-  min-width: 160px;
-}
-
-.rise-fall-option:hover {
-  border-color: var(--cs-brand-primary);
-  transform: translateY(-1px);
-}
-
-.rise-fall-option--active {
-  border-color: var(--cs-brand-primary);
-  box-shadow: 0 0 0 3px rgba(46, 91, 255, 0.15);
-}
-
-.rise-fall-option__preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.rise-fall-option__up,
-.rise-fall-option__down {
-  transition: color var(--cs-transition-fast);
-}
-
-.rise-fall-option__label {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--cs-text-secondary);
-}
-
-.rise-fall-option--active .rise-fall-option__label {
-  color: var(--cs-brand-primary);
-  font-weight: 600;
-}
-
-.notify-layout {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.notify-form {
-  flex: 1;
-  min-width: 0;
-}
-
-.notify-preview {
-  flex-shrink: 0;
-  width: 260px;
-}
-
-.preview-label {
+.settings__desc {
   font-size: 0.75rem;
-  color: var(--cs-text-muted);
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin: 1rem 0 0 0;
+}
+
+/* Section */
+.settings__section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.settings__section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
-  font-weight: 500;
 }
 
-.preview-card {
-  background: var(--cs-bg-hover);
+.settings__section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0;
+}
+
+.settings__section-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Field */
+.settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings__field-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.settings__token-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.settings__token-input {
+  flex: 1;
+  background: #0f0f12;
+  border: 1px solid #1f1f23;
+  padding: 0.625rem 1rem;
   border-radius: 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--cs-border-light);
+  font-size: 0.875rem;
+  color: #ffffff;
+  outline: none;
 }
 
-.preview-header {
+.settings__divider {
+  height: 1px;
+  background: #1f1f23;
+}
+
+/* Toggle */
+.settings__toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
 }
 
-.preview-channel {
-  font-weight: 600;
+.settings__toggle-title {
+  font-weight: 700;
+  color: #ffffff;
   font-size: 0.875rem;
-  color: var(--cs-text-primary);
 }
 
-.preview-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.settings__toggle-desc {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin: 0.25rem 0 0 0;
 }
 
-.preview-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+.settings__toggle {
+  width: 3rem;
+  height: 1.5rem;
+  background: #2d2d35;
+  border-radius: 9999px;
+  position: relative;
+  padding: 0.25rem;
+  cursor: pointer;
+  transition: background 200ms;
+  flex-shrink: 0;
 }
 
-.preview-field-label {
-  font-size: 0.6875rem;
-  color: var(--cs-text-muted);
+.settings__toggle--on {
+  background: #6366f1;
 }
 
-.preview-field-value {
-  font-size: 0.8125rem;
-  color: var(--cs-text-secondary);
-  font-family: 'JetBrains Mono', monospace;
-  word-break: break-all;
+.settings__toggle-knob {
+  width: 1rem;
+  height: 1rem;
+  background: #ffffff;
+  border-radius: 9999px;
+  transition: transform 200ms;
 }
 
-.monitor-stats {
+.settings__toggle--on .settings__toggle-knob {
+  transform: translateX(1.5rem);
+}
+
+/* Notify grid */
+.settings__notify-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
-.stat-item {
-  background: var(--cs-bg-hover);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  text-align: center;
-  border: 1px solid var(--cs-border-light);
-  transition: transform var(--cs-transition-fast);
+@media (min-width: 768px) {
+  .settings__notify-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.stat-item:hover {
-  transform: translateY(-2px);
+.settings__notify-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.stat-value {
-  font-size: 1.5rem;
+.settings__notify-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings__notify-name {
   font-weight: 700;
-  color: var(--cs-brand-primary);
-  font-family: 'JetBrains Mono', monospace;
+  color: #ffffff;
+  font-size: 0.875rem;
+  margin: 0;
 }
 
-.stat-label {
+.settings__status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.settings__status-dot--active {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.settings__notify-status {
   font-size: 0.75rem;
-  color: var(--cs-text-muted);
-  margin-top: 0.25rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin: 0;
 }
 
-.data-info {
+/* Display card */
+.settings__display-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Rise/fall selector */
+.settings__rise-fall-selector {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.settings__rise-fall-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px solid #1f1f23;
+  cursor: pointer;
+  transition: all 200ms;
+  min-width: 160px;
+}
+
+.settings__rise-fall-option:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.settings__rise-fall-option--active {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.settings__rise-fall-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.settings__rise-fall-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.settings__rise-fall-option--active .settings__rise-fall-label {
+  color: #6366f1;
+  font-weight: 600;
+}
+
+/* Data */
+.settings__data-info {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.data-field {
+.settings__data-field {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.data-field-label {
+.settings__data-label {
   font-size: 0.75rem;
-  color: var(--cs-text-muted);
+  color: #94a3b8;
 }
 
-.data-field-value {
+.settings__data-value {
   font-size: 0.875rem;
-  color: var(--cs-text-secondary);
-  font-family: 'JetBrains Mono', monospace;
+  color: #ffffff;
   word-break: break-all;
 }
 
-.danger-zone {
+.settings__data-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.settings__danger {
   border: 1px solid #ef4444;
   border-radius: 0.75rem;
   padding: 1rem;
   background: rgba(239, 68, 68, 0.04);
 }
 
-.danger-title {
+.settings__danger-title {
   display: flex;
   align-items: center;
   gap: 0.375rem;
@@ -895,69 +629,108 @@ onMounted(() => {
   margin-bottom: 0.75rem;
 }
 
-.about-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 2rem 0;
-}
-
-.about-logo {
-  margin-bottom: 1rem;
-}
-
-.about-logo-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
+.settings__danger-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.about-version {
-  font-size: 1rem;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #ef4444;
+  background: transparent;
+  color: #ef4444;
   font-weight: 600;
-  color: var(--cs-text-primary);
-}
-
-.about-desc {
   font-size: 0.875rem;
-  color: var(--cs-text-muted);
-  max-width: 400px;
-  margin-top: 0.5rem;
-  line-height: 1.6;
+  cursor: pointer;
+  transition: all 200ms;
 }
 
-.about-links {
-  margin-top: 1rem;
+.settings__danger-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.settings__danger-warn {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .clear-confirm-content {
   min-width: 320px;
 }
 
-@media (max-width: 1023px) {
-  .settings-layout {
-    flex-direction: column;
-  }
-  .settings-nav {
-    width: 100%;
-  }
-  .notify-layout {
-    flex-direction: column;
-  }
-  .notify-preview {
-    width: 100%;
-  }
-  .theme-selector,
-  .rise-fall-selector {
-    justify-content: center;
-  }
+/* 浅色模式 */
+html:not(.dark) .settings__title {
+  color: #0f172a;
+}
+
+html:not(.dark) .settings__desc {
+  color: #64748b;
+}
+
+html:not(.dark) .settings__section-title {
+  color: #0f172a;
+}
+
+html:not(.dark) .settings__toggle-title {
+  color: #0f172a;
+}
+
+html:not(.dark) .settings__toggle-desc {
+  color: #64748b;
+}
+
+html:not(.dark) .settings__toggle {
+  background: #e2e8f0;
+}
+
+html:not(.dark) .settings__divider {
+  background: #e2e8f0;
+}
+
+html:not(.dark) .settings__token-input {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+html:not(.dark) .settings__notify-name {
+  color: #0f172a;
+}
+
+html:not(.dark) .settings__data-value {
+  color: #0f172a;
+}
+
+html:not(.dark) .settings__field-label {
+  color: #64748b;
+}
+
+html:not(.dark) .settings__notify-status {
+  color: #64748b;
+}
+
+html:not(.dark) .settings__data-label {
+  color: #64748b;
+}
+
+html:not(.dark) .settings__rise-fall-option {
+  border-color: #e2e8f0;
+}
+
+html:not(.dark) .settings__rise-fall-label {
+  color: #64748b;
+}
+
+html:not(.dark) .settings__rise-fall-option--active .settings__rise-fall-label {
+  color: #6366f1;
+}
+
+html:not(.dark) .settings__danger-warn {
+  color: #dc2626;
 }
 </style>
