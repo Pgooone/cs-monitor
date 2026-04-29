@@ -180,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   NCard,
@@ -261,6 +261,7 @@ const platformHistory = ref<Record<string, PriceHistoryItem[]>>({})
 
 const chartRef = ref<HTMLDivElement | null>(null)
 let chartInstance: ECharts | null = null
+let loadingData = false
 
 // 品相解析
 const wearMap: Record<string, string> = {
@@ -345,7 +346,7 @@ const chartEmpty = computed(() => {
 })
 
 const availablePlatforms = computed(() =>
-  [...new Set(priceHistory.value.map((p) => p.platform))].sort(),
+  [...new Set(platformPrices.value.map((p) => p.platform))].sort(),
 )
 
 function initChart() {
@@ -398,7 +399,7 @@ function initLineChart() {
     xData.push(...dates)
 
     series.push({
-      name: '价格',
+      name: selectedPlatforms.value[0] || '价格',
       type: 'line',
       data: prices,
       smooth: true,
@@ -638,6 +639,9 @@ async function loadData() {
   const name = marketHashName.value
   if (!name) return
 
+  // 防止重复调用（选项列表变化可能触发 Naive UI 组件发出 update 事件导致循环）
+  if (loadingData) return
+  loadingData = true
   loading.value = true
   try {
     // trends 单独请求，数据不足时会 500，不应阻塞整个页面
@@ -646,9 +650,25 @@ async function loadData() {
       () => { trendData.value = null },
     )
 
+    // 先获取平台价格，确定默认选中的平台（价格最低）
+    const platformPricesRes = await api.platformPrices(name)
+    platformPrices.value = platformPricesRes.data
+
+    // 首次加载时默认选中价格最低的平台
+    if (selectedPlatforms.value.length === 0 && platformPricesRes.data.length > 0) {
+      const validPrices = platformPricesRes.data.filter((p: PlatformPriceItem) => p.price > 0)
+      if (validPrices.length > 0) {
+        const lowest = validPrices.reduce((min, p) => p.price < min.price ? p : min)
+        selectedPlatforms.value = [lowest.platform]
+      } else {
+        selectedPlatforms.value = [platformPricesRes.data[0].platform]
+      }
+    }
+
+    // 获取图表所需数据：单选平台时用平台过滤，否则取全部价格历史
+    const historyPlatform = selectedPlatforms.value.length === 1 ? selectedPlatforms.value[0] : undefined
     const reqs: any[] = [
-      api.priceHistory(name, historyDays.value),
-      api.platformPrices(name),
+      api.priceHistory(name, historyDays.value, historyPlatform),
       api.alerts(1, 50, { market_hash_name: name }),
       api.watchlist(),
     ]
@@ -658,14 +678,13 @@ async function loadData() {
     const results = await Promise.all(reqs)
 
     priceHistory.value = results[0].data
-    platformPrices.value = results[1].data
-    alerts.value = results[2].data.items
-    if (chartType.value === 'kline' && results[4]) {
-      klineData.value = results[4].data.data || []
+    alerts.value = results[1].data.items
+    if (chartType.value === 'kline' && results[3]) {
+      klineData.value = results[3].data.data || []
     }
 
     // 从 watchlist 获取 display_name 和 icon_url
-    const watchlistData = results[3]?.data
+    const watchlistData = results[2]?.data
     if (Array.isArray(watchlistData)) {
       const matched = watchlistData.find((w: any) => w.market_hash_name === name)
       if (matched?.display_name) {
@@ -676,9 +695,14 @@ async function loadData() {
       }
     }
 
-    // 当前价
-    if (results[1].data.length) {
-      currentPrice.value = results[1].data[0].price
+    // 当前价：优先使用平台价格列表中的最低有效价格
+    if (platformPricesRes.data.length) {
+      const validPrices = platformPricesRes.data.filter((p: PlatformPriceItem) => p.price > 0)
+      if (validPrices.length > 0) {
+        currentPrice.value = Math.min(...validPrices.map((p) => p.price))
+      } else {
+        currentPrice.value = platformPricesRes.data[0].price
+      }
     } else if (results[0].data.length) {
       currentPrice.value = results[0].data[0].price
     } else {
@@ -728,12 +752,16 @@ async function loadData() {
       })
     }
 
-    // 初始化图表
-    initChart()
+    // 初始化图表：需要等 loading 变为 false 后 Vue 重新渲染 v-else 块，
+    // chartRef 才会绑定到新的 DOM 元素，因此延迟到 nextTick 执行
   } catch (e) {
     console.error(e)
   } finally {
     loading.value = false
+    loadingData = false
+    nextTick(() => {
+      initChart()
+    })
   }
 }
 
