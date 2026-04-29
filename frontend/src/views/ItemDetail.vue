@@ -147,7 +147,7 @@
             <n-checkbox value="ma5" label="MA5" />
             <n-checkbox value="ma10" label="MA10" />
             <n-checkbox value="ma30" label="MA30" />
-            <n-checkbox v-if="chartType === 'kline'" value="volume" label="成交量" />
+            <!-- 成交量已移除：SteamDT K 线 API 不包含成交数据 -->
           </n-space>
         </n-checkbox-group>
 

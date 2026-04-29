@@ -24,14 +24,15 @@ trends_router = APIRouter(prefix="/trends", tags=["trends"])
 def _normalize_kline(raw: list) -> list[dict[str, Any]]:
     """把 SteamDT K 线数据规范化为前端 ECharts 期望的 OHLC 结构.
 
-    支持数组格式 [timestamp, open, high, low, close, volume]
-    和对象格式 {timestamp, open, high, low, close, volume}。
+    SteamDT 数组格式: [timestamp, open, close, high, low]
+    对象格式: {timestamp, open, high, low, close, volume}。
+    注意: SteamDT K 线 API 不包含成交量数据。
     强制按 timestamp 升序排序。
     """
     out: list[dict[str, Any]] = []
     for it in raw or []:
         if isinstance(it, list) and len(it) >= 5:
-            ts, o, h, l, c = it[0], it[1], it[2], it[3], it[4]
+            ts, o, c, h, l = it[0], it[1], it[2], it[3], it[4]
             v = it[5] if len(it) > 5 else None
         elif isinstance(it, dict):
             ts = it.get("timestamp") or it.get("time") or it.get("t")
