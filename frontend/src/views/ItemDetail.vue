@@ -221,7 +221,7 @@ import AnimatedNumber from '@/components/base/AnimatedNumber.vue'
 import SteamItemImage from '@/components/business/SteamItemImage.vue'
 import { getChartTheme } from '@/charts/theme'
 import { useTheme } from '@/composables/useTheme'
-import { formatUTCDate } from '@/utils/date'
+import { formatUTCDate, formatUTCToLocal } from '@/utils/date'
 
 use([
   LineChart,
@@ -477,27 +477,6 @@ function initLineChart() {
         symbol: 'none',
         lineStyle: { width: 2 },
       })
-    }
-  }
-
-  // 告警标注
-  const markPoints = alerts.value
-    .filter((a) => a.current_price != null)
-    .map((a) => ({
-      name: a.alert_type,
-      coord: [0, a.current_price!],
-      value: a.alert_type === 'price_surge' ? '暴涨' : a.alert_type === 'price_drop' ? '暴跌' : '告警',
-      itemStyle: { color: a.alert_type === 'price_surge' ? colorUp.value : colorDown.value },
-      symbol: 'triangle',
-      symbolSize: 12,
-      symbolRotate: a.alert_type === 'price_drop' ? 180 : 0,
-    }))
-
-  if (markPoints.length && series.length) {
-    series[0].markPoint = {
-      data: markPoints,
-      label: { show: false },
-      symbolOffset: [0, -10],
     }
   }
 
@@ -869,7 +848,13 @@ const alertColumns: DataTableColumns<AlertRecord> = [
       return `${sign}${row.change_percent.toFixed(2)}%`
     },
   },
-  { title: '时间', key: 'notified_at' },
+  {
+    title: '时间',
+    key: 'notified_at',
+    render(row) {
+      return formatUTCToLocal(row.notified_at)
+    },
+  },
 ]
 
 watch(historyDays, () => {

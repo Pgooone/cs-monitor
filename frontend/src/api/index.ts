@@ -101,6 +101,7 @@ export interface WatchlistItemWithPrice {
   sparkline: number[]
   platform_prices: PlatformPriceMini[]
   icon_url?: string | null
+  yesterday_close: number | null
   created_at: string | null
   updated_at: string | null
 }

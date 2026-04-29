@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time as _time
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -27,14 +28,65 @@ from web.schemas import (
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
+# 前日收盘价缓存：{market_hash_name: (close_price, fetch_date_str)}
+_yesterday_close_cache: dict[str, tuple[float, str]] = {}
+
+
+def _get_yesterday_close(
+    market_hash_name: str,
+    client: SteamDTClient,
+) -> float | None:
+    """获取饰品前一交易日的 K 线收盘价，当日有效缓存."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    cached = _yesterday_close_cache.get(market_hash_name)
+    if cached and cached[1] == today:
+        return cached[0]
+
+    try:
+        resp = client.get_item_kline(
+            market_hash_name=market_hash_name,
+            kline_type=2,  # 日K
+            platform="ALL",
+        )
+    except (SteamDTError, SteamDTBusinessError, SteamDTRateLimitError):
+        return None
+
+    raw = resp.get("data") or []
+    if not isinstance(raw, list) or len(raw) < 2:
+        return None
+
+    # SteamDT 日K 格式: [timestamp, open, close, high, low]
+    # 按时间升序取倒数第二个（昨天）
+    raw_sorted = sorted(raw, key=lambda x: x[0] if isinstance(x, list) and len(x) >= 1 else 0)
+    yesterday = raw_sorted[-2]
+    if isinstance(yesterday, list) and len(yesterday) >= 3:
+        try:
+            close = float(yesterday[2])  # index 2 = close
+        except (TypeError, ValueError):
+            return None
+        _yesterday_close_cache[market_hash_name] = (close, today)
+        return close
+    return None
+
 
 @router.get("", response_model=list[WatchlistItemWithPrice])
 def get_watchlist(
+    request: Request,
     db: Database = Depends(get_db),
+    config: MonitorConfig = Depends(get_config),
     user: dict = Depends(require_auth),
 ) -> list[dict]:
-    """获取全部监控清单（含最新价格）."""
-    return db.get_watchlist_with_latest_price(enabled_only=False)
+    """获取全部监控清单（含最新价格和前日收盘价）."""
+    items = db.get_watchlist_with_latest_price(enabled_only=False)
+
+    # 附上前一交易日 K 线收盘价
+    client = _get_steamdt_client(request, config)
+    for item in items:
+        name = item.get("market_hash_name")
+        if name:
+            item["yesterday_close"] = _get_yesterday_close(name, client)
+
+    return items
 
 
 @router.post("", response_model=WatchlistItem)

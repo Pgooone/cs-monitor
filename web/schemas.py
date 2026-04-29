@@ -119,6 +119,7 @@ class WatchlistItemWithPrice(BaseModel):
         default_factory=list, description="各平台最新价格"
     )
     icon_url: str | None = Field(None, description="饰品图标 URL")
+    yesterday_close: float | None = Field(None, description="前一交易日 K 线收盘价")
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

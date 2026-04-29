@@ -120,9 +120,9 @@
         <!-- 价格行 -->
         <div class="watchlist-card__price-row">
           <div>
-            <div class="watchlist-card__price-label">最后一次捕获</div>
+            <div class="watchlist-card__price-label">前日收盘</div>
             <div class="watchlist-card__price-value font-mono-num">
-              ¥{{ item.latest_price?.toFixed(2) || '0.00' }}
+              ¥{{ displayPrice(item) }}
             </div>
           </div>
           <div
@@ -519,6 +519,12 @@ function goToDetail(item: WatchlistItemWithPrice) {
     name: 'ItemDetail',
     params: { name: encodeURIComponent(item.market_hash_name) },
   })
+}
+
+function displayPrice(item: WatchlistItemWithPrice): string {
+  // 优先使用前日 K 线收盘价，回退到最新捕获价
+  const price = item.yesterday_close ?? item.latest_price
+  return price != null ? price.toFixed(2) : '0.00'
 }
 
 function sparklineColor(item: WatchlistItemWithPrice): string {
