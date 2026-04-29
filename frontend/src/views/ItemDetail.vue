@@ -814,9 +814,9 @@ const alertColumns: DataTableColumns<AlertRecord> = [
     key: 'alert_type',
     render(row) {
       const typeMap: Record<string, string> = {
-        price_surge: '📈 价格暴涨',
-        price_drop: '📉 价格暴跌',
-        both: '🔔 价格+数量变动',
+        price_surge: '📈 涨价',
+        price_drop: '📉 跌价',
+        both: '🔔 量价变动',
         price_change: '💰 价格变动',
         quantity_change: '📦 数量变动',
       }

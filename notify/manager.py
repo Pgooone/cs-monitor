@@ -53,14 +53,21 @@ class NotificationManager:
         baseline_price = alert["baseline_price"]
         change_percent = alert["change_percent"]
 
-        direction = "暴涨" if alert_type == "price_surge" else "暴跌"
-        emoji = "🔴" if alert_type == "price_surge" else "🟢"
+        if alert_type == "price_surge":
+            direction = "📈 涨价"
+            emoji = "🔴"
+        elif alert_type == "price_drop":
+            direction = "📉 跌价"
+            emoji = "🟢"
+        else:
+            direction = "价格变动"
+            emoji = "⚪"
 
         title = f"{emoji} CS2 饰品价格波动提醒 - {direction}"
         content = (
             f"📦 饰品：{display_name}\n"
             f"💰 当前价格：¥{current_price:.2f}\n"
-            f"📊 7天均价：¥{baseline_price:.2f}\n"
+            f"📊 前日收盘：¥{baseline_price:.2f}\n"
             f"📈 波动幅度：{change_percent:+.2f}%\n"
             f"🕐 时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}"
         )
@@ -90,8 +97,24 @@ class NotificationManager:
 
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        # 方向指标
+        price_up = price_change > 0
+        qty_up = quantity_change > 0
+        price_emoji = "🔺" if price_up else "🔻" if price_change < 0 else "➖"
+        qty_emoji = "🔺" if qty_up else "🔻" if quantity_change < 0 else "➖"
+
         if alert_type == "both":
-            title = "🎯 [极致追踪] 价格 & 数量同时变动！"
+            title = "🎯 [极致追踪] 价格 & 数量同时变动"
+            # 根据量价方向组合生成智能提示
+            if qty_up and price_up:
+                hint = "💡 量价齐升，市场热度上升，可能有利好"
+            elif qty_up and not price_up:
+                hint = "💡 在售量增价跌，可能有人在抛售"
+            elif not qty_up and price_up:
+                hint = "💡 在售量减价涨，可能有人在扫货"
+            else:
+                hint = "💡 量价齐跌，市场趋于冷清"
+
             content = (
                 f"📦 饰品：{display_name}\n"
                 f"🏪 平台：{platform}\n\n"
@@ -100,31 +123,34 @@ class NotificationManager:
                 f"📦 数量：{prev_quantity} 件 → {curr_quantity} 件 "
                 f"（{quantity_change_percent:+.2f}%）\n\n"
                 f"🕐 时间：{now_str}\n"
-                f"💡 量跌价涨，市场可能在抢货"
+                f"{hint}"
             )
         elif alert_type == "price_change":
-            title = "🎯 [极致追踪] 价格变动"
+            direction = "上涨" if price_up else "下跌"
+            title = f"🎯 [极致追踪] 价格{direction}"
             content = (
                 f"📦 饰品：{display_name}\n"
                 f"🏪 平台：{platform}\n"
                 f"💰 当前价格：¥{curr_price:.2f}\n"
                 f"💰 上次价格：¥{prev_price:.2f}\n"
-                f"📈 变动：{price_change:+.2f}（{price_change_percent:+.2f}%）\n"
+                f"{price_emoji} 变动：{price_change:+.2f}（{price_change_percent:+.2f}%）\n"
                 f"📊 在售数量：{curr_quantity} 件\n"
                 f"🕐 时间：{now_str}"
             )
         else:  # quantity_change
-            title = "🎯 [极致追踪] 在售数量变动"
+            direction = "增加" if qty_up else "减少"
+            title = f"🎯 [极致追踪] 在售数量{direction}"
+            verb = "卖出" if qty_up else "买入"
             content = (
                 f"📦 饰品：{display_name}\n"
                 f"🏪 平台：{platform}\n"
-                f"📉 当前在售：{curr_quantity} 件\n"
+                f"📊 当前在售：{curr_quantity} 件\n"
                 f"📊 上次在售：{prev_quantity} 件\n"
-                f"🔻 变动：{quantity_change:+d} 件（"
+                f"{qty_emoji} 变动：{quantity_change:+d} 件（"
                 f"{quantity_change_percent:+.2f}%）\n"
                 f"💰 当前价格：¥{curr_price:.2f}\n"
                 f"🕐 时间：{now_str}\n"
-                f"💡 数量减少可能意味着有人在买入"
+                f"💡 在售数量{direction}，可能意味着有人在{verb}"
             )
 
         return self.channel.send_with_retry(title, content)

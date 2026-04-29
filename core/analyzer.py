@@ -123,12 +123,11 @@ class PriceAnalyzer:
         return len(recent_alerts) == 0
 
     def recalculate_all_baselines(self) -> int:
-        """重算所有告警记录的基准价和波动幅度（以前日 K 线收盘价为准）."""
+        """重算所有告警记录的基准价、波动幅度和类型（以前日 K 线收盘价为准）."""
         all_alerts = self.db.get_all_alerts()
         if not all_alerts:
             return 0
 
-        # 按物品分组，每个物品只调一次 K 线 API
         updated = 0
         for alert in all_alerts:
             name = alert["market_hash_name"]
@@ -139,12 +138,22 @@ class PriceAnalyzer:
             if current is None or current == 0:
                 continue
             change = round(((current - new_baseline) / new_baseline) * 100, 2)
+
+            # 根据新波动幅度修正告警类型
+            threshold = float(alert.get("threshold_percent", 5.0))
+            if change >= threshold:
+                new_type = "price_surge"
+            elif change <= -threshold:
+                new_type = "price_drop"
+            else:
+                new_type = "price_change"
+
             self.db.update_alert_baseline(
-                alert["id"], new_baseline, change
+                alert["id"], new_baseline, change, new_type
             )
             updated += 1
 
-        logger.info(f"已重算 {updated} 条告警基准价（前日收盘）")
+        logger.info(f"已重算 {updated} 条告警基准价和类型（前日收盘）")
         return updated
 
     def analyze(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:

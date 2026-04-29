@@ -86,8 +86,8 @@ const limit = ref(20)
 const loading = ref(false)
 
 const typeMap: Record<string, string> = {
-  price_surge: '价格暴涨',
-  price_drop: '价格暴跌',
+  price_surge: '📈 涨价',
+  price_drop: '📉 跌价',
   price_change: '价格变动',
   quantity_change: '数量变动',
   both: '综合变动',

@@ -1407,9 +1407,11 @@ class Database:
         with self._cursor() as cursor:
             cursor.execute(
                 """
-                SELECT id, market_hash_name, current_price
-                FROM alert_logs
-                ORDER BY notified_at DESC
+                SELECT a.id, a.market_hash_name, a.current_price,
+                       COALESCE(w.threshold_percent, 5.0) AS threshold_percent
+                FROM alert_logs a
+                LEFT JOIN watchlist w ON a.market_hash_name = w.market_hash_name
+                ORDER BY a.notified_at DESC
                 """
             )
             return [dict(row) for row in cursor.fetchall()]
@@ -1419,17 +1421,29 @@ class Database:
         alert_id: int,
         baseline_price: float,
         change_percent: float,
+        alert_type: str | None = None,
     ) -> None:
-        """更新单条告警的基准价和波动幅度."""
-        with self._cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE alert_logs
-                SET baseline_price = ?, change_percent = ?
-                WHERE id = ?
-                """,
-                (baseline_price, change_percent, alert_id),
-            )
+        """更新单条告警的基准价、波动幅度和类型."""
+        if alert_type:
+            with self._cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE alert_logs
+                    SET baseline_price = ?, change_percent = ?, alert_type = ?
+                    WHERE id = ?
+                    """,
+                    (baseline_price, change_percent, alert_type, alert_id),
+                )
+        else:
+            with self._cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE alert_logs
+                    SET baseline_price = ?, change_percent = ?
+                    WHERE id = ?
+                    """,
+                    (baseline_price, change_percent, alert_id),
+                )
 
     def get_archived_price_history(
         self,
