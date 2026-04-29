@@ -60,3 +60,7 @@ Thumbs.db
 frontend/node_modules/
 frontend/dist/
 .env
+
+# SQLite WAL
+*.db-shm
+*.db-wal

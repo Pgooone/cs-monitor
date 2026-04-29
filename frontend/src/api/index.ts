@@ -246,6 +246,7 @@ export interface NotifySettings {
 
 export interface KlineDataItem {
   date: string
+  timestamp?: number
   open: number
   close: number
   high: number
@@ -387,9 +388,9 @@ export default {
   clearDb() {
     return api.post('/settings/db/clear?confirm=true')
   },
-  kline(marketHashName: string, period?: number, count?: number) {
+  kline(marketHashName: string, period?: number, count?: number, platform?: string) {
     return api.get<KlineResponse>(`/kline/${encodeURIComponent(marketHashName)}`, {
-      params: { period, count },
+      params: { period, count, platform },
     })
   },
   arbitrage() {

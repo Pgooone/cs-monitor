@@ -258,6 +258,8 @@ const trendData = ref<TrendAnalysisResponse | null>(null)
 const selectedPlatforms = ref<string[]>([])
 const activeIndicators = ref<string[]>(['ma5', 'ma10'])
 const platformHistory = ref<Record<string, PriceHistoryItem[]>>({})
+// 日K 收盘价序列，用于价格走势图（来源 SteamDT，可覆盖 30/90 天）
+const dailyPrices = ref<{ date: string; price: number }[]>([])
 
 const chartRef = ref<HTMLDivElement | null>(null)
 let chartInstance: ECharts | null = null
@@ -342,7 +344,7 @@ const ma20Latest = computed(() => {
 
 const chartEmpty = computed(() => {
   if (chartType.value === 'kline') return !klineData.value.length
-  return !priceHistory.value.length
+  return !priceHistory.value.length && !dailyPrices.value.length
 })
 
 const availablePlatforms = computed(() =>
@@ -386,17 +388,26 @@ function initLineChart() {
 
   const series: any[] = []
   const xData: string[] = []
+  let prices: number[] = []
 
   if (selectedPlatforms.value.length <= 1) {
-    // 单线：显示默认价格历史
-    const sorted = [...priceHistory.value].sort(
-      (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
-    )
-    const dates = sorted.map((item) =>
-      formatUTCDate(item.recorded_at),
-    )
-    const prices = sorted.map((item) => item.price)
-    xData.push(...dates)
+    // 单线：优先使用 SteamDT 日K 收盘价（可覆盖 30/90 天），
+    // 数据不足时回退到本地 priceHistory
+    const useKline = dailyPrices.value.length >= 2
+    if (useKline) {
+      const dates = dailyPrices.value.map((d) => d.date)
+      prices = dailyPrices.value.map((d) => d.price)
+      xData.push(...dates)
+    } else {
+      const sorted = [...priceHistory.value].sort(
+        (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
+      )
+      const dates = sorted.map((item) =>
+        formatUTCDate(item.recorded_at),
+      )
+      prices = sorted.map((item) => item.price)
+      xData.push(...dates)
+    }
 
     series.push({
       name: selectedPlatforms.value[0] || '价格',
@@ -672,15 +683,36 @@ async function loadData() {
       api.alerts(1, 50, { market_hash_name: name }),
       api.watchlist(),
     ]
+    // 价格走势图：用 SteamDT 日K 收盘价作为数据源（可覆盖 30/90 天）
+    if (chartType.value === 'line') {
+      reqs.push(api.kline(name, 2, historyDays.value, historyPlatform))
+    }
+    // K线图：用对应周期的 K 线数据
     if (chartType.value === 'kline') {
-      reqs.push(api.kline(name, klinePeriod.value))
+      reqs.push(api.kline(name, klinePeriod.value, 90, historyPlatform))
     }
     const results = await Promise.all(reqs)
 
     priceHistory.value = results[0].data
     alerts.value = results[1].data.items
-    if (chartType.value === 'kline' && results[3]) {
-      klineData.value = results[3].data.data || []
+
+    // 从 K 线数据提取日收盘价序列，用于价格走势图
+    if (chartType.value === 'line' && results[3]) {
+      const klineResult = results[3].data.data || []
+      dailyPrices.value = klineResult.map((d: KlineDataItem) => {
+        const ts = d.timestamp || (d.date ? new Date(d.date).getTime() / 1000 : 0)
+        return {
+          date: new Date(ts * 1000).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
+          price: d.close,
+        }
+      })
+    }
+    // K线图模式
+    if (chartType.value === 'kline') {
+      const klineIdx = results.length - 1  // always last push
+      if (results[klineIdx]) {
+        klineData.value = results[klineIdx].data.data || []
+      }
     }
 
     // 从 watchlist 获取 display_name 和 icon_url

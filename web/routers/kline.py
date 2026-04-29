@@ -63,6 +63,7 @@ def get_kline(
     market_hash_name: str,
     period: int = 2,
     count: int = 30,
+    platform: str = "ALL",
     request: Request = None,  # type: ignore[assignment]
     user: dict = Depends(require_auth),
 ) -> dict[str, Any]:
@@ -71,12 +72,14 @@ def get_kline(
     参数:
         period: 1=时K, 2=日K, 3=周K
         count: 返回条数
+        platform: 平台过滤，默认 ALL
     """
     client = request.app.state.steamdt_client
     try:
         resp = client.get_item_kline(
             market_hash_name=market_hash_name,
             kline_type=period,
+            platform=platform,
         )
     except SteamDTRateLimitError as e:
         raise HTTPException(
