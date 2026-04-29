@@ -293,7 +293,7 @@ const wearClass = computed(() => {
 const sortedPlatformPrices = computed(() => {
   const valid = platformPrices.value.filter((p) => p.price > 0)
   const zero = platformPrices.value.filter((p) => p.price === 0)
-  valid.sort((a, b) => b.price - a.price)
+  valid.sort((a, b) => a.price - b.price)
   zero.sort((a, b) => a.platform.localeCompare(b.platform))
   return [...valid, ...zero]
 })
@@ -698,7 +698,7 @@ async function loadData() {
         const t = new Date(p.recorded_at).getTime()
         return now - t >= dayMs * 0.8 && now - t <= dayMs * 1.2
       })
-      if (p24h) {
+      if (p24h && p24h.price > 0) {
         change24h.value = ((currentPrice.value - p24h.price) / p24h.price) * 100
       } else {
         change24h.value = null
@@ -706,7 +706,7 @@ async function loadData() {
 
       // 7d 变化：找最早记录（约7天前）
       const p7d = sorted[0]
-      if (p7d && now - new Date(p7d.recorded_at).getTime() >= dayMs * 5) {
+      if (p7d && p7d.price > 0 && now - new Date(p7d.recorded_at).getTime() >= dayMs * 5) {
         change7d.value = ((currentPrice.value - p7d.price) / p7d.price) * 100
       } else {
         change7d.value = null
