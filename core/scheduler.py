@@ -56,6 +56,11 @@ class MonitorScheduler:
         logger.info("首次启动，立即执行一次价格采集")
         self._run_monitor()
 
+        # 重算所有告警基准价（前日 K 线收盘价）
+        logger.info("正在重算告警基准价（前日收盘）...")
+        recalculated = self.monitor.analyzer.recalculate_all_baselines()
+        logger.info(f"告警基准价重算完成，更新 {recalculated} 条")
+
     def _add_monitor_job(self) -> None:
         """注册普通监控定时任务."""
         interval = max(1, self.config.check_interval_minutes)

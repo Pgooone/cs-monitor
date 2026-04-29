@@ -31,60 +31,61 @@ class PriceAnalyzer:
         self.db = db
         self.config = config
         self.notifier = NotificationManager(config)
-        # 7 日均价缓存：{market_hash_name: (price, fetched_at)}，TTL 6h
-        self._avg_cache: dict[str, tuple[float, datetime]] = {}
-        self._avg_ttl = timedelta(hours=6)
+        # 前日收盘价缓存：{market_hash_name: (price, fetched_date_str)}，每日刷新
+        self._baseline_cache: dict[str, tuple[float, str]] = {}
+        self._baseline_ttl = timedelta(hours=24)
 
     def _get_baseline_price(self, market_hash_name: str) -> float | None:
         """获取基准价.
 
-        优先使用 7 天均价（6h 缓存），缺失时 fallback 到 DB 最新价.
+        使用 SteamDT 日K 前一交易日收盘价（每日刷新），
+        失败时 fallback 到 DB 最新价.
         """
         now = datetime.utcnow()
+        today_str = now.strftime("%Y-%m-%d")
 
-        # 1) 缓存命中
-        cached = self._avg_cache.get(market_hash_name)
-        if cached and now - cached[1] < self._avg_ttl:
+        # 当日缓存命中
+        cached = self._baseline_cache.get(market_hash_name)
+        if cached and cached[1] == today_str:
             return cached[0]
 
-        # 2) 调用 API，三层异常分层
+        # 调用 SteamDT 日K API 获取前日收盘价
         try:
-            resp = self.client.get_7day_average(market_hash_name)
-        except SteamDTRateLimitError as e:
-            logger.warning(
-                f"[analyzer] 7d avg 限流 {market_hash_name}: {e}, 退化到 DB 基线"
+            resp = self.client.get_item_kline(
+                market_hash_name=market_hash_name,
+                kline_type=2,  # 日K
+                platform="ALL",
             )
-            return self._fallback_to_db(market_hash_name)
-        except (SteamDTBusinessError, SteamDTError) as e:
+        except (SteamDTRateLimitError, SteamDTBusinessError, SteamDTError) as e:
             logger.warning(
-                f"[analyzer] 7d avg 失败 {market_hash_name}: {e}, 退化到 DB 基线"
-            )
-            return self._fallback_to_db(market_hash_name)
-
-        # 3) 解析 success=false
-        if not resp.get("success"):
-            logger.warning(
-                f"[analyzer] 7d avg 返回 success=false {market_hash_name}, 退化到 DB 基线"
+                f"[analyzer] 日K 获取失败 {market_hash_name}: {e}, 退化到 DB 基线"
             )
             return self._fallback_to_db(market_hash_name)
 
-        # 4) 解析均价数据
-        data = resp.get("data") or {}
-        prices = [
-            float(p["avgPrice"])
-            for p in data.get("dataList", [])
-            if p.get("avgPrice")
-        ]
-        if not prices:
+        raw = resp.get("data") or []
+        if not isinstance(raw, list) or len(raw) < 2:
             logger.debug(
-                f"{market_hash_name} 7天均价无有效数据，退化到 DB 基线"
+                f"{market_hash_name} 日K 数据不足，退化到 DB 基线"
             )
             return self._fallback_to_db(market_hash_name)
 
-        baseline = sum(prices) / len(prices)
-        self._avg_cache[market_hash_name] = (baseline, now)
-        logger.debug(f"{market_hash_name} 基准价使用 7天均价: {baseline:.2f}")
-        return baseline
+        # 按时间升序，取倒数第二个（昨天）
+        raw_sorted = sorted(
+            raw, key=lambda x: x[0] if isinstance(x, list) and len(x) >= 1 else 0
+        )
+        yesterday = raw_sorted[-2]
+        if isinstance(yesterday, list) and len(yesterday) >= 3:
+            try:
+                baseline = float(yesterday[2])  # index 2 = close
+            except (TypeError, ValueError):
+                return self._fallback_to_db(market_hash_name)
+            self._baseline_cache[market_hash_name] = (baseline, today_str)
+            logger.debug(
+                f"{market_hash_name} 基准价使用前日收盘: {baseline:.2f}"
+            )
+            return baseline
+
+        return self._fallback_to_db(market_hash_name)
 
     def _fallback_to_db(self, market_hash_name: str) -> float | None:
         """Fallback：从 DB 获取最新采集价."""
@@ -120,6 +121,31 @@ class PriceAnalyzer:
             hours=self.config.alert_cooldown_hours,
         )
         return len(recent_alerts) == 0
+
+    def recalculate_all_baselines(self) -> int:
+        """重算所有告警记录的基准价和波动幅度（以前日 K 线收盘价为准）."""
+        all_alerts = self.db.get_all_alerts()
+        if not all_alerts:
+            return 0
+
+        # 按物品分组，每个物品只调一次 K 线 API
+        updated = 0
+        for alert in all_alerts:
+            name = alert["market_hash_name"]
+            new_baseline = self._get_baseline_price(name)
+            if new_baseline is None or new_baseline == 0:
+                continue
+            current = alert.get("current_price")
+            if current is None or current == 0:
+                continue
+            change = round(((current - new_baseline) / new_baseline) * 100, 2)
+            self.db.update_alert_baseline(
+                alert["id"], new_baseline, change
+            )
+            updated += 1
+
+        logger.info(f"已重算 {updated} 条告警基准价（前日收盘）")
+        return updated
 
     def analyze(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """分析价格波动并触发告警.

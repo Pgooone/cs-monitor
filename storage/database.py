@@ -1402,6 +1402,35 @@ class Database:
                 "aggregated": len(rows),
             }
 
+    def get_all_alerts(self) -> list[dict[str, Any]]:
+        """获取所有告警记录（用于基准价重算）."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, market_hash_name, current_price
+                FROM alert_logs
+                ORDER BY notified_at DESC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_alert_baseline(
+        self,
+        alert_id: int,
+        baseline_price: float,
+        change_percent: float,
+    ) -> None:
+        """更新单条告警的基准价和波动幅度."""
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE alert_logs
+                SET baseline_price = ?, change_percent = ?
+                WHERE id = ?
+                """,
+                (baseline_price, change_percent, alert_id),
+            )
+
     def get_archived_price_history(
         self,
         market_hash_name: str,
