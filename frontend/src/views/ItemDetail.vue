@@ -51,7 +51,7 @@
             :bordered="false"
             :class="[
               'item-hero__platform-tag',
-              p.price === maxPlatformPrice ? 'platform-tag--highest' : 'platform-tag--normal'
+              p.price === minPlatformPrice ? 'platform-tag--highest' : 'platform-tag--normal'
             ]"
           >
             <span class="platform-tag__content">
@@ -298,9 +298,9 @@ const sortedPlatformPrices = computed(() => {
   return [...valid, ...zero]
 })
 
-const maxPlatformPrice = computed(() => {
+const minPlatformPrice = computed(() => {
   const valid = platformPrices.value.filter((p) => p.price > 0)
-  return valid.length ? Math.max(...valid.map((p) => p.price)) : undefined
+  return valid.length ? Math.min(...valid.map((p) => p.price)) : undefined
 })
 
 const trendLabel = computed(() => {
